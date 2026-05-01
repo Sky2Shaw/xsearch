@@ -1,0 +1,32 @@
+{
+  "input_dir": ".xperf_atdsl_extraction",
+  "source_root": "op_kernel",
+  "inventory": {
+    "counts": {
+      "indexed_functions": 616,
+      "brief_annotations": 18,
+      "deep_annotations": 126,
+      "optimization_cards": 6
+    }
+  },
+  "critical_coverage": {
+    "required_items": {
+      "gqa.mm2": {
+        "present": true,
+        "matched_function": "FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2",
+        "deep_annotation_present": true
+      },
+      "mla.mm2": {
+        "present": true,
+        "matched_function": "FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2",
+        "deep_annotation_present": true
+      },
+      "mla.mm2.process": {
+        "present": true,
+        "matched_function": "FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2",
+        "deep_annotation_present": true
+      }
+    }
+  },
+  "blocking_findings": []
+}

@@ -1,0 +1,51 @@
+optimization_card:
+  id: l1_kv_residency_across_g
+  canonical_name: L1 K/V residency across G groups
+  aliases:
+    - kv_l1_reuse
+    - reuse_kv_for_group
+  pattern:
+    - K/V tile is copied from GM to L1 once per kv_block.
+    - Multiple G groups reuse the same K/V tile.
+    - Loop order is kv_outer_g_inner.
+  intent:
+    - Reduce repeated GM->L1 traffic.
+    - Improve GQA/MLA FlashDecode performance.
+  applies_to:
+    - flash_decode
+    - gqa
+    - mla
+  preconditions:
+    - G > 1
+    - K/V tile plus scratch fits in L1.
+    - loop_order == kv_outer_g_inner
+  tunable_knobs:
+    - kv_block
+    - loop_order
+    - l1_partition_policy
+    - residency_scope
+    - prefetch_distance
+  constraints:
+    - l1_capacity
+    - residency_scope_requires_loop_order
+    - event_dependency_valid
+  risks:
+    - l1_overflow
+    - stale_kv_tile
+    - wrong_eviction
+    - event_deadlock
+  possible_dsl_fields:
+    - decode.loop_order
+    - decode.kv.kv_block
+    - l1_partition.policy
+    - l1_residency.objects.scope
+    - l1_residency.objects.eviction
+    - l1_residency.prefetch.distance
+  lowering_hint:
+    - LowerDecodeLoopNest
+    - LowerL1Partition
+    - LowerL1Residency
+  source_evidence:
+    - file: flash_decode_xxx.h
+      function: Process
+      behavior: DataCopy GM->L1 is outside group loop; QK/PV are inside group loop.

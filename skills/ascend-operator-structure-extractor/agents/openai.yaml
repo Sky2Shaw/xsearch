@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ascend Operator Structure Extractor"
+  short_description: "Extract AscendC operator structure for DSL design"
+  default_prompt: "Use $ascend-operator-structure-extractor to analyze this AscendC operator directory and produce structured extraction artifacts."
+policy:
+  allow_implicit_invocation: true
