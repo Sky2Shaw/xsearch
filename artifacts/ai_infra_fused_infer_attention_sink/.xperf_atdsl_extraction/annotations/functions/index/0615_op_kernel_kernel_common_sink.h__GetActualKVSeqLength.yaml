@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/kernel_common_sink.h:53:GetActualKVSeqLength
+  function_name: GetActualKVSeqLength
+  qualified_name: GetActualKVSeqLength
+  canonical_name: GetActualKVSeqLength
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params:
+  - template<FIA_LAYOUT LAYOUT_T>
+  variant: unknown
+  stage: unknown
+  file: op_kernel/kernel_common_sink.h
+  line_range:
+    start: 53
+    end: 73
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:actualSeq
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetValue
+  called_by: []

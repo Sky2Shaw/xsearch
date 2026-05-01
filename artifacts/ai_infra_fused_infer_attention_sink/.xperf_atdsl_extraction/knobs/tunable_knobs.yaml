@@ -1,0 +1,19 @@
+tunable_knobs:
+- name: s2BaseSize
+  scope: tiling and RunInfo S2 loop
+  evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1001-1003
+- name: mBaseSize
+  scope: M tile and FD gS1 base
+  evidence: op_kernel/fia_block_vec_flashdecode_sink.h:443-476
+- name: nBufferMBaseSize
+  scope: MLA n-buffer split
+  evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:512-519
+- name: preLoadNum
+  scope: workspace and pipeline ring slots
+  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:501-508
+- name: headDimAlign
+  scope: MM2/FD workspace stride
+  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:463-468
+- name: splitKVFlag
+  scope: FD workspace inclusion
+  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:520-526

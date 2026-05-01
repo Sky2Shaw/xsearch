@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:404:CalaPreNextTokens
+  function_name: CalaPreNextTokens
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 404
+    end: 427
+  rough_role: sparse_or_mask_range
+  importance_score: 90
+  importance_reasons:
+  - structure_signal:sparse
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - GetActualSeqLength
+  called_by:
+  - FlashDecode

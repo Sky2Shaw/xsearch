@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:120:FakeArray
+  function_name: FakeArray
+  qualified_name: FakeArray
+  canonical_name: FakeArray
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 120
+    end: 136
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: index
+  calls:
+  - OP_LOGD
+  - Size
+  - aclCreateTensor
+  - data
+  - size
+  - OP_LOGE
+  called_by: []

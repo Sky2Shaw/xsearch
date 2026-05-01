@@ -1,0 +1,31 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:945:ProcessVec2Inner
+  function_name: ProcessVec2Inner
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2Inner
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2Inner
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 945
+    end: 964
+  rough_role: cube_compute
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  - structure_signal:tail
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - DealBmm2ResBaseBlock
+  called_by:
+  - ProcessVec2SingleBuf

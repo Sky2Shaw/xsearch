@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp:140:CheckParaExistence
+  function_name: CheckParaExistence
+  qualified_name: CheckParaExistence
+  canonical_name: CheckParaExistence
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp
+  line_range:
+    start: 140
+    end: 144
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - CheckMultiParaConsistency
+  called_by: []

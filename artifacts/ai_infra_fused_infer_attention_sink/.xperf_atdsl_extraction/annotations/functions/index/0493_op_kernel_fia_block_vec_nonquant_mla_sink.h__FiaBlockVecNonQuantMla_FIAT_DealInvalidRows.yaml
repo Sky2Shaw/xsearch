@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:561:DealInvalidRows
+  function_name: DealInvalidRows
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::DealInvalidRows
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::DealInvalidRows
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 561
+    end: 588
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:sparse
+  - branch_signal
+  extraction_level: index
+  calls:
+  - invalidRows
+  called_by:
+  - Bmm2CastAndCopyOut
+  - Bmm2FDDataCopyOut

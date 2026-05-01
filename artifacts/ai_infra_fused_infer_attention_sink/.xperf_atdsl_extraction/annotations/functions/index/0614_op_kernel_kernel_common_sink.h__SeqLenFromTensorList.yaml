@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/kernel_common_sink.h:39:SeqLenFromTensorList
+  function_name: SeqLenFromTensorList
+  qualified_name: SeqLenFromTensorList
+  canonical_name: SeqLenFromTensorList
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params:
+  - template<FIA_LAYOUT LAYOUT_T>
+  variant: unknown
+  stage: unknown
+  file: op_kernel/kernel_common_sink.h
+  line_range:
+    start: 39
+    end: 52
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - keyListTensorDesc
+  - SetShapeAddr
+  - GetDesc
+  - GetShape
+  called_by: []

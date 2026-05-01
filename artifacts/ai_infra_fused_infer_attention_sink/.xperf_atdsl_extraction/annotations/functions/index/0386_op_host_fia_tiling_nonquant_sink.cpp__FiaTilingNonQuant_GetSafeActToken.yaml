@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:573:GetSafeActToken
+  function_name: GetSafeActToken
+  qualified_name: FiaTilingNonQuant::GetSafeActToken
+  canonical_name: FiaTilingNonQuant::GetSafeActToken
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 573
+    end: 587
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - max
+  - min
+  called_by:
+  - CalcParams
+  - GetPreNextTokenLeftUp
+  - IsExistRowInvalid

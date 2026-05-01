@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp:51:GetPaValueD
+  function_name: GetPaValueD
+  qualified_name: GetPaValueD
+  canonical_name: GetPaValueD
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp
+  line_range:
+    start: 51
+    end: 71
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetAttrs
+  - GetInputShape
+  - GetShape
+  - GetDimNum
+  - GetDim
+  called_by:
+  - GetValueD

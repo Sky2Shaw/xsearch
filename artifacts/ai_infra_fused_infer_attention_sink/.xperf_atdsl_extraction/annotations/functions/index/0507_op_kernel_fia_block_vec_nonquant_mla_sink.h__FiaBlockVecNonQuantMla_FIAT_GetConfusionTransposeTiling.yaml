@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:964:GetConfusionTransposeTiling
+  function_name: GetConfusionTransposeTiling
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::GetConfusionTransposeTiling
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::GetConfusionTransposeTiling
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: tiling
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 964
+    end: 985
+  rough_role: unknown
+  importance_score: 14
+  importance_reasons:
+  - structure_signal:tiling
+  extraction_level: index
+  calls: []
+  called_by: []

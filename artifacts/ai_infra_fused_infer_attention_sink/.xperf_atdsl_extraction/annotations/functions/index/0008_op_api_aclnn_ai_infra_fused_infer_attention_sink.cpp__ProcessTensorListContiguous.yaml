@@ -1,0 +1,31 @@
+function_index_entry:
+  function_id: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:221:ProcessTensorListContiguous
+  function_name: ProcessTensorListContiguous
+  qualified_name: ProcessTensorListContiguous
+  canonical_name: ProcessTensorListContiguous
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 221
+    end: 252
+  rough_role: unknown
+  importance_score: 83
+  importance_reasons:
+  - known_deep_name_pattern
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Size
+  - push_back
+  - ProcessTensorContiguous
+  - CHECK_RET
+  - AllocTensorList
+  - data
+  - size
+  called_by: []

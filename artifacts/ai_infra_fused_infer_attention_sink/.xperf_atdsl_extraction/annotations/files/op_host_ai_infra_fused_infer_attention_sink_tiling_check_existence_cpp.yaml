@@ -1,0 +1,39 @@
+file_analysis:
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+  important_functions:
+  - qualified_name: FiaTilingCheck::CheckDtypeAndSetQuantFlagMla
+    role: unknown
+    reason: highest indexed function in file
+  file_level_dataflow:
+  - Function index shows 20 functions in this file.
+  - Deep/brief functions provide source-backed stage evidence where performance-relevant behavior is visible.
+  file_level_pipeline:
+  - 'Contains stages: tiling, unknown'
+  memory_strategy:
+  - GM/UB/L1/L0 behavior is extracted in deep function annotations when present.
+  l1_strategy:
+  - L1 strategy is stage-specific and recorded for cube/vector files; unknown for glue/API files.
+  decode_strategy:
+  - unknown
+  optimization_cards: []
+  tunable_knobs: []
+  constraints: []
+  risks: []
+  suggested_dsl_sections:
+  - name: gqa.grouped_query
+    fields:
+    - gqa.grouped_query.source_file
+    evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  - name: mla.nupdate
+    fields:
+    - mla.nupdate.source_file
+    evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  - name: mla.shape_contract
+    fields:
+    - mla.shape_contract.source_file
+    evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  - name: operator.helpers
+    fields:
+    - operator.helpers.source_file
+    evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp

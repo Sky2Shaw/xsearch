@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_def.cpp:493:this->Output
+  function_name: this->Output
+  qualified_name: AiInfraFusedInferAttentionSink::this->Output
+  canonical_name: AiInfraFusedInferAttentionSink::this->Output
+  owner: AiInfraFusedInferAttentionSink
+  owner_qualified: AiInfraFusedInferAttentionSink
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_host/ai_infra_fused_infer_attention_sink_def.cpp
+  line_range:
+    start: 493
+    end: 493
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - Output
+  - ParamType
+  - DataTypeList
+  - FormatList
+  called_by: []

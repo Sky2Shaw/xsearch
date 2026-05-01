@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:982:ComputeVec2
+  function_name: ComputeVec2
+  qualified_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+  canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 982
+    end: 990
+  rough_role: unknown
+  importance_score: 35
+  importance_reasons:
+  - attention_stage:vec2
+  extraction_level: index
+  calls:
+  - SetMSplitInfo
+  - CrossCoreWaitFlag
+  - ProcessVec2SingleBuf
+  called_by:
+  - ExecuteTask

@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp:523:CheckSingleParaKeyAntiquantMode
+  function_name: CheckSingleParaKeyAntiquantMode
+  qualified_name: FiaTilingCheck::CheckSingleParaKeyAntiquantMode
+  canonical_name: FiaTilingCheck::CheckSingleParaKeyAntiquantMode
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+  line_range:
+    start: 523
+    end: 540
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CheckAttrValueSupport
+  called_by: []

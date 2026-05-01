@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:557:GetSafeActToken
+  function_name: GetSafeActToken
+  qualified_name: FiaKernelNonQuant<FIAT>::GetSafeActToken
+  canonical_name: FiaKernelNonQuant<FIAT>::GetSafeActToken
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 557
+    end: 573
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:sparse
+  - branch_signal
+  extraction_level: index
+  calls:
+  - Max
+  - Min
+  called_by:
+  - CalcParams
+  - GetPreNextTokenLeftUp
+  - IsExistRowInvalid

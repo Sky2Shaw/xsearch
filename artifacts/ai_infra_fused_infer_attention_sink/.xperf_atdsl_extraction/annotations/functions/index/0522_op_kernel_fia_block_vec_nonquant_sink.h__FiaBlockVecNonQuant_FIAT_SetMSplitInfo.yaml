@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:284:SetMSplitInfo
+  function_name: SetMSplitInfo
+  qualified_name: FiaBlockVecNonQuant<FIAT>::SetMSplitInfo
+  canonical_name: FiaBlockVecNonQuant<FIAT>::SetMSplitInfo
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 284
+    end: 301
+  rough_role: unknown
+  importance_score: 28
+  importance_reasons:
+  - attention_stage:vec1
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetBlockIdx
+  called_by:
+  - ComputeVec1
+  - ComputeVec2

@@ -1,0 +1,16 @@
+risks:
+- id: R-MM2-OWNER-COLLAPSE
+  description: Collapsing ComputeMm2 across owners hides distinct GQA, MLA, and generic nonquant semantics.
+  evidence: reports/function_index.yaml
+- id: R-GQA-V-L1-LIFETIME
+  description: Incorrect V_EVENT release can overwrite reusable V L1 tiles.
+  evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1140-1222
+- id: R-MLA-NUPDATE-NUMERIC
+  description: Changing AmlaVecCompute order can alter nUpdate correction numerics.
+  evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+- id: R-MLA-MM2-ATOMIC
+  description: Missing SetAtomicNone or wrong stride can corrupt MM2 accumulation.
+  evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1039-1057
+- id: R-FD-LSE-MERGE
+  description: Wrong LSE max/sum offsets or weights corrupt split-KV final output.
+  evidence: op_kernel/fia_block_vec_flashdecode_sink.h:241-290

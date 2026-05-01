@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:640:static_cast<int32_t>
+  function_name: static_cast<int32_t>
+  qualified_name: static_cast<int32_t>
+  canonical_name: static_cast<int32_t>
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 640
+    end: 643
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:sparse
+  - branch_signal
+  extraction_level: index
+  calls: []
+  called_by: []

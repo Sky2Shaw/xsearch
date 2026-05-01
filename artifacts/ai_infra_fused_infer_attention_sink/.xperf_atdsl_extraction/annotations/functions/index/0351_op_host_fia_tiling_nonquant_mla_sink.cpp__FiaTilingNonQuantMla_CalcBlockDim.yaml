@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:535:CalcBlockDim
+  function_name: CalcBlockDim
+  qualified_name: FiaTilingNonQuantMla::CalcBlockDim
+  canonical_name: FiaTilingNonQuantMla::CalcBlockDim
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 535
+    end: 544
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - PlatformAscendC
+  - CalcTschBlockDim
+  - OPS_LOG_I
+  called_by:
+  - DoOpTiling

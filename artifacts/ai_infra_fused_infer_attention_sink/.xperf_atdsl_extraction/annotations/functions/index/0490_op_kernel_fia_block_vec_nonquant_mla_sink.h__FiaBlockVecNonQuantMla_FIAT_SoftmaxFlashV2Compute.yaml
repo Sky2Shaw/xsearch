@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:440:SoftmaxFlashV2Compute
+  function_name: SoftmaxFlashV2Compute
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: softmax
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 440
+    end: 467
+  rough_role: vector_softmax_or_lse
+  importance_score: 83
+  importance_reasons:
+  - known_deep_name_pattern
+  - memory_tensor_api:LocalTensor
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - SoftMaxFlashV2TilingFunc
+  - GetSize
+  called_by:
+  - DealBmm1ResBaseBlock

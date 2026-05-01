@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:842:CreateTask
+  function_name: CreateTask
+  qualified_name: FiaKernelNonQuant<FIAT>::CreateTask
+  canonical_name: FiaKernelNonQuant<FIAT>::CreateTask
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 842
+    end: 867
+  rough_role: sparse_or_mask_range
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:extraInfo,s2
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CalcParams
+  called_by:
+  - FlashAttention

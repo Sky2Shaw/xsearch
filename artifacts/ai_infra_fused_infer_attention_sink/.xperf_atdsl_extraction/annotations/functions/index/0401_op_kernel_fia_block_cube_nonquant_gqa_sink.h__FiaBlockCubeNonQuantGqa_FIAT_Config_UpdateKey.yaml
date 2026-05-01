@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:470:UpdateKey
+  function_name: UpdateKey
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::UpdateKey
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::UpdateKey
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 470
+    end: 482
+  rough_role: sparse_or_mask_range
+  importance_score: 18
+  importance_reasons:
+  - structure_signal:actualSeq,s2
+  extraction_level: index
+  calls:
+  - InitKeyGm
+  - Init
+  called_by:
+  - ComputeMm1

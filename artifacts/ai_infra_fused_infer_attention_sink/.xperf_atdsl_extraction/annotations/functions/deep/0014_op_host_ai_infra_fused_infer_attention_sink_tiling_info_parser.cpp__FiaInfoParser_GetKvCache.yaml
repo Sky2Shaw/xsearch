@@ -1,0 +1,98 @@
+function_annotation:
+  function_name: GetKvCache
+  qualified_name: FiaInfoParser::GetKvCache
+  canonical_name: FiaInfoParser::GetKvCache
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 373
+    end: 403
+  role: decode_kv_cache
+  confidence: medium
+  code_behavior:
+    summary: decode_kv_cache
+    key_steps:
+    - 'Calls: clear, GetDynamicInputShape, push_back, OPS_CHECK, OPS_REPORT_VECTOR_INNER_ERR, GetNodeName, c_str, resize,
+      size.'
+  dataflow:
+    inputs:
+    - FiaInfoParser::GetKvCache
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - while
+    branches:
+    - unknown
+  pipeline:
+    stages:
+    - unknown
+    - unknown
+    - calls:clear,GetDynamicInputShape,push_back,OPS_CHECK,OPS_REPORT_VECTOR_INNER_ERR,GetNodeName
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:373-403'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - operator.helpers
+  suggested_dsl_fields:
+  - path: operator.helpers.source_function
+    meaning: Lowering evidence from FiaInfoParser::GetKvCache
+    evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:373-403
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

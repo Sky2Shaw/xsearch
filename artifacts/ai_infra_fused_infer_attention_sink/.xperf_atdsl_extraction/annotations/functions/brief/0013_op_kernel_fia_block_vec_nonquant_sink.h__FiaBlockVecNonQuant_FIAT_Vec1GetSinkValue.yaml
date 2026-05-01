@@ -1,0 +1,34 @@
+function_brief:
+  function_name: Vec1GetSinkValue
+  qualified_name: FiaBlockVecNonQuant<FIAT>::Vec1GetSinkValue
+  canonical_name: FiaBlockVecNonQuant<FIAT>::Vec1GetSinkValue
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 876
+    end: 910
+  role: nonquant vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
+  touches:
+  - unknown
+  calls:
+  - SetValue
+  - ToFloat
+  - GetValue
+  called_by:
+  - Vec1SinkCompute
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - pipeline.vector_stages
+  - softmax.online_state
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

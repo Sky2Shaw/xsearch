@@ -1,0 +1,131 @@
+function_annotation:
+  function_name: InitTilingData
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: tiling
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 199
+    end: 263
+  role: Workspace sizing or address-layout helper.
+  confidence: medium
+  code_behavior:
+    summary: Workspace sizing or address-layout helper.
+    key_steps:
+    - 'Calls: GetValue, GetBaseMetaAbsIndex, Align, ARRAY_SIZE, copy_data_align64.'
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - tiling
+    - mla
+    - calls:GetValue,GetBaseMetaAbsIndex,Align,ARRAY_SIZE,copy_data_align64
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    - nBufferMBaseSize
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: mBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+  - name: s2BaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+  - name: headDimAlign
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+  - name: nBufferMBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+  constraints:
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - workspace.layout
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+    confidence: medium
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+    confidence: medium
+  - path: workspace.layout.source_function
+    meaning: Lowering evidence from FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:199-263
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

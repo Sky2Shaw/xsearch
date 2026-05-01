@@ -1,0 +1,74 @@
+file_analysis:
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  file_role: MLA kernel scheduler and FD orchestrator.
+  important_functions:
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+    role: Workspace sizing or address-layout helper.
+    reason: known_deep_name_pattern; structure_signal:tiling,workspace,sparse,s2,align,mask; branch_signal
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+    role: sparse_or_mask_range
+    reason: known_deep_name_pattern; compute_sync_api:WaitFlag,SetFlag; structure_signal:actualSeq,tail
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitCalcParamsEach
+    role: sparse_or_mask_range
+    reason: known_deep_name_pattern; structure_signal:tiling,sparse,s2,tail,mask; branch_signal
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ComputeMm1
+    role: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    reason: known_deep_name_pattern; critical_attention_stage_function; attention_stage:mm1
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ComputeMm2
+    role: mla cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    reason: known_deep_name_pattern; critical_attention_stage_function; attention_stage:mm2
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::Process
+    role: FlashDecode setup, workspace sizing, or merge helper.
+    reason: known_deep_name_pattern; process_or_main_path; branch_signal
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::IsInitAttentionOutGm
+    role: sparse_or_mask_range
+    reason: known_deep_name_pattern; structure_signal:tiling,actualSeq,mask; branch_signal
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+    role: FlashDecode setup, workspace sizing, or merge helper.
+    reason: structure_signal:tiling,s2; branch_signal; gap_driven_deepening_for_stage1
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitActualSeqLenQ
+    role: sparse_or_mask_range
+    reason: known_deep_name_pattern; structure_signal:tiling,actualSeq; branch_signal
+  - qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitActualSeqLenKV
+    role: sparse_or_mask_range
+    reason: known_deep_name_pattern; structure_signal:tiling,actualSeq; branch_signal
+  file_level_dataflow:
+  - Function index shows 31 functions in this file.
+  - Deep/brief functions provide source-backed stage evidence where performance-relevant behavior is visible.
+  file_level_pipeline:
+  - 'Contains stages: flash_decode, mm1, mm2, tiling, unknown, vec1, vec2'
+  memory_strategy:
+  - GM/UB/L1/L0 behavior is extracted in deep function annotations when present.
+  l1_strategy:
+  - L1 strategy is stage-specific and recorded for cube/vector files; unknown for glue/API files.
+  decode_strategy:
+  - FlashDecode or split-KV behavior present.
+  optimization_cards: []
+  tunable_knobs: []
+  constraints: []
+  risks: []
+  suggested_dsl_sections:
+  - name: flash_decode.merge
+    fields:
+    - flash_decode.merge.source_file
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h
+  - name: memory.l1_residency
+    fields:
+    - memory.l1_residency.source_file
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h
+  - name: mla.nupdate
+    fields:
+    - mla.nupdate.source_file
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h
+  - name: mla.shape_contract
+    fields:
+    - mla.shape_contract.source_file
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h
+  - name: pipeline.cube_stages
+    fields:
+    - pipeline.cube_stages.source_file
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h
+  - name: workspace.layout
+    fields:
+    - workspace.layout.source_file
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h

@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp:541:CheckFeatureInOutDtype
+  function_name: CheckFeatureInOutDtype
+  qualified_name: FiaTilingCheck::CheckFeatureInOutDtype
+  canonical_name: FiaTilingCheck::CheckFeatureInOutDtype
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+  line_range:
+    start: 541
+    end: 562
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: index
+  calls:
+  - VecContains
+  - OPS_LOG_E
+  called_by: []

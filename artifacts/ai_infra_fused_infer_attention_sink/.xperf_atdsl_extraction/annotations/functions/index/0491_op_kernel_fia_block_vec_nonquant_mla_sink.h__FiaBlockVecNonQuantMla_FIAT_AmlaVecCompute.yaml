@@ -1,0 +1,38 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:470:AmlaVecCompute
+  function_name: AmlaVecCompute
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: softmax
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 470
+    end: 561
+  rough_role: memory_transfer
+  importance_score: 90
+  importance_reasons:
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:DataCopy
+  - structure_signal:align
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - Muls
+  - Cast
+  - Duplicate
+  - Sub
+  - Adds
+  - Add
+  - Exp
+  - Mul
+  called_by:
+  - DealBmm1ResBaseBlock

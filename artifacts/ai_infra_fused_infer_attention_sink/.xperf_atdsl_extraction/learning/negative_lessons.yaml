@@ -1,0 +1,12 @@
+negative_lessons:
+- id: NL-FIA-DO-NOT-FLATTEN-COMPUTEMM2
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: Do not collapse ComputeMm2 by bare name; GQA, MLA, and generic nonquant bodies have different synchronization, L1,
+    and nUpdate semantics.
+  evidence: reports/function_index.yaml
+  avoid_when: Indexing, aggregation, or DSL stage graph generation.
+- id: NL-FIA-DO-NOT-SKIP-MLA-NUPDATE
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: MLA Vec1 is incomplete without AmlaVecCompute and ProcessAmlaNupdate.
+  evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-717
+  avoid_when: Extracting MLA vector stages.

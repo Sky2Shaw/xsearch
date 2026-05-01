@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:713:CopyQToL1
+  function_name: CopyQToL1
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::CopyQToL1
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::CopyQToL1
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 713
+    end: 746
+  rough_role: unknown
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - copyQueryGmToL1
+  called_by:
+  - ComputeMm1

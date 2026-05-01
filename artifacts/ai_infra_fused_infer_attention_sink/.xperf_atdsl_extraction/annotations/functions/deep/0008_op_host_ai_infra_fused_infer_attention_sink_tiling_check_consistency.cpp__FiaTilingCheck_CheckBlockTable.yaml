@@ -1,0 +1,97 @@
+function_annotation:
+  function_name: CheckBlockTable
+  qualified_name: FiaTilingCheck::CheckBlockTable
+  canonical_name: FiaTilingCheck::CheckBlockTable
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 231
+    end: 252
+  role: decode_kv_cache
+  confidence: medium
+  code_behavior:
+    summary: decode_kv_cache
+    key_steps:
+    - 'Calls: OPS_CHECK, GetStorageShape, GetShapeSize, OPS_LOG_E, c_str, GetDim.'
+  dataflow:
+    inputs:
+    - FiaTilingCheck::CheckBlockTable
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+  pipeline:
+    stages:
+    - tiling
+    - unknown
+    - calls:OPS_CHECK,GetStorageShape,GetShapeSize,OPS_LOG_E,c_str,GetDim
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:231-252'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - operator.helpers
+  suggested_dsl_fields:
+  - path: operator.helpers.source_function
+    meaning: Lowering evidence from FiaTilingCheck::CheckBlockTable
+    evidence: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:231-252
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

@@ -1,0 +1,41 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:433:FlashDecode
+  function_name: FlashDecode
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 433
+    end: 556
+  rough_role: sparse_or_mask_range
+  importance_score: 90
+  importance_reasons:
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:WaitFlag,SetFlag
+  - structure_signal:sparse,actualSeq,s1,s2
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - CopyLseIn
+  - CopyAccumOutIn
+  - ComputeScaleValue
+  - CalaPreNextTokens
+  - ComputeSoftMaxLse
+  - IsExistInvalidRows
+  - GetValue
+  - DataCopySoftmaxLseTND
+  - DataCopySoftmaxLseNTD
+  - DataCopySoftmaxLseBSND
+  - ReduceFinalRes
+  - CopyFinalResOut
+  called_by:
+  - Process

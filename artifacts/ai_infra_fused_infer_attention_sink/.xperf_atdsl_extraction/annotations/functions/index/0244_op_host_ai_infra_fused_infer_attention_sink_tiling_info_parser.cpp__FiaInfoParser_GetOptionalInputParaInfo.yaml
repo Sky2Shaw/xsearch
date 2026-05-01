@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:212:GetOptionalInputParaInfo
+  function_name: GetOptionalInputParaInfo
+  qualified_name: FiaInfoParser::GetOptionalInputParaInfo
+  canonical_name: FiaInfoParser::GetOptionalInputParaInfo
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 212
+    end: 261
+  rough_role: decode_kv_cache
+  importance_score: 18
+  importance_reasons:
+  - structure_signal:actualSeq,blockTable
+  extraction_level: index
+  calls:
+  - GetOptionalInputTensor
+  - GetOptionalInputDesc
+  - GetOptionalInputParaPostQuantInfo
+  - GetOptionalInputParaRopeInfo
+  called_by:
+  - GetInputParaInfo

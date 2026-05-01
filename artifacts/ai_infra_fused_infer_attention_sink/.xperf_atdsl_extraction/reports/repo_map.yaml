@@ -1,0 +1,15 @@
+repo_map:
+  target_dir: /Users/xiaoleixin/code/omni-ops-performance/inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink
+  source_extensions:
+    - .ascendc
+    - .c
+    - .cc
+    - .cpp
+    - .cxx
+    - .h
+    - .hh
+    - .hpp
+  files_scanned: 38
+  functions_indexed: 616
+  include_tests: false
+  max_files: null

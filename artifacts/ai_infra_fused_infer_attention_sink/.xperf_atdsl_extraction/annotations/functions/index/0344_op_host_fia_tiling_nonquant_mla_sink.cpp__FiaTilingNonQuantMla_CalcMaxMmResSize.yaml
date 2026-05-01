@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:469:CalcMaxMmResSize
+  function_name: CalcMaxMmResSize
+  qualified_name: FiaTilingNonQuantMla::CalcMaxMmResSize
+  canonical_name: FiaTilingNonQuantMla::CalcMaxMmResSize
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: mm2
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 469
+    end: 475
+  rough_role: unknown
+  importance_score: 20
+  importance_reasons:
+  - attention_stage:mm2
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - CalcMaxWorkspaceSize
+  - Split

@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:290:InitParams
+  function_name: InitParams
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::InitParams
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::InitParams
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 290
+    end: 296
+  rough_role: unknown
+  importance_score: 70
+  importance_reasons:
+  - known_deep_name_pattern
+  extraction_level: deep
+  calls: []
+  called_by:
+  - DoOpTiling

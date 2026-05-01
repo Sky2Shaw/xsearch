@@ -1,0 +1,111 @@
+function_annotation:
+  function_name: InitOutputSingleCore
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 307
+    end: 352
+  role: sparse_or_mask_range
+  confidence: medium
+  code_behavior:
+    summary: sparse_or_mask_range
+    key_steps:
+    - 'Calls: GetTSize, IsInitAttentionOutGm, SyncAll.'
+    - Coordinates pipeline state with event or cross-core flags.
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+  pipeline:
+    stages:
+    - unknown
+    - mla
+    - calls:GetTSize,IsInitAttentionOutGm,SyncAll
+    sync:
+    - WaitFlag
+    - SetFlag
+    - SyncAll
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:307-352'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:307-352
+    confidence: medium
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+    evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:307-352
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

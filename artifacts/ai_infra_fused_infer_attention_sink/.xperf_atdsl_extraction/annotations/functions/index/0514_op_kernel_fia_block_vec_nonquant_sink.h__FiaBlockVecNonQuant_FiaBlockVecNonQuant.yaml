@@ -1,0 +1,22 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:52:FiaBlockVecNonQuant
+  function_name: FiaBlockVecNonQuant
+  qualified_name: FiaBlockVecNonQuant::FiaBlockVecNonQuant
+  canonical_name: FiaBlockVecNonQuant::FiaBlockVecNonQuant
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 52
+    end: 53
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

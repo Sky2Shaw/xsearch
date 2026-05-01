@@ -1,0 +1,124 @@
+function_annotation:
+  function_name: FlashDecode
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 433
+    end: 556
+  role: FlashDecode split-KV merge post-pass. Merges partial accumOut and LSE sum/max into final attention output and optional
+    softmax LSE.
+  confidence: high
+  code_behavior:
+    summary: FlashDecode split-KV merge post-pass. Merges partial accumOut and LSE sum/max into final attention output and
+      optional softmax LSE.
+    key_steps:
+    - Maps each AIV block to FD tasks using gS1IdxEndOfFdHead metadata.
+    - Loads LSE sum/max for all split-KV partials and preloads accumOut partial O.
+    - Computes stable merge weights from column max and normalized exp(sum) terms.
+    - Optionally writes final softmax LSE by output layout after invalid-row adjustment.
+    - Reduces weighted partial O into reduceOut and copies final result to attentionOutGm.
+  dataflow:
+    inputs:
+    - FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - accumOutGm split partial outputs
+      - lseSumFdGm
+      - lseMaxFdGm
+      writes:
+      - attentionOutGm final output
+      - optional softmaxLseGm
+    ub:
+      reads:
+      - fdSumBuf/fdMaxBuf/fdMm2ResBuf ping-pong buffers
+      writes:
+      - fdReduceBuf and fdOutputBuf final merge buffers
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - flash_decode
+    - flash_decode
+    - calls:CopyLseIn,CopyAccumOutIn,ComputeScaleValue,CalaPreNextTokens,ComputeSoftMaxLse,IsExistInvalidRows
+    sync:
+    - WaitFlag
+    - SetFlag
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - uint64_t taskOffset = combineTaskPrefixSum * constInfo.mBaseSize;
+    - CopyLseIn(startRow, actualGSplitSize, taskOffset, reduceMLoop);
+    - CopyAccumOutIn(mm2Res, preLoadIdx, taskOffset + startRow, actualGSplitSize);
+    - uint32_t mOffset = taskInfo.gS1Idx + startRow;
+    - uint64_t bN2Offset = prefixBS1 * constInfo.qHeadNum + taskInfo.n2Idx * constInfo.gSize;
+    - DataCopySoftmaxLseTND(softmaxLseGm, lseftMaxLseUb, bN2Offset, mOffset, actualGSplitSize, constInfo);
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: mBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556
+  constraints:
+  - FD metadata arrays must describe split prefix ranges consistently across AIC/AIV metadata planes.
+  - LSE sum/max and partial output workspace must be sized for actualCombineLoopSize.
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Incorrect split prefix or LSE weight computation can silently mix wrong KV split partials.
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - flash_decode.merge
+  suggested_dsl_fields:
+  - path: flash_decode.merge.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

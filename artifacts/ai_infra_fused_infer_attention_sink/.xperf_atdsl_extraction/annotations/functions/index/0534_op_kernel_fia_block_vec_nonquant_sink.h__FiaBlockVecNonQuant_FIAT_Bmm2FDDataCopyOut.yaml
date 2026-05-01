@@ -1,0 +1,34 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:683:Bmm2FDDataCopyOut
+  function_name: Bmm2FDDataCopyOut
+  qualified_name: FiaBlockVecNonQuant<FIAT>::Bmm2FDDataCopyOut
+  canonical_name: FiaBlockVecNonQuant<FIAT>::Bmm2FDDataCopyOut
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 683
+    end: 707
+  rough_role: memory_transfer
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  - memory_tensor_api:GlobalTensor,LocalTensor
+  - compute_sync_api:DataCopy
+  extraction_level: deep
+  calls:
+  - DealInvalidRows
+  - DealInvalidMaskRows
+  - DataCopy
+  - EnQue
+  - DataCopyPad
+  - FreeTensor
+  called_by:
+  - Bmm2ResCopyOut

@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:907:ProcessVec2SingleBuf
+  function_name: ProcessVec2SingleBuf
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2SingleBuf
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2SingleBuf
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 907
+    end: 919
+  rough_role: unknown
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:vec2
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - ProcessVec2Inner
+  called_by:
+  - ComputeVec2
+  - ProcessVec2L

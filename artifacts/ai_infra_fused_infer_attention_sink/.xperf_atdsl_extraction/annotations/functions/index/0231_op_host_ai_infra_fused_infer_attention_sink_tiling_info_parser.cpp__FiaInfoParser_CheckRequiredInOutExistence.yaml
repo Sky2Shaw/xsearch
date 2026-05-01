@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:33:CheckRequiredInOutExistence
+  function_name: CheckRequiredInOutExistence
+  qualified_name: FiaInfoParser::CheckRequiredInOutExistence
+  canonical_name: FiaInfoParser::CheckRequiredInOutExistence
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 33
+    end: 53
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - OPS_CHECK
+  - OPS_LOG_E
+  called_by:
+  - CheckRequiredParaExistence

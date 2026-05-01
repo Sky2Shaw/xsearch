@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/fallback_ai_infra_fused_infer_attention_sink.cpp:199:FillAttrPointers
+  function_name: FillAttrPointers
+  qualified_name: FillAttrPointers
+  canonical_name: FillAttrPointers
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/fallback_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 199
+    end: 217
+  rough_role: vector_softmax_or_lse
+  importance_score: 10
+  importance_reasons:
+  - no_strong_signal
+  extraction_level: index
+  calls: []
+  called_by:
+  - FusedInferHostExecuteFunc

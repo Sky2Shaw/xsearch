@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:391:AllocEventID
+  function_name: AllocEventID
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::AllocEventID
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::AllocEventID
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 391
+    end: 404
+  rough_role: unknown
+  importance_score: 15
+  importance_reasons:
+  - compute_sync_api:SetFlag
+  extraction_level: index
+  calls: []
+  called_by:
+  - FlashDecode
+  - Process

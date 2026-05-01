@@ -1,0 +1,111 @@
+function_annotation:
+  function_name: Bmm2DataCopyOut
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: mm2
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 348
+    end: 363
+  role: flash_decode cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  confidence: medium
+  code_behavior:
+    summary: flash_decode cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - 'Calls: DataCopyPad.'
+    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
+  dataflow:
+    inputs:
+    - FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - unknown
+  pipeline:
+    stages:
+    - mm2
+    - flash_decode
+    - calls:DataCopyPad
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:348-363'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - void FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut(uint64_t attenOutOffset, LocalTensor<OUT_T> &attenOutUb,
+    - DataCopyPad(attentionOutGm[attenOutOffset + startRow * actualColumnCount], attenOutUb,
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - Pad/copy stride mismatch can overrun row tails.
+  possible_dsl_sections:
+  - flash_decode.merge
+  - memory.l1_residency
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: flash_decode.merge.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:348-363
+    confidence: medium
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:348-363
+    confidence: medium
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:348-363
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

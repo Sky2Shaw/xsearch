@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_mla_sink.h:627:ComputeMm2
+  function_name: ComputeMm2
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ComputeMm2
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ComputeMm2
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 627
+    end: 633
+  rough_role: unknown
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - critical_attention_stage_function
+  - attention_stage:mm2
+  extraction_level: deep
+  calls: []
+  called_by:
+  - ExecuteTask

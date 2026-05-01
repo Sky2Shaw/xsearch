@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:630:InitMm1GlobalTensor
+  function_name: InitMm1GlobalTensor
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitMm1GlobalTensor
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitMm1GlobalTensor
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: mm1
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 630
+    end: 639
+  rough_role: unknown
+  importance_score: 95
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm1
+  extraction_level: deep
+  calls:
+  - Init
+  called_by: []

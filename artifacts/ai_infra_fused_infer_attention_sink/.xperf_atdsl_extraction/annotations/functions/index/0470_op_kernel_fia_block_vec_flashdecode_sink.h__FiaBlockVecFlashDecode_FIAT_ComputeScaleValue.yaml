@@ -1,0 +1,33 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:255:ComputeScaleValue
+  function_name: ComputeScaleValue
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 255
+    end: 289
+  rough_role: unknown
+  importance_score: 90
+  importance_reasons:
+  - memory_tensor_api:LocalTensor
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - Duplicate
+  - ColMax
+  - RowSub
+  - Exp
+  - Mul
+  - ColAdd
+  - MatDivsVec
+  called_by:
+  - FlashDecode

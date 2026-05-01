@@ -1,0 +1,38 @@
+function_brief:
+  function_name: CalcCurS2StartEndWithSparse
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::CalcCurS2StartEndWithSparse
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::CalcCurS2StartEndWithSparse
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 948
+    end: 1020
+  role: sparse_or_mask_range
+  touches:
+  - unknown
+  calls:
+  - GetPreNextTokenLeftUp
+  - Min
+  - ClipSInnerToken
+  - Max
+  called_by:
+  - GetTaskDealMode
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

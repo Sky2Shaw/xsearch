@@ -1,0 +1,19 @@
+schema_gaps:
+- path: pipeline.stage_graph.owner_identity
+  gap: Final DSL must require canonical_name/owner/owner_template_args to avoid ComputeMm2 collapsing across GQA, MLA, and
+    generic nonquant.
+  evidence: reports/function_index.yaml
+  confidence: high
+- path: mla.nupdate.numeric_contract
+  gap: Current schema candidate needs a way to encode ordered vector numeric micro-steps, not only the existence of nUpdate.
+  evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+  confidence: high
+- path: flash_decode.metadata_partition
+  gap: FD merge relies on metadata arrays whose producer is outside the analyzed kernel body; Stage 2 should bind producer
+    and consumer schemas.
+  evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:650-691
+  confidence: medium
+- path: split_core.range_assignment
+  gap: split_core range construction is referenced by host tiling but outside the current extraction boundary.
+  evidence: op_host/fia_tiling_nonquant_sink.cpp:23
+  confidence: medium

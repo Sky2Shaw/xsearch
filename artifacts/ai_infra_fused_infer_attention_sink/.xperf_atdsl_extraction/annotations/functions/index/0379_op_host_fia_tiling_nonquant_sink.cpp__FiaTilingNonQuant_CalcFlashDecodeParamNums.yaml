@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:510:CalcFlashDecodeParamNums
+  function_name: CalcFlashDecodeParamNums
+  qualified_name: FiaTilingNonQuant::CalcFlashDecodeParamNums
+  canonical_name: FiaTilingNonQuant::CalcFlashDecodeParamNums
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: flash_decode
+  stage: flash_decode
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 510
+    end: 514
+  rough_role: unknown
+  importance_score: 90
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls: []
+  called_by:
+  - CalcFlashDecodeWorkspace

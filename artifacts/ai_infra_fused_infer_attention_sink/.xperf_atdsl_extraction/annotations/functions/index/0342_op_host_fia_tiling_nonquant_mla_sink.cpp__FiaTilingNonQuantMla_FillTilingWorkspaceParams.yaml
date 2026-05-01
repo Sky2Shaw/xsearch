@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:448:FillTilingWorkspaceParams
+  function_name: FillTilingWorkspaceParams
+  qualified_name: FiaTilingNonQuantMla::FillTilingWorkspaceParams
+  canonical_name: FiaTilingNonQuantMla::FillTilingWorkspaceParams
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: workspace
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 448
+    end: 460
+  rough_role: workspace_or_address_helper
+  importance_score: 18
+  importance_reasons:
+  - structure_signal:tiling,workspace
+  extraction_level: index
+  calls:
+  - set_fdAccumOutSize
+  - set_fdLogSumExpSize
+  - set_mm1ResSize
+  - set_mm2ResSize
+  called_by:
+  - FillTiling

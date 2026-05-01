@@ -1,0 +1,10 @@
+checklist_updates:
+- section: Pipeline
+  item: Verify each variant's owner-qualified MM2 and vector output stage.
+  evidence: reports/critical_path_annotations.yaml
+- section: MLA
+  item: Record nUpdate compute and atomic-apply paths separately.
+  evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-717
+- section: FlashDecode
+  item: Record FD service FlashDecode body and wrapper metadata preparation.
+  evidence: op_kernel/fia_block_vec_flashdecode_sink.h:437-556

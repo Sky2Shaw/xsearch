@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:280:FreeEventID
+  function_name: FreeEventID
+  qualified_name: FiaBlockVecNonQuant<FIAT>::FreeEventID
+  canonical_name: FiaBlockVecNonQuant<FIAT>::FreeEventID
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 280
+    end: 283
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - FlashDecode
+  - Process

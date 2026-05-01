@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:348:Bmm2DataCopyOut
+  function_name: Bmm2DataCopyOut
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOut
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: mm2
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 348
+    end: 363
+  rough_role: memory_transfer
+  importance_score: 95
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - DataCopyPad
+  called_by: []

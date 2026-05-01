@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:708:DealInvalidMaskRows
+  function_name: DealInvalidMaskRows
+  qualified_name: FiaBlockVecNonQuant<FIAT>::DealInvalidMaskRows
+  canonical_name: FiaBlockVecNonQuant<FIAT>::DealInvalidMaskRows
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: softmax
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 708
+    end: 729
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:sparse
+  - branch_signal
+  extraction_level: index
+  calls: []
+  called_by:
+  - Bmm2CastAndCopyOut
+  - Bmm2FDDataCopyOut

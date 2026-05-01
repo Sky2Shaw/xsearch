@@ -1,0 +1,133 @@
+function_annotation:
+  function_name: ProcessMm1
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm1
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 522
+    end: 850
+  role: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+  confidence: high
+  code_behavior:
+    summary: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - 'Calls: Align, SetMExtent, Get, copyKKropePAGmToL1, copyKvGmToL1, CopySingleMatrixNDToNZ, GetQPL1RealIdx, AllocNext,
+      PeekNextK, copyQueryGmToL1.'
+    - Uses cube matmul/MMAD operations.
+    - Coordinates pipeline state with event or cross-core flags.
+    - Writes cube results through Fixpipe.
+  dataflow:
+    inputs:
+    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - MMAD accumulation in L0C
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - mm1
+    - mla
+    - calls:Align,SetMExtent,Get,copyKKropePAGmToL1,copyKvGmToL1,CopySingleMatrixNDToNZ
+    sync:
+    - WaitFlag
+    - SetFlag
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    - mm1ResGm
+    l1_residency:
+    - L1 reuse/snapshot visible in body
+    l1_partition:
+    - L1 buffer iterators or split sizes visible
+  tiling_and_shape:
+    fields:
+    - N_L1_SPLIT_SIZE
+    - headDim
+    - actualSingleProcessSInnerSize
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - .s2Idx = info.s2BatchOffset + nL1 * N_L1_SPLIT_SIZE,
+    - .s2Idx = info.s2BatchOffset + nL1 * N_L1_SPLIT_SIZE,
+    - "uint64_t offset = info.n2Idx * constInfo.headDim; //s2\u65B9\u5411\u7684\u504F\u79FB\u4E3A0"
+    - CopySingleMatrixNDToNZ(dstTensor.tensor, keySinkGm[offset], gmCoord.s2DealSize, gmCoord.dDealSize,
+    - "offset = info.n2Idx * constInfo.headDimRope; //s2\u65B9\u5411\u7684\u504F\u79FB\u4E3A0"
+    - CopySingleMatrixNDToNZ(dstRopeTensor.tensor, keyRopeSinkGm[offset], gmCoordKRope.s2DealSize, gmCoordKRope.dDealSize,
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - memory.l1_residency
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
+    confidence: high
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
+    confidence: high
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

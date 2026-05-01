@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:231:CheckBlockTable
+  function_name: CheckBlockTable
+  qualified_name: FiaTilingCheck::CheckBlockTable
+  canonical_name: FiaTilingCheck::CheckBlockTable
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 231
+    end: 252
+  rough_role: decode_kv_cache
+  importance_score: 82
+  importance_reasons:
+  - known_deep_name_pattern
+  - structure_signal:blockTable
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - OPS_CHECK
+  - GetStorageShape
+  - GetShapeSize
+  - OPS_LOG_E
+  - c_str
+  - GetDim
+  called_by: []

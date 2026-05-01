@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:911:Vec1SinkSoftmaxProc
+  function_name: Vec1SinkSoftmaxProc
+  qualified_name: FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
+  canonical_name: FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 911
+    end: 938
+  rough_role: vector_softmax_or_lse
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:vec1
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Sub
+  - Exp
+  - Add
+  called_by: []

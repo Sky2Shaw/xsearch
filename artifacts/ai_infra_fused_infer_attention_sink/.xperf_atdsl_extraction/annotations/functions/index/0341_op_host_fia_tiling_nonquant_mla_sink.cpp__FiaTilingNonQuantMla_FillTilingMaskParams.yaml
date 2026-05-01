@@ -1,0 +1,34 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:432:FillTilingMaskParams
+  function_name: FillTilingMaskParams
+  qualified_name: FiaTilingNonQuantMla::FillTilingMaskParams
+  canonical_name: FiaTilingNonQuantMla::FillTilingMaskParams
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 432
+    end: 447
+  rough_role: sparse_or_mask_range
+  importance_score: 30
+  importance_reasons:
+  - structure_signal:tiling,sparse,mask
+  - tail_alignment_or_mask_signal
+  extraction_level: index
+  calls:
+  - set_attenMaskFlag
+  - set_attenMaskSize
+  - set_attenMaskStride
+  - set_sparseMode
+  - set_preToken
+  - set_nextToken
+  - set_slidingFlag
+  - set_isRowInvalid
+  - set_sinkNumber
+  - set_keySinkNumber
+  called_by:
+  - FillTiling

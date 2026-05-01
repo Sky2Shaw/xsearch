@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:408:UpdateKey
+  function_name: UpdateKey
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::UpdateKey
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::UpdateKey
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 408
+    end: 412
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - ComputeMm1

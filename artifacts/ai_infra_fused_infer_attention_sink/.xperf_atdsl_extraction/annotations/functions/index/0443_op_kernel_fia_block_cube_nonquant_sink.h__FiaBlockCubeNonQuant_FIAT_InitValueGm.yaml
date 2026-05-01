@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:221:InitValueGm
+  function_name: InitValueGm
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::InitValueGm
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::InitValueGm
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 221
+    end: 235
+  rough_role: unknown
+  importance_score: 78
+  importance_reasons:
+  - known_deep_name_pattern
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - valueListTensorDesc
+  - SetGlobalBuffer
+  - SetL2CacheHint
+  called_by:
+  - ComputeMm2
+  - UpdateValue

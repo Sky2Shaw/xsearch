@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:502:FillTiling
+  function_name: FillTiling
+  qualified_name: FiaTilingNonQuant::FillTiling
+  canonical_name: FiaTilingNonQuant::FillTiling
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: workspace
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 502
+    end: 509
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - FillTilingBaseParams
+  - FillTilingPageAttenParams
+  - FillTilingMaskParams
+  - FillTilingWorkspaceParams
+  called_by:
+  - DoOpTiling

@@ -1,0 +1,107 @@
+function_annotation:
+  function_name: ProcessVec2SingleBuf
+  qualified_name: FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+  canonical_name: FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 563
+    end: 586
+  role: nonquant vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+  confidence: medium
+  code_behavior:
+    summary: nonquant vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+    key_steps:
+    - 'Calls: DealBmm2ResBaseBlock.'
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+  pipeline:
+    stages:
+    - vec2
+    - nonquant
+    - calls:DealBmm2ResBaseBlock
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: headDimAlign
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586
+    confidence: medium
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

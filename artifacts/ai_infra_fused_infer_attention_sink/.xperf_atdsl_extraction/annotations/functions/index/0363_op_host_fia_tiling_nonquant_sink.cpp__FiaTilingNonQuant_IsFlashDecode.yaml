@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:183:IsFlashDecode
+  function_name: IsFlashDecode
+  qualified_name: FiaTilingNonQuant::IsFlashDecode
+  canonical_name: FiaTilingNonQuant::IsFlashDecode
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: flash_decode
+  stage: flash_decode
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 183
+    end: 189
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 90
+  importance_reasons:
+  - structure_signal:tiling
+  - simple_accessor_or_wrapper_penalty
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls: []
+  called_by: []

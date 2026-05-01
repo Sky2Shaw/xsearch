@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:526:CalcMaxWorkspaceSize
+  function_name: CalcMaxWorkspaceSize
+  qualified_name: FiaTilingNonQuantMla::CalcMaxWorkspaceSize
+  canonical_name: FiaTilingNonQuantMla::CalcMaxWorkspaceSize
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: mm2
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 526
+    end: 534
+  rough_role: workspace_or_address_helper
+  importance_score: 39
+  importance_reasons:
+  - attention_stage:mm2
+  - structure_signal:workspace
+  extraction_level: index
+  calls:
+  - CalcMaxMmResSize
+  - CalcNormalWorkspaceSize
+  - CalcFlashDecodeWorkspace
+  called_by:
+  - DoOpTiling

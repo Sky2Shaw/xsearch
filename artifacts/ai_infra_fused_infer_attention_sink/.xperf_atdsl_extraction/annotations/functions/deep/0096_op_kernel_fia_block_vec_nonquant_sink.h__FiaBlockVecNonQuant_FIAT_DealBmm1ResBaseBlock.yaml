@@ -1,0 +1,120 @@
+function_annotation:
+  function_name: DealBmm1ResBaseBlock
+  qualified_name: FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+  canonical_name: FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 400
+    end: 462
+  role: nonquant cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+  confidence: medium
+  code_behavior:
+    summary: nonquant cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - 'Calls: Align, DataCopy, Duplicate, EnQue, FreeTensor, ElewiseCompute, SoftmaxFlashV2Compute, Cast.'
+    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+  pipeline:
+    stages:
+    - mm1
+    - nonquant
+    - calls:Align,DataCopy,Duplicate,EnQue,FreeTensor,ElewiseCompute
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    - mm1ResGm
+    - vec1ResGm
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - actualSingleProcessSInnerSize
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_sink.h:400-462'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - uint64_t inOutGmOffset = (info.loop % constInfo.preLoadNum) * constInfo.mmResUbSize +
+    - uint32_t baseOffset = mSplitInfo.nBufferStartM / 2 + startRow;
+    - baseOffset = baseOffset * this->brcbNum;
+    - uint32_t softmaxOutOffset = outIdx * SOFTMAX_TMP_BUFFER_SIZE / sizeof(COMPUTE_T) + baseOffset;
+    - uint32_t softmaxInOffset = inIdx * SOFTMAX_TMP_BUFFER_SIZE / sizeof(COMPUTE_T) + baseOffset;
+    - DataCopy(softmaxSumUb[softmaxOutOffset], softmaxSumUb[softmaxInOffset], actDealRowCount);
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: s2BaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:400-462
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:400-462
+  constraints:
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - memory.l1_residency
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:400-462
+    confidence: medium
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:400-462
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

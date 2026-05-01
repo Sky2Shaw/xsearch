@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:894:LoadBTransposeToL0
+  function_name: LoadBTransposeToL0
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::LoadBTransposeToL0
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::LoadBTransposeToL0
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: mm1
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 894
+    end: 912
+  rough_role: unknown
+  importance_score: 43
+  importance_reasons:
+  - attention_stage:mm1
+  - branch_signal
+  extraction_level: brief
+  calls:
+  - CeilDiv
+  - LoadData
+  called_by:
+  - ComputeMm1

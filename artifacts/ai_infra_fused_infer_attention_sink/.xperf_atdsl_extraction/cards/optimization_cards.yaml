@@ -1,0 +1,66 @@
+optimization_cards:
+- id: OC-GQA-MM2-L1-V-REUSE
+  title: GQA MM2 reuses V L1 tiles across M slices
+  pattern: ComputeMm2 caches V tiles with vL1Snapshot while streaming P tiles from Vec1 output.
+  evidence:
+  - op_kernel/fia_block_cube_nonquant_gqa_sink.h:1138-1222
+  criteria_met:
+  - performance relevance
+  - hard synchronization constraint
+  - DSL lowering impact
+  confidence: high
+- id: OC-MLA-MM2-NUPDATE-BARRIER
+  title: MLA MM2 waits for nUpdate before first fixpipe
+  pattern: ProcessMm2 waits syncV1NupdateC2 and uses atomic add for non-first S-inner loops.
+  evidence:
+  - op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1057
+  criteria_met:
+  - correctness risk
+  - stage coupling
+  - DSL mapping
+  confidence: high
+- id: OC-MLA-NUPDATE-SIDECHANNEL
+  title: MLA vector stage emits row-wise nUpdate side channel
+  pattern: AmlaVecCompute derives nUpdate, ProcessAmlaNupdate broadcasts it over 128-wide D groups, then atomically adds to
+    MM2 workspace.
+  evidence:
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+  criteria_met:
+  - reusable pattern
+  - correctness risk
+  - lowering impact
+  confidence: high
+- id: OC-FD-STABLE-MERGE
+  title: FlashDecode stable merge combines split-KV partials
+  pattern: FD merge computes max/sum-normalized weights then reduces partial accumOut before final copy out.
+  evidence:
+  - op_kernel/fia_block_vec_flashdecode_sink.h:258-290
+  - op_kernel/fia_block_vec_flashdecode_sink.h:437-556
+  criteria_met:
+  - performance relevance
+  - correctness risk
+  - DSL mapping
+  confidence: high
+- id: OC-WORKSPACE-FD-ABI
+  title: Host workspace formulas encode normal and FD region ABI
+  pattern: Normal workspace accounts for mm1/vec1/mm2/vec2 and MLA nUpdate; FD workspace accounts for accumOut plus LSE sum/max.
+  evidence:
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:491-517
+  - op_host/fia_tiling_nonquant_sink.cpp:517-539
+  criteria_met:
+  - hard constraint
+  - tunable parameter
+  - DSL mapping
+  confidence: high
+- id: OC-RUNINFO-THREE-STAGE-RING
+  title: RunInfo ring overlaps MM1, Vec1/MM2, and Vec2
+  pattern: Kernel ExecuteTask uses current, previous, and older RunInfo slots to overlap AIC/AIV stages.
+  evidence:
+  - op_kernel/fia_kernel_nonquant_sink.h:881-908
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:834-862
+  criteria_met:
+  - pipeline pattern
+  - performance relevance
+  - lowering impact
+  confidence: high

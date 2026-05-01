@@ -1,0 +1,37 @@
+function_brief:
+  function_name: ElewiseCompute
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ElewiseCompute
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ElewiseCompute
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: tiling
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 383
+    end: 439
+  role: sparse_or_mask_range
+  touches:
+  - L1
+  - tiling
+  calls:
+  - Muls
+  - IsSkipAttentionmask
+  - AttentionmaskCopyIn
+  - IsSkipAttentionmaskForPre
+  called_by:
+  - DealBmm1ResBaseBlock
+  possible_risks:
+  - Missing event release can stall producer/consumer queues.
+  related_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - workspace.layout
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

@@ -1,0 +1,32 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_mla_sink.h:724:GetBIdx
+  function_name: GetBIdx
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::GetBIdx
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::GetBIdx
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 724
+    end: 732
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 0
+  importance_reasons:
+  - simple_accessor_or_wrapper_penalty
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - CalcParams
+  - DealZeroActSeqLen
+  - FlashAttention
+  - GetTaskDealMode

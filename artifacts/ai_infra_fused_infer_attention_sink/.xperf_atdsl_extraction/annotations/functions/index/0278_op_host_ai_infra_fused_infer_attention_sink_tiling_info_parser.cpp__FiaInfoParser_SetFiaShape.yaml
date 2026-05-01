@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:821:SetFiaShape
+  function_name: SetFiaShape
+  qualified_name: FiaInfoParser::SetFiaShape
+  canonical_name: FiaInfoParser::SetFiaShape
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 821
+    end: 830
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetStorageShape
+  - GetShape
+  called_by: []

@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:733:CheckParamSinkShape
+  function_name: CheckParamSinkShape
+  qualified_name: FiaTilingCheck::CheckParamSinkShape
+  canonical_name: FiaTilingCheck::CheckParamSinkShape
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 733
+    end: 764
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - OPS_LOG_E
+  - GetStorageShape
+  - GetDimNum
+  - GetDim
+  called_by: []

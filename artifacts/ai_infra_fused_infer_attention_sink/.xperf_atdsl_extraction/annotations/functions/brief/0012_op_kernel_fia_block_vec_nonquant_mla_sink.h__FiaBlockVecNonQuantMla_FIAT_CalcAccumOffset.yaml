@@ -1,0 +1,38 @@
+function_brief:
+  function_name: CalcAccumOffset
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::CalcAccumOffset
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::CalcAccumOffset
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: tiling
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 864
+    end: 903
+  role: Workspace sizing or address-layout helper.
+  touches:
+  - workspace
+  - metadata
+  - tiling
+  calls:
+  - GetValue
+  - GetBaseMetaAbsIndex
+  - GetAICMetaAbsIndex
+  called_by:
+  - Bmm2FDDataCopyOut
+  - ComputeLogSumExpAndCopyToGm
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - workspace.layout
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

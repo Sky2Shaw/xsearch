@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:203:InitParams
+  function_name: InitParams
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::InitParams
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::InitParams
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 203
+    end: 207
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 35
+  importance_reasons:
+  - known_deep_name_pattern
+  - simple_accessor_or_wrapper_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - DoOpTiling

@@ -1,0 +1,19 @@
+constraints:
+- id: C-TEMPLATE-IDENTITY
+  description: Same-name stage functions must preserve owner/template identity.
+  evidence: reports/function_index.yaml
+- id: C-GQA-MM2-SYNC
+  description: GQA MM2 must wait syncV1C2 and set syncC2V2 around PV compute.
+  evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1125-1237
+- id: C-MLA-MM2-NUPDATE
+  description: MLA MM2 waits syncV1NupdateC2 before first fixpipe.
+  evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
+- id: C-MLA-NUPDATE-FIRST-LOOP
+  description: ProcessAmlaNupdate returns on first S-inner loop.
+  evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-666
+- id: C-FD-METADATA
+  description: FlashDecode requires AIC/AIV metadata arrays and usedVecNumOfFd bounds.
+  evidence: op_kernel/fia_block_vec_flashdecode_sink.h:438-458
+- id: C-WORKSPACE-MLA-FD
+  description: MLA workspace includes nUpdate/softmaxSum plus FD accumOut/LSE when splitKV is enabled.
+  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-526

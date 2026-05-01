@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp:218:IsEmptyTensor
+  function_name: IsEmptyTensor
+  qualified_name: IsEmptyTensor
+  canonical_name: IsEmptyTensor
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp
+  line_range:
+    start: 218
+    end: 260
+  rough_role: vector_softmax_or_lse
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetInputShape
+  - GetStorageShape
+  - GetShapeSize
+  - GetAttrs
+  - GetDynamicInputShape
+  - GetShape
+  called_by: []

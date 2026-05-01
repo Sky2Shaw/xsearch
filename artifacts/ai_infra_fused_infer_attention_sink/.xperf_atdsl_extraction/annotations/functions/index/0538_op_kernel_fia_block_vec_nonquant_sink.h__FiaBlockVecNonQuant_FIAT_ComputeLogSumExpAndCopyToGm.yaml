@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:813:ComputeLogSumExpAndCopyToGm
+  function_name: ComputeLogSumExpAndCopyToGm
+  qualified_name: FiaBlockVecNonQuant<FIAT>::ComputeLogSumExpAndCopyToGm
+  canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeLogSumExpAndCopyToGm
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 813
+    end: 836
+  rough_role: sparse_or_mask_range
+  importance_score: 36
+  importance_reasons:
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:DataCopy
+  - structure_signal:split,s1
+  - branch_signal
+  extraction_level: index
+  calls:
+  - DataCopy
+  called_by:
+  - ProcessVec1L
+  - ProcessVec1SingleBuf

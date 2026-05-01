@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:112:IsCapable
+  function_name: IsCapable
+  qualified_name: FiaTilingNonQuant::IsCapable
+  canonical_name: FiaTilingNonQuant::IsCapable
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 112
+    end: 131
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

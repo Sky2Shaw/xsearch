@@ -1,0 +1,131 @@
+function_annotation:
+  function_name: ProcessAmlaNupdate
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 657
+    end: 717
+  role: MLA vector nUpdate side-channel writer. Broadcasts per-row nUpdate across D groups and atomically adds it into mm2ResInt32Gm.
+  confidence: high
+  code_behavior:
+    summary: MLA vector nUpdate side-channel writer. Broadcasts per-row nUpdate across D groups and atomically adds it into
+      mm2ResInt32Gm.
+    key_steps:
+    - Skips first S-inner loop and empty M partitions.
+    - Broadcasts row-wise int32 nUpdate into 128-wide D groups with Brcb.
+    - Uses SetAtomicAdd<int32_t> to add the broadcast correction into mm2ResInt32Gm.
+    - Releases output buffers after each M split and the nUpdate buffer at function end.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - row-wise nUpdate in outputBuff2
+      writes:
+      - mm2ResInt32Gm atomic add target
+    ub:
+      reads:
+      - outputBuff2 nUpdateTensor
+      - outputBuff1 broadcast tmpQue
+      writes:
+      - broadcast int32 nUpdate matrix
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+  pipeline:
+    stages:
+    - vec1
+    - mla
+    - calls:Align
+    sync:
+    - WaitFlag
+    - SetFlag
+    - SetAtomicAdd
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - uint64_t baseoffset = (info.bn2IdxInCurCore % constInfo.preLoadNum) * constInfo.bmm2ResUbSize +
+    - DataCopy(mm2ResInt32Gm[baseoffset + i * dGroupSize] ,tmpQue, dataCopyParams);
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+  constraints:
+  - nUpdate is skipped on first S-inner loop.
+  - Broadcast width is 128 int32 lanes and destination stride depends on headDim.
+  - Atomic add scope must be restored with SetAtomicNone after accumulation.
+  - Event wait/set ordering is part of correctness, not only performance.
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - Broadcast/atomic stride mismatch would add correction to wrong D lanes.
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    confidence: high
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    confidence: high
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

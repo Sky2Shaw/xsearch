@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:305:CreateSplitInput
+  function_name: CreateSplitInput
+  qualified_name: FiaTilingNonQuant::CreateSplitInput
+  canonical_name: FiaTilingNonQuant::CreateSplitInput
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 305
+    end: 328
+  rough_role: sparse_or_mask_range
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:sparse,split,s1,s2
+  extraction_level: index
+  calls: []
+  called_by:
+  - Split

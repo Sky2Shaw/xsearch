@@ -1,0 +1,36 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:621:DealMm2SingleMKN
+  function_name: DealMm2SingleMKN
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::DealMm2SingleMKN
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::DealMm2SingleMKN
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 621
+    end: 775
+  rough_role: sparse_or_mask_range
+  importance_score: 67
+  importance_reasons:
+  - attention_stage:mm2
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:DataCopy,WaitFlag,SetFlag
+  - structure_signal:s2
+  - branch_signal
+  extraction_level: brief
+  calls:
+  - copyKvGmToL1
+  - Align
+  - DataCopy
+  - LoadData
+  - Mmad
+  - Fixpipe
+  - SetAtomicNone
+  called_by:
+  - ComputeMm2

@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp:389:CheckFeatureHeadDim
+  function_name: CheckFeatureHeadDim
+  qualified_name: FiaTilingCheck::CheckFeatureHeadDim
+  canonical_name: FiaTilingCheck::CheckFeatureHeadDim
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+  line_range:
+    start: 389
+    end: 413
+  rough_role: unknown
+  importance_score: 30
+  importance_reasons:
+  - structure_signal:align
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  extraction_level: index
+  calls:
+  - OPS_CHECK
+  - OPS_LOG_E
+  - QuantModeToSerialString
+  - c_str
+  called_by:
+  - CheckFeatureNoquantBlockSize

@@ -1,0 +1,59 @@
+file_analysis:
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  file_role: Generic nonquant cube MM1/MM2 service.
+  important_functions:
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::ComputeMm1
+    role: nonquant cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    reason: known_deep_name_pattern; critical_attention_stage_function; attention_stage:mm1
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::ComputeMm2
+    role: Generic nonquant cube MM2/PV stage with owner identity distinct from GQA and MLA.
+    reason: known_deep_name_pattern; critical_attention_stage_function; attention_stage:mm2
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitMm1GlobalTensor
+    role: nonquant cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    reason: known_deep_name_pattern; attention_stage:mm1
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitMm2GlobalTensor
+    role: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    reason: known_deep_name_pattern; attention_stage:mm2
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+    role: decode_kv_cache
+    reason: known_deep_name_pattern; structure_signal:actualSeq,blockTable; branch_signal
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitQBuffer
+    role: sparse_or_mask_range
+    reason: known_deep_name_pattern; structure_signal:actualSeq; branch_signal
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitKeyGm
+    role: unknown
+    reason: known_deep_name_pattern; branch_signal
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitValueGm
+    role: unknown
+    reason: known_deep_name_pattern; branch_signal
+  - qualified_name: FiaBlockCubeNonQuant<FIAT>::InitBuffers
+    role: unknown
+    reason: known_deep_name_pattern; memory_tensor_api:L1
+  file_level_dataflow:
+  - Function index shows 22 functions in this file.
+  - Deep/brief functions provide source-backed stage evidence where performance-relevant behavior is visible.
+  file_level_pipeline:
+  - 'Contains stages: mm1, mm2, unknown'
+  memory_strategy:
+  - GM/UB/L1/L0 behavior is extracted in deep function annotations when present.
+  l1_strategy:
+  - L1 strategy is stage-specific and recorded for cube/vector files; unknown for glue/API files.
+  decode_strategy:
+  - unknown
+  optimization_cards: []
+  tunable_knobs: []
+  constraints: []
+  risks: []
+  suggested_dsl_sections:
+  - name: memory.l1_residency
+    fields:
+    - memory.l1_residency.source_file
+    evidence: op_kernel/fia_block_cube_nonquant_sink.h
+  - name: operator.helpers
+    fields:
+    - operator.helpers.source_file
+    evidence: op_kernel/fia_block_cube_nonquant_sink.h
+  - name: pipeline.cube_stages
+    fields:
+    - pipeline.cube_stages.source_file
+    evidence: op_kernel/fia_block_cube_nonquant_sink.h

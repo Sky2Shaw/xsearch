@@ -1,0 +1,116 @@
+function_annotation:
+  function_name: CopyFinalResOut
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: mm2
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 382
+    end: 403
+  role: flash_decode cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  confidence: medium
+  code_behavior:
+    summary: flash_decode cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - 'Calls: SetShapeInfo, ShapeInfo, Cast, Bmm2DataCopyOutTrans.'
+    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
+    - Coordinates pipeline state with event or cross-core flags.
+  dataflow:
+    inputs:
+    - FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - mm2
+    - flash_decode
+    - calls:SetShapeInfo,ShapeInfo,Cast,Bmm2DataCopyOutTrans
+    sync:
+    - WaitFlag
+    - SetFlag
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:382-403'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: headDimAlign
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:382-403
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - flash_decode.merge
+  - memory.l1_residency
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: flash_decode.merge.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:382-403
+    confidence: medium
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:382-403
+    confidence: medium
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:382-403
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

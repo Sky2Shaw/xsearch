@@ -1,0 +1,34 @@
+function_brief:
+  function_name: ComputeLogSumExpAndCopyToGm
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ComputeLogSumExpAndCopyToGm
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ComputeLogSumExpAndCopyToGm
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: workspace
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 345
+    end: 369
+  role: Workspace sizing or address-layout helper.
+  touches:
+  - workspace
+  calls:
+  - CalcAccumOffset
+  called_by:
+  - ProcessVec1L
+  - ProcessVec1SingleBuf
+  possible_risks:
+  - Missing event release can stall producer/consumer queues.
+  related_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - workspace.layout
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp:130:LogErrorDimNumSupport
+  function_name: LogErrorDimNumSupport
+  qualified_name: FiaTilingCheck::LogErrorDimNumSupport
+  canonical_name: FiaTilingCheck::LogErrorDimNumSupport
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params:
+  - template<typename T>
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+  line_range:
+    start: 130
+    end: 136
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - LogErrorNumberSupport
+  called_by:
+  - shape->GetStorageShape
+  - tensor->GetStorageShape

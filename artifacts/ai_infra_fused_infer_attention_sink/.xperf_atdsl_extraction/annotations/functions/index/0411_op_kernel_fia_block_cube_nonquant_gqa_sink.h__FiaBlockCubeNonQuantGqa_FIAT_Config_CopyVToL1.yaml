@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:824:CopyVToL1
+  function_name: CopyVToL1
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::CopyVToL1
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::CopyVToL1
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 824
+    end: 855
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:s2
+  - branch_signal
+  extraction_level: index
+  calls:
+  - Align
+  - CopySingleMatrixNDToNZ
+  - copyKvGmToL1
+  called_by:
+  - ComputeMm2

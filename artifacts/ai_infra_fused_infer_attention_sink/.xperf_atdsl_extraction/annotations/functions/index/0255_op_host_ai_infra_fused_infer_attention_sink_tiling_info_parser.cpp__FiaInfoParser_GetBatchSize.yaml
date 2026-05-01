@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:428:GetBatchSize
+  function_name: GetBatchSize
+  qualified_name: FiaInfoParser::GetBatchSize
+  canonical_name: FiaInfoParser::GetBatchSize
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 428
+    end: 442
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetActualSeqLenQSize
+  - CheckHasB
+  - GetB
+  called_by: []

@@ -1,0 +1,34 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_mla_sink.h:307:InitOutputSingleCore
+  function_name: InitOutputSingleCore
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitOutputSingleCore
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 307
+    end: 352
+  rough_role: sparse_or_mask_range
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - compute_sync_api:WaitFlag,SetFlag
+  - structure_signal:actualSeq,tail
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  extraction_level: deep
+  calls:
+  - GetTSize
+  - IsInitAttentionOutGm
+  - SyncAll
+  called_by: []

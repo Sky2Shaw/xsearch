@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:939:Vec1SinkCompute
+  function_name: Vec1SinkCompute
+  qualified_name: FiaBlockVecNonQuant<FIAT>::Vec1SinkCompute
+  canonical_name: FiaBlockVecNonQuant<FIAT>::Vec1SinkCompute
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 939
+    end: 967
+  rough_role: sparse_or_mask_range
+  importance_score: 63
+  importance_reasons:
+  - attention_stage:vec1
+  - structure_signal:sparse,s2,tail
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  extraction_level: brief
+  calls:
+  - IsExistInvalidRows
+  - Vec1GetSinkValue
+  called_by:
+  - ProcessVec1SingleBuf

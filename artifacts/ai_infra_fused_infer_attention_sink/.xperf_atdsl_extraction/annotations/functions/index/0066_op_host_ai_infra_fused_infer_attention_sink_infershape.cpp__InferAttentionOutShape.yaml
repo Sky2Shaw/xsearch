@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp:199:InferAttentionOutShape
+  function_name: InferAttentionOutShape
+  qualified_name: InferAttentionOutShape
+  canonical_name: InferAttentionOutShape
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+  line_range:
+    start: 199
+    end: 257
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:s1
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetDim
+  - SetDimNum
+  - GetQueryBSND
+  - GetQueryTND
+  called_by:
+  - InferShapeAiInfraFusedInferAttentionSink

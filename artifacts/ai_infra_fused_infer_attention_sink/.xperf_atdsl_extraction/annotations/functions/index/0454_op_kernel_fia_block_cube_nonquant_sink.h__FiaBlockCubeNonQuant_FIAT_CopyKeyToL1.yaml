@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:420:CopyKeyToL1
+  function_name: CopyKeyToL1
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::CopyKeyToL1
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::CopyKeyToL1
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 420
+    end: 457
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:s2
+  - branch_signal
+  extraction_level: index
+  calls:
+  - Align
+  - copyKvGmToL1
+  called_by:
+  - DealMm1SingleMKN

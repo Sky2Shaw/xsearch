@@ -1,0 +1,125 @@
+function_annotation:
+  function_name: ComputeMm2
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 502
+    end: 521
+  role: MLA MM2 wrapper over n-buffer M splits. Waits for Vec1, delegates to ProcessMm2, and signals both Vec2 and MLA nUpdate
+    handoff.
+  confidence: high
+  code_behavior:
+    summary: MLA MM2 wrapper over n-buffer M splits. Waits for Vec1, delegates to ProcessMm2, and signals both Vec2 and MLA
+      nUpdate handoff.
+    key_steps:
+    - Refreshes value GM tensors on batch change.
+    - Splits actMBaseSize by nBufferMBaseSize and builds MSplitInfo.
+    - Waits syncV1C2 for Vec1 softmax output before ProcessMm2.
+    - Signals syncC2V2 for Vec2 and syncC2V1 for MLA nUpdate after each n-buffer split.
+  dataflow:
+    inputs:
+    - FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+  pipeline:
+    stages:
+    - mm2
+    - mla
+    - calls:InitValueGm,UpdateValue,CrossCoreWaitFlag,ProcessMm2
+    sync:
+    - WaitFlag
+    - SetFlag
+    - CrossCoreWaitFlag
+    - CrossCoreSetFlag
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - nBufferMBaseSize
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: nBufferMBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - memory.l1_residency
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
+    confidence: high
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
+    confidence: high
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

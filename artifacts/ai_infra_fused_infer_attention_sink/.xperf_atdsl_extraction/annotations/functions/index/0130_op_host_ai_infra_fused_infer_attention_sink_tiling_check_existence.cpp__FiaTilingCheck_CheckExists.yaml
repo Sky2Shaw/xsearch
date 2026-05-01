@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp:149:CheckExists
+  function_name: CheckExists
+  qualified_name: FiaTilingCheck::CheckExists
+  canonical_name: FiaTilingCheck::CheckExists
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  line_range:
+    start: 149
+    end: 158
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - OPS_CHECK
+  - OPS_LOG_E
+  - QuantModeToSerialString
+  - c_str
+  - SituationToSerialString
+  called_by:
+  - CheckExistsByMap

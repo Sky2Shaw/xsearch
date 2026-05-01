@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_mla_sink.h:154:Min
+  function_name: Min
+  qualified_name: FiaKernelNonQuantMla::Min
+  canonical_name: FiaKernelNonQuantMla::Min
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla
+  owner_template_args: []
+  template_params:
+  - template<typename T1,typename T2>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 154
+    end: 158
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - CalcCurS2StartEndWithSparse
+  - GetSafeActToken

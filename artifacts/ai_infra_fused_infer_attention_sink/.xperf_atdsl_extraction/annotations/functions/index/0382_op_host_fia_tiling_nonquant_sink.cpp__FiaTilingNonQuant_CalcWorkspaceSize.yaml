@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:540:CalcWorkspaceSize
+  function_name: CalcWorkspaceSize
+  qualified_name: FiaTilingNonQuant::CalcWorkspaceSize
+  canonical_name: FiaTilingNonQuant::CalcWorkspaceSize
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: mm2
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 540
+    end: 547
+  rough_role: workspace_or_address_helper
+  importance_score: 51
+  importance_reasons:
+  - attention_stage:mm2
+  - structure_signal:workspace,split
+  - branch_signal
+  extraction_level: brief
+  calls:
+  - CalcNormalWorkspaceSize
+  - CalcFlashDecodeWorkspace
+  called_by:
+  - DoOpTiling

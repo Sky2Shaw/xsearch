@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check.h:48:VecContains
+  function_name: VecContains
+  qualified_name: VecContains
+  canonical_name: VecContains
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params:
+  - template<typename vecT,typename T>
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.h
+  line_range:
+    start: 48
+    end: 54
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 0
+  importance_reasons:
+  - simple_accessor_or_wrapper_penalty
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - find
+  - begin
+  - end
+  called_by:
+  - CheckDtypeAndSetQuantFlagGqa
+  - CheckDtypeAndSetQuantFlagMla
+  - CheckFeatureInOutDtype

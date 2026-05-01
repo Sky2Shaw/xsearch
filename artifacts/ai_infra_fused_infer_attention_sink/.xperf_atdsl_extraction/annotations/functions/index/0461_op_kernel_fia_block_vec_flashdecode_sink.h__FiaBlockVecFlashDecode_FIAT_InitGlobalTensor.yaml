@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:126:InitGlobalTensor
+  function_name: InitGlobalTensor
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::InitGlobalTensor
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::InitGlobalTensor
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 126
+    end: 142
+  rough_role: sparse_or_mask_range
+  importance_score: 90
+  importance_reasons:
+  - known_deep_name_pattern
+  - structure_signal:actualSeq
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - Init
+  called_by: []

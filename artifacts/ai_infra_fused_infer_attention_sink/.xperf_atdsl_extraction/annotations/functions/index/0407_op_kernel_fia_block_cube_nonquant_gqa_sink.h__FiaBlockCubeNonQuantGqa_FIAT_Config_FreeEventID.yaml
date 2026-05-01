@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:697:FreeEventID
+  function_name: FreeEventID
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::FreeEventID
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::FreeEventID
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 697
+    end: 712
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:WaitFlag
+  - branch_signal
+  extraction_level: index
+  calls: []
+  called_by:
+  - FlashDecode
+  - Process

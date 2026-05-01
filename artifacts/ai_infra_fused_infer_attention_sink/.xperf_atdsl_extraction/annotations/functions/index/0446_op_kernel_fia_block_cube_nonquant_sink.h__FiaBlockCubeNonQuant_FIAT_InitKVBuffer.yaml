@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:311:InitKVBuffer
+  function_name: InitKVBuffer
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 311
+    end: 331
+  rough_role: decode_kv_cache
+  importance_score: 86
+  importance_reasons:
+  - known_deep_name_pattern
+  - structure_signal:actualSeq,blockTable
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Init
+  called_by: []

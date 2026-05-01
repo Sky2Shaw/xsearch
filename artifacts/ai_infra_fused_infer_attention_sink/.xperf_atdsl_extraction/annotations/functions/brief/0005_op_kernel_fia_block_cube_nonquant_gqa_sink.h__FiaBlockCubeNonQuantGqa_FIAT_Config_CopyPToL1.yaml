@@ -1,0 +1,37 @@
+function_brief:
+  function_name: CopyPToL1
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::CopyPToL1
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::CopyPToL1
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  - template<CubeFormat Format>
+  variant: gqa
+  stage: vec1
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 798
+    end: 823
+  role: gqa vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
+  touches:
+  - DataCopy
+  - L1
+  calls:
+  - DataCopy
+  - Align
+  - CopySingleMatrixNDToNZ
+  called_by: []
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - gqa.grouped_query
+  - pipeline.vector_stages
+  - softmax.online_state
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

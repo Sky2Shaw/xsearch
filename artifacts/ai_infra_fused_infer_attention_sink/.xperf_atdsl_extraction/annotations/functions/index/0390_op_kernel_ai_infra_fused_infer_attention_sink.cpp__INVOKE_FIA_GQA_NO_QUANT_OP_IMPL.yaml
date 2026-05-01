@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/ai_infra_fused_infer_attention_sink.cpp:28:INVOKE_FIA_GQA_NO_QUANT_OP_IMPL
+  function_name: INVOKE_FIA_GQA_NO_QUANT_OP_IMPL
+  qualified_name: INVOKE_FIA_GQA_NO_QUANT_OP_IMPL
+  canonical_name: INVOKE_FIA_GQA_NO_QUANT_OP_IMPL
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: gqa
+  stage: tiling
+  file: op_kernel/ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 28
+    end: 41
+  rough_role: sparse_or_mask_range
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:tiling,actualSeq
+  - branch_signal
+  extraction_level: index
+  calls:
+  - FIA_COPY_TILING_DATA
+  - Init
+  - Process
+  called_by: []

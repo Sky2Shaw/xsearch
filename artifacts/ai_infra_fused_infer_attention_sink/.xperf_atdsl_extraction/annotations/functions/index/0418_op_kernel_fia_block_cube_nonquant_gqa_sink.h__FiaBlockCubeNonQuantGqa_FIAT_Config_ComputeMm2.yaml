@@ -1,0 +1,45 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113:ComputeMm2
+  function_name: ComputeMm2
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  - template<CubeFormat OutFormat,CubeFormat AFormat>
+  variant: gqa
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 1113
+    end: 1240
+  rough_role: sparse_or_mask_range
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - critical_attention_stage_function
+  - attention_stage:mm2
+  - compute_sync_api:WaitFlag,SetFlag
+  - structure_signal:s2
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - UpdateValue
+  - CrossCoreWaitFlag
+  - m
+  - n
+  - k
+  - Split
+  - size
+  - AlignedSize
+  - CopyVToL1
+  - LoadBToL0
+  - Mmad
+  - IsTailOf
+  called_by:
+  - ExecuteTask

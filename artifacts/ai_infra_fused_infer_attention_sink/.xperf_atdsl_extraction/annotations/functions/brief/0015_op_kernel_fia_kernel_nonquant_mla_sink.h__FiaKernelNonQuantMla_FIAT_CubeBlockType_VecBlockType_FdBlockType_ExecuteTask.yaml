@@ -1,0 +1,40 @@
+function_brief:
+  function_name: ExecuteTask
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ExecuteTask
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ExecuteTask
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: mla
+  stage: mm1
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 832
+    end: 860
+  role: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+  touches:
+  - unknown
+  calls:
+  - ComputeMm1
+  - ComputeVec1
+  - ComputeMm2
+  - ComputeVec2
+  called_by:
+  - FlashAttention
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - memory.l1_residency
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.cube_stages
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

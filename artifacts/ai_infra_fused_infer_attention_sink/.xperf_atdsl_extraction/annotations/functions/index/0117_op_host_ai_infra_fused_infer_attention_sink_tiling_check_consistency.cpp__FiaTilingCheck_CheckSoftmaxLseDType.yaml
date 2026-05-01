@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:697:CheckSoftmaxLseDType
+  function_name: CheckSoftmaxLseDType
+  qualified_name: FiaTilingCheck::CheckSoftmaxLseDType
+  canonical_name: FiaTilingCheck::CheckSoftmaxLseDType
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 697
+    end: 706
+  rough_role: vector_softmax_or_lse
+  importance_score: 78
+  importance_reasons:
+  - known_deep_name_pattern
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - GetDataType
+  - OPS_LOG_E
+  - FusedDataTypeToSerialString
+  - c_str
+  called_by:
+  - CheckSoftmaxLse

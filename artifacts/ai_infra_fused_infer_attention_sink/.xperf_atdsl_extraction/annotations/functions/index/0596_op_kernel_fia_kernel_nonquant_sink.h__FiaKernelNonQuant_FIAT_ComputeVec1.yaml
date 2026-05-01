@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:710:ComputeVec1
+  function_name: ComputeVec1
+  qualified_name: FiaKernelNonQuant<FIAT>::ComputeVec1
+  canonical_name: FiaKernelNonQuant<FIAT>::ComputeVec1
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 710
+    end: 715
+  rough_role: unknown
+  importance_score: 35
+  importance_reasons:
+  - attention_stage:vec1
+  extraction_level: index
+  calls: []
+  called_by:
+  - ExecuteTask

@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:625:GetS2Size
+  function_name: GetS2Size
+  qualified_name: FiaInfoParser::GetS2Size
+  canonical_name: FiaInfoParser::GetS2Size
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 625
+    end: 639
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetS2SizeForBatchContinuous
+  - GetS2SizeForTensorList
+  - GetS2SizeForPageAttention
+  called_by: []

@@ -1,0 +1,58 @@
+evolution_result:
+  new_patterns:
+  - id: LP-FIA-STAGE-TEMPLATE-IDENTITY
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: Critical stage functions must retain canonical_name, owner, owner_qualified, owner_template_args, template_params,
+      variant, and stage.
+    code_evidence:
+    - reports/function_index.yaml
+    dsl_field_path: pipeline.stage_graph.stages[].canonical_name
+    optimization_intent: Prevent GQA/MLA/generic same-name ComputeMm2 paths from being merged.
+    confidence: high
+  - id: LP-FIA-GQA-MM2-V-REUSE
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: GQA MM2 caches V L1 tiles with a coordinate signature while streaming P from Vec1 output.
+    code_evidence:
+    - op_kernel/fia_block_cube_nonquant_gqa_sink.h:1138-1222
+    dsl_field_path: memory.l1_residency.gqa.v_snapshot
+    optimization_intent: Reduce V reload traffic and preserve event lifetime.
+    confidence: high
+  - id: LP-FIA-MLA-NUPDATE
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: MLA vector softmax emits row-wise nUpdate and applies it through an int32 atomic side channel before MM2 fixpipe.
+    code_evidence:
+    - op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    - op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1057
+    dsl_field_path: mla.nupdate
+    optimization_intent: Preserve online softmax correction across split S2 loops.
+    confidence: high
+  - id: LP-FIA-FD-STABLE-MERGE
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: FlashDecode merges split-KV partial outputs using max/sum-normalized LSE weights.
+    code_evidence:
+    - op_kernel/fia_block_vec_flashdecode_sink.h:258-290
+    - op_kernel/fia_block_vec_flashdecode_sink.h:437-556
+    dsl_field_path: flash_decode.merge
+    optimization_intent: Keep split-KV final output numerically stable.
+    confidence: high
+  updated_patterns: []
+  checklist_updates:
+  - section: Pipeline
+    item: Require owner-qualified critical-stage coverage for same-name template methods.
+    evidence: reports/function_index.yaml
+  negative_lessons:
+  - id: NL-FIA-DO-NOT-FLATTEN-COMPUTEMM2
+    lesson: Bare-name ComputeMm2 extraction loses variant semantics.
+    evidence: reports/function_index.yaml
+    avoid_when: Stage indexing and DSL aggregation.
+  schema_gaps:
+  - path: pipeline.stage_graph.owner_identity
+    gap: Stage schema must require canonical/template owner identity.
+    evidence: reports/function_index.yaml
+  skill_patch_proposal: []
+  conflicts:
+  - conflict: false
+    conflict_reason: No conflicting local learning found after backup review.
+    related_ids: []
+    confidence: high

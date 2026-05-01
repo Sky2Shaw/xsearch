@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:855:CheckBlockTable
+  function_name: CheckBlockTable
+  qualified_name: CheckBlockTable
+  canonical_name: CheckBlockTable
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 855
+    end: 864
+  rough_role: decode_kv_cache
+  importance_score: 70
+  importance_reasons:
+  - known_deep_name_pattern
+  extraction_level: deep
+  calls:
+  - CheckSoftmaxLse
+  called_by: []

@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:488:CalcMmResSize
+  function_name: CalcMmResSize
+  qualified_name: FiaTilingNonQuant::CalcMmResSize
+  canonical_name: FiaTilingNonQuant::CalcMmResSize
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: mm2
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 488
+    end: 494
+  rough_role: sparse_or_mask_range
+  importance_score: 39
+  importance_reasons:
+  - attention_stage:mm2
+  - structure_signal:s1
+  extraction_level: index
+  calls:
+  - min
+  called_by: []

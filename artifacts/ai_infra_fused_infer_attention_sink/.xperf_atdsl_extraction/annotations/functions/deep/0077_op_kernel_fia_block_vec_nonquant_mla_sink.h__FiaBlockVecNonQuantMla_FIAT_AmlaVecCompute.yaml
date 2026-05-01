@@ -1,0 +1,128 @@
+function_annotation:
+  function_name: AmlaVecCompute
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: softmax
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 470
+    end: 561
+  role: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+  confidence: high
+  code_behavior:
+    summary: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+    key_steps:
+    - Computes rounded n(i) from softmaxMax and derives n(i)-n(i-1).
+    - Updates nValueUb and rescales softmax output with exp/row multiply.
+    - Computes cof/eps correction, clamps nUpdate at -30, scales by pow(2, 23), and casts to int32.
+    - Stores row-wise nUpdate into outputBuff2 guarded by MTE3/V events.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - softmax
+    - mla
+    - calls:Muls,Cast,Duplicate,Sub,Adds,Add
+    sync:
+    - WaitFlag
+    - SetFlag
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - uint32_t baseOffset = mSplitInfo.nBufferStartM / 2 + startRow;
+    - uint32_t softmaxOutOffset = outIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset;
+    - Muls(nTmp, softmaxMaxUb[softmaxOutOffset], ((T)(-1.0)) * RECIP_OF_LN2, calCount);
+    - uint32_t PreSoftmaxOutOffset = prOutIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset;
+    - Sub(nUpdateTmp, nTmp, nValueUb[PreSoftmaxOutOffset], calCount);
+    - Adds(nValueUb[softmaxOutOffset], nTmp, FLOAT_ZERO, calCount);
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Numerical order of n/cof/eps updates is sensitive to cast, clamp, and barrier placement.
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    confidence: high
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    confidence: high
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

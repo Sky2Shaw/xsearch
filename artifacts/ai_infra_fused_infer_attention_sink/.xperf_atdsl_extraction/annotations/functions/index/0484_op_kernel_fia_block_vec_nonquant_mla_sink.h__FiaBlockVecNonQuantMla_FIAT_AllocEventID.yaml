@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:324:AllocEventID
+  function_name: AllocEventID
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::AllocEventID
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::AllocEventID
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 324
+    end: 333
+  rough_role: unknown
+  importance_score: 15
+  importance_reasons:
+  - compute_sync_api:SetFlag
+  extraction_level: index
+  calls: []
+  called_by:
+  - FlashDecode
+  - Process

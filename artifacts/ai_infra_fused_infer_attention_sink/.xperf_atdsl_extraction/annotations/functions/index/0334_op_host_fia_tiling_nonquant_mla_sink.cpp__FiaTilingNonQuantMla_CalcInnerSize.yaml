@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:250:CalcInnerSize
+  function_name: CalcInnerSize
+  qualified_name: FiaTilingNonQuantMla::CalcInnerSize
+  canonical_name: FiaTilingNonQuantMla::CalcInnerSize
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: flash_decode
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 250
+    end: 286
+  rough_role: workspace_or_address_helper
+  importance_score: 38
+  importance_reasons:
+  - structure_signal:tiling,workspace,sparse,split,s1
+  - branch_signal
+  extraction_level: index
+  calls:
+  - Align
+  - CalcMBaseSize
+  called_by:
+  - Split

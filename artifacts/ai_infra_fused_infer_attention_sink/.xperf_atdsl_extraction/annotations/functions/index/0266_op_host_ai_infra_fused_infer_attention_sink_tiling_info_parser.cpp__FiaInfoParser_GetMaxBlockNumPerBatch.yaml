@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:594:GetMaxBlockNumPerBatch
+  function_name: GetMaxBlockNumPerBatch
+  qualified_name: FiaInfoParser::GetMaxBlockNumPerBatch
+  canonical_name: FiaInfoParser::GetMaxBlockNumPerBatch
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 594
+    end: 604
+  rough_role: decode_kv_cache
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:blockTable
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetStorageShape
+  - GetDimNum
+  - OPS_LOG_E
+  - c_str
+  - GetDim
+  called_by:
+  - GetS2SizeForPageAttention

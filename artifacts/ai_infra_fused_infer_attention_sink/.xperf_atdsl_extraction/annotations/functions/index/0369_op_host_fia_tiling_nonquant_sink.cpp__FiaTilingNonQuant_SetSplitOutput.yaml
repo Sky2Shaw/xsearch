@@ -1,0 +1,39 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:329:SetSplitOutput
+  function_name: SetSplitOutput
+  qualified_name: FiaTilingNonQuant::SetSplitOutput
+  canonical_name: FiaTilingNonQuant::SetSplitOutput
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 329
+    end: 363
+  rough_role: sparse_or_mask_range
+  importance_score: 36
+  importance_reasons:
+  - compute_sync_api:vector,cube
+  - structure_signal:tiling,s2
+  - branch_signal
+  extraction_level: index
+  calls:
+  - get_bN2End
+  - get_gS1End
+  - get_s2End
+  - get_bN2IdxOfFdHead
+  - get_gS1IdxOfFdHead
+  - get_s2SplitNumOfFdHead
+  - get_s2SplitStartIdxOfCore
+  - get_gS1SplitNumOfFdHead
+  - get_gS1LastPartSizeOfFdHead
+  - get_gS1IdxEndOfFdHead
+  - get_gS1IdxEndOfFdHeadSplit
+  - set_mBaseSize
+  - set_s2BaseSize
+  - set_gS1BaseSizeOfFd
+  - set_numOfFdHead
+  called_by: []

@@ -1,0 +1,144 @@
+function_annotation:
+  function_name: ProcessMm2
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 851
+    end: 1077
+  role: MLA cube MM2 implementation. Copies vec1ResGm into L1 as A, loads V/value into L1 as B, runs MatmulKPP, and atomically
+    accumulates later S-inner loops.
+  confidence: high
+  code_behavior:
+    summary: MLA cube MM2 implementation. Copies vec1ResGm into L1 as A, loads V/value into L1 as B, runs MatmulKPP, and atomically
+      accumulates later S-inner loops.
+    key_steps:
+    - Derives M, N=headDim, and K=actualSingleProcessSInnerSize loop partitions.
+    - Loads V/value slices from GM or valueSinkGm into L1 in NZ form.
+    - Copies Vec1 output from vec1ResGm into L1 as the MM2 A operand.
+    - Runs MatmulKPP over M/N/K blocks and fixpipes ND output to mm2ResGm.
+    - Uses SetAtomicAdd for non-first S-inner loops and waits syncV1NupdateC2 before first fixpipe.
+  dataflow:
+    inputs:
+    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - vec1ResGm partial softmax output
+      - valueGmTensor or valueSinkGm
+      writes:
+      - mm2ResGm / mm2ResInt32Gm accumulation region
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - l1QPTensor as A
+      - l1KVTensor as B
+      writes:
+      - CopyInMm2AToL1 A tiles
+      - value GM to L1 B tiles
+    l0:
+      l0a:
+      - Vec1 output tiles
+      l0b:
+      - V tiles
+      l0c:
+      - MatmulKPP output before Fixpipe
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - mm2
+    - mla
+    - calls:Align,SetMExtent,Get,copyKvGmToL1,CopySingleMatrixNDToNZ,GetQPL1RealIdx
+    sync:
+    - WaitFlag
+    - SetFlag
+    - CrossCoreWaitFlag
+    - SetAtomicAdd
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    - mm2ResGm
+    l1_residency:
+    - L1 reuse/snapshot visible in body
+    l1_partition:
+    - L1 buffer iterators or split sizes visible
+  tiling_and_shape:
+    fields:
+    - N_L1_SPLIT_SIZE
+    - headDim
+    - actualSingleProcessSInnerSize
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - uint32_t kOffset = k1 * kL0Loops;
+    - "for (uint32_t kL1 = kOffset; kL1 < kL0Loops + kOffset; kL1++) { // 128 \u5FAA\u73AF\u642Cpa"
+    - if (kL1 == kOffset + kL0Loops - 1U) {
+    - .tensor = bL1Tensor[(kL1 - kOffset) * 128U * N_L1_SPLIT_SIZE],
+    - .s2Idx = info.s2BatchOffset + (kL1 - kOffset) * 128U + k1 * 256U,
+    - uint64_t offset = info.n2Idx * constInfo.headDim + nL1 * N_L1_SPLIT_SIZE;
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
+  constraints:
+  - MLA MM2 assumes headDim-derived N blocks and K from actualSingleProcessSInnerSize.
+  - syncV1NupdateC2 must be observed before first MM2 fixpipe so MLA nUpdate has been applied.
+  - Atomic add scope must be restored with SetAtomicNone after accumulation.
+  - Event wait/set ordering is part of correctness, not only performance.
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - Changing kL1/kL0 loops or nUpdate synchronization can corrupt later S-inner accumulation.
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - memory.l1_residency
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
+    confidence: high
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
+    confidence: high
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

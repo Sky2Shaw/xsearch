@@ -1,0 +1,132 @@
+function_annotation:
+  function_name: ComputeMm2
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  - template<CubeFormat OutFormat,CubeFormat AFormat>
+  variant: gqa
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 1113
+    end: 1240
+  role: GQA cube MM2/PV stage. Consumes vector softmax P from GM/L1, loads V into L1/L0B, performs P*V MMAD, and fixpipes
+    to mm2ResGm.
+  confidence: high
+  code_behavior:
+    summary: GQA cube MM2/PV stage. Consumes vector softmax P from GM/L1, loads V into L1/L0B, performs P*V MMAD, and fixpipes
+      to mm2ResGm.
+    key_steps:
+    - Waits on syncV1C2 before consuming Vec1 softmax output.
+    - Splits M by 128, K by actualSingleProcessSInnerSize, and N by headDim.
+    - Copies P from mm1/vector output to L1 with CopyPToL1 and loads V to reusable L1 buffers with CopyVToL1.
+    - Loads A/B to L0, accumulates with Mmad, and uses PipeBarrier for non-final K chunks.
+    - Waits syncV2C2 before first fixpipe and writes mm2ResGm with FixpipeCToGM before signaling syncC2V2.
+  dataflow:
+    inputs:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - mm1/vector softmax result via CopyPToL1
+      - value tensor through CopyVToL1
+      writes:
+      - mm2ResGm[loop % PRELOAD_NUM] via FixpipeCToGM
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - kpL1Tensor for P
+      - vL1Tensor for V with snapshot reuse
+      writes:
+      - CopyPToL1 output
+      - CopyVToL1 output
+    l0:
+      l0a:
+      - P tile loaded by LoadAToL0
+      l0b:
+      - V tile loaded by LoadBToL0
+      l0c:
+      - P*V accumulated by Mmad
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - mm2
+    - gqa
+    - calls:UpdateValue,CrossCoreWaitFlag,m,n,k,Split
+    sync:
+    - WaitFlag
+    - SetFlag
+    - CrossCoreWaitFlag
+    - CrossCoreSetFlag
+  memory_behavior:
+    buffers:
+    - mm2ResGm
+    l1_residency:
+    - L1 reuse/snapshot visible in body
+    l1_partition:
+    - L1 buffer iterators or split sizes visible
+  tiling_and_shape:
+    fields:
+    - M_SPLIT_SIZE
+    - K_SPLIT_SIZE
+    - headDim
+    - actualSingleProcessSInnerSize
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: headDimAlign
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - Changing V L1 reuse or event release may overwrite live V tiles or deadlock MTE1/MTE2.
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - gqa.grouped_query
+  - memory.l1_residency
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: gqa.grouped_query.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
+    confidence: high
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
+    confidence: high
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

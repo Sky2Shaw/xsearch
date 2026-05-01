@@ -1,0 +1,100 @@
+function_annotation:
+  function_name: InitKeyGm
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitKeyGm
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitKeyGm
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 442
+    end: 454
+  role: unknown
+  confidence: medium
+  code_behavior:
+    summary: unknown
+    key_steps:
+    - 'Calls: keyListTensorDesc, SetGlobalBuffer, SetL2CacheHint.'
+  dataflow:
+    inputs:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>::InitKeyGm
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+  pipeline:
+    stages:
+    - unknown
+    - gqa
+    - calls:keyListTensorDesc,SetGlobalBuffer,SetL2CacheHint
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:442-454'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - gqa.grouped_query
+  suggested_dsl_fields:
+  - path: gqa.grouped_query.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::InitKeyGm
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:442-454
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

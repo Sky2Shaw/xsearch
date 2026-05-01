@@ -1,0 +1,22 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:66:FiaBlockCubeNonQuant
+  function_name: FiaBlockCubeNonQuant
+  qualified_name: FiaBlockCubeNonQuant::FiaBlockCubeNonQuant
+  canonical_name: FiaBlockCubeNonQuant::FiaBlockCubeNonQuant
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 66
+    end: 66
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

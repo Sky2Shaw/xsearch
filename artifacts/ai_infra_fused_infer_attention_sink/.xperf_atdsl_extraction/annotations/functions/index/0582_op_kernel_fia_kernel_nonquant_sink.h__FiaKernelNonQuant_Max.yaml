@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:183:Max
+  function_name: Max
+  qualified_name: FiaKernelNonQuant::Max
+  canonical_name: FiaKernelNonQuant::Max
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant
+  owner_template_args: []
+  template_params:
+  - template<typename T1,typename T2>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 183
+    end: 189
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 0
+  importance_reasons:
+  - simple_accessor_or_wrapper_penalty
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - CalcCurS2StartEndWithSparse
+  - GetSafeActToken

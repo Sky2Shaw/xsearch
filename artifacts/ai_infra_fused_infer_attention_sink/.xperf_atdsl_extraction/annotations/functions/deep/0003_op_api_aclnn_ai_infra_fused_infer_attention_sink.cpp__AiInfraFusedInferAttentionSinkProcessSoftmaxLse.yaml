@@ -1,0 +1,104 @@
+function_annotation:
+  function_name: AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+  qualified_name: AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+  canonical_name: AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 137
+    end: 149
+  role: unknown vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+  confidence: medium
+  code_behavior:
+    summary: unknown vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+    key_steps:
+    - 'Calls: aclCreateTensor, data, size.'
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - softmax
+    - unknown
+    - calls:aclCreateTensor,data,size
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:137-149'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:137-149
+    confidence: medium
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:137-149
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:582:SetAttenMaskCompare
+  function_name: SetAttenMaskCompare
+  qualified_name: FiaTilingCheck::SetAttenMaskCompare
+  canonical_name: FiaTilingCheck::SetAttenMaskCompare
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 582
+    end: 623
+  rough_role: sparse_or_mask_range
+  importance_score: 38
+  importance_reasons:
+  - structure_signal:sparse,s1,mask
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  extraction_level: index
+  calls:
+  - GetStorageShape
+  - GetDimNum
+  - GetDim
+  - OPS_LOG_E
+  - c_str
+  called_by:
+  - CheckAttentionMask

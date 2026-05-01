@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:458:aclnnAiInfraFusedInferAttentionSink
+  function_name: aclnnAiInfraFusedInferAttentionSink
+  qualified_name: aclnnAiInfraFusedInferAttentionSink
+  canonical_name: aclnnAiInfraFusedInferAttentionSink
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: workspace
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 458
+    end: 466
+  rough_role: workspace_or_address_helper
+  importance_score: 14
+  importance_reasons:
+  - structure_signal:workspace
+  extraction_level: index
+  calls:
+  - L2_DFX_PHASE_2
+  - CommonOpExecutorRun
+  called_by: []

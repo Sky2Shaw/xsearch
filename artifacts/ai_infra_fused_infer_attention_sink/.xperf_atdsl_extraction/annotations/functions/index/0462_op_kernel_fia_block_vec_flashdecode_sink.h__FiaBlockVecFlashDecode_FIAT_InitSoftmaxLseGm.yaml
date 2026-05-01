@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:143:InitSoftmaxLseGm
+  function_name: InitSoftmaxLseGm
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::InitSoftmaxLseGm
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::InitSoftmaxLseGm
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: softmax
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 143
+    end: 148
+  rough_role: vector_softmax_or_lse
+  importance_score: 90
+  importance_reasons:
+  - known_deep_name_pattern
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls: []
+  called_by: []

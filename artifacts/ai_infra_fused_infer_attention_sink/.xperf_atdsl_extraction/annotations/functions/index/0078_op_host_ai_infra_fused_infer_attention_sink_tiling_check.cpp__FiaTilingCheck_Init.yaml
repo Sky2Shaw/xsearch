@@ -1,0 +1,38 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp:94:Init
+  function_name: Init
+  qualified_name: FiaTilingCheck::Init
+  canonical_name: FiaTilingCheck::Init
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp
+  line_range:
+    start: 94
+    end: 133
+  rough_role: sparse_or_mask_range
+  importance_score: 78
+  importance_reasons:
+  - known_deep_name_pattern
+  - structure_signal:s1,s2
+  extraction_level: deep
+  calls: []
+  called_by:
+  - Bmm2DataCopyOutTrans
+  - DealZeroActSeqLen
+  - INVOKE_FIA_GQA_NO_QUANT_OP_IMPL
+  - INVOKE_FIA_OP_GENERAL_IMPL
+  - InitActualSeqLenKV
+  - InitActualSeqLenQ
+  - InitBuffers
+  - InitGlobalTensor
+  - InitKVBuffer
+  - InitMm1GlobalTensor
+  - InitMm2GlobalTensor
+  - InitQBuffer
+  - Process
+  - UpdateKey
+  - UpdateValue

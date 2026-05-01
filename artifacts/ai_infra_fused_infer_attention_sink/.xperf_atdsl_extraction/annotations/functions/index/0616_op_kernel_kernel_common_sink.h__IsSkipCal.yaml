@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_kernel/kernel_common_sink.h:74:IsSkipCal
+  function_name: IsSkipCal
+  qualified_name: IsSkipCal
+  canonical_name: IsSkipCal
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params:
+  - template<FIA_LAYOUT LAYOUT_T>
+  variant: unknown
+  stage: unknown
+  file: op_kernel/kernel_common_sink.h
+  line_range:
+    start: 74
+    end: 117
+  rough_role: sparse_or_mask_range
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:s1,s2
+  - branch_signal
+  extraction_level: index
+  calls: []
+  called_by: []

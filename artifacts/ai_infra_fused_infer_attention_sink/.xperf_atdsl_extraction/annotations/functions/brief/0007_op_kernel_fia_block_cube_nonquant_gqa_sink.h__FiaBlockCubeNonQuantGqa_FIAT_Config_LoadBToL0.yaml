@@ -1,0 +1,34 @@
+function_brief:
+  function_name: LoadBToL0
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::LoadBToL0
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::LoadBToL0
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 913
+    end: 930
+  role: gqa cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  touches:
+  - L1
+  calls:
+  - LoadData
+  called_by:
+  - ComputeMm2
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - gqa.grouped_query
+  - memory.l1_residency
+  - pipeline.cube_stages
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

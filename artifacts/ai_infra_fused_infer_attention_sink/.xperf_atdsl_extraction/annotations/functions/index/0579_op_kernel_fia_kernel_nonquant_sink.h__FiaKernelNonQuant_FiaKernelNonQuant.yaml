@@ -1,0 +1,22 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:41:FiaKernelNonQuant
+  function_name: FiaKernelNonQuant
+  qualified_name: FiaKernelNonQuant::FiaKernelNonQuant
+  canonical_name: FiaKernelNonQuant::FiaKernelNonQuant
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 41
+    end: 42
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

@@ -1,0 +1,32 @@
+function_brief:
+  function_name: CalcInnerSize
+  qualified_name: FiaTilingNonQuant::CalcInnerSize
+  canonical_name: FiaTilingNonQuant::CalcInnerSize
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 221
+    end: 271
+  role: Workspace sizing or address-layout helper.
+  touches:
+  - workspace
+  - tiling
+  calls:
+  - min
+  - Align
+  - CalcMBaseSize
+  called_by:
+  - Split
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - workspace.layout
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

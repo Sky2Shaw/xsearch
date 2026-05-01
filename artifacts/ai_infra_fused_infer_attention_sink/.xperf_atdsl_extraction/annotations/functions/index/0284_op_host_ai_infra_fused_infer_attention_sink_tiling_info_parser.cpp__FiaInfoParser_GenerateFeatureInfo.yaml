@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:908:GenerateFeatureInfo
+  function_name: GenerateFeatureInfo
+  qualified_name: FiaInfoParser::GenerateFeatureInfo
+  canonical_name: FiaInfoParser::GenerateFeatureInfo
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 908
+    end: 939
+  rough_role: sparse_or_mask_range
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:sparse,mask
+  - tail_alignment_or_mask_signal
+  extraction_level: index
+  calls: []
+  called_by:
+  - GenerateInfo

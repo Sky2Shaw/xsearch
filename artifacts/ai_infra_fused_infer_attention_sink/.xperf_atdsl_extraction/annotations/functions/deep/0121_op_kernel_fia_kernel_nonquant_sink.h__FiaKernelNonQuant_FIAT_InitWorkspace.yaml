@@ -1,0 +1,117 @@
+function_annotation:
+  function_name: InitWorkspace
+  qualified_name: FiaKernelNonQuant<FIAT>::InitWorkspace
+  canonical_name: FiaKernelNonQuant<FIAT>::InitWorkspace
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 370
+    end: 412
+  role: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  confidence: medium
+  code_behavior:
+    summary: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - 'Calls: SetGlobalBuffer, GetBlockNum.'
+  dataflow:
+    inputs:
+    - FiaKernelNonQuant<FIAT>::InitWorkspace
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+  pipeline:
+    stages:
+    - mm2
+    - nonquant
+    - calls:SetGlobalBuffer,GetBlockNum
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - mm1ResGm
+    - vec1ResGm
+    - mm2ResGm
+    - accumOutGm
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_kernel_nonquant_sink.h:370-412'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - uint64_t offset = 0;
+    - (__gm__ MM1_OUT_T *)(workspace + offset +
+    - offset += GetBlockNum() * dbWorkspaceRatio * constInfo.mmResUbSize * sizeof(MM1_OUT_T);
+    - (__gm__ KV_T *)(workspace + offset + aiCoreIdx * dbWorkspaceRatio * constInfo.mmResUbSize * sizeof(KV_T)));
+    - offset += GetBlockNum() * dbWorkspaceRatio * constInfo.mmResUbSize * sizeof(KV_T);
+    - (__gm__ MM2_OUT_T *)(workspace + offset +
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - memory.l1_residency
+  - pipeline.cube_stages
+  - workspace.layout
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaKernelNonQuant<FIAT>::InitWorkspace
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:370-412
+    confidence: medium
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaKernelNonQuant<FIAT>::InitWorkspace
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:370-412
+    confidence: medium
+  - path: workspace.layout.source_function
+    meaning: Lowering evidence from FiaKernelNonQuant<FIAT>::InitWorkspace
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:370-412
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

@@ -1,0 +1,31 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:1014:Bmm2DataCopyOutTrans
+  function_name: Bmm2DataCopyOutTrans
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::Bmm2DataCopyOutTrans
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::Bmm2DataCopyOutTrans
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 1014
+    end: 1075
+  rough_role: sparse_or_mask_range
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  - structure_signal:actualSeq
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Init
+  - copyAttenOutUbToGm
+  called_by:
+  - Bmm2CastAndCopyOut
+  - CopyFinalResOut

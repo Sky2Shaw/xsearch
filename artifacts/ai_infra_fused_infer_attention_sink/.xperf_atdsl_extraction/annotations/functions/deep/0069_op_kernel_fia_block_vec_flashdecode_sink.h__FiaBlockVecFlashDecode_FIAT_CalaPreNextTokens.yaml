@@ -1,0 +1,100 @@
+function_annotation:
+  function_name: CalaPreNextTokens
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 404
+    end: 427
+  role: FlashDecode setup, workspace sizing, or merge helper.
+  confidence: medium
+  code_behavior:
+    summary: FlashDecode setup, workspace sizing, or merge helper.
+    key_steps:
+    - 'Calls: GetActualSeqLength.'
+  dataflow:
+    inputs:
+    - FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - flash_decode
+    - flash_decode
+    - calls:GetActualSeqLength
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:404-427'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - flash_decode.merge
+  suggested_dsl_fields:
+  - path: flash_decode.merge.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:404-427
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

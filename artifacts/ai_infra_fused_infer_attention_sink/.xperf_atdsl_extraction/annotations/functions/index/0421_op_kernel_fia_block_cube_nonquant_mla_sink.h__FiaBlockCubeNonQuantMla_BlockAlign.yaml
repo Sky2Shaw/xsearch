@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:74:BlockAlign
+  function_name: BlockAlign
+  qualified_name: FiaBlockCubeNonQuantMla::BlockAlign
+  canonical_name: FiaBlockCubeNonQuantMla::BlockAlign
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla
+  owner_template_args: []
+  template_params:
+  - template<typename T>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 74
+    end: 82
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

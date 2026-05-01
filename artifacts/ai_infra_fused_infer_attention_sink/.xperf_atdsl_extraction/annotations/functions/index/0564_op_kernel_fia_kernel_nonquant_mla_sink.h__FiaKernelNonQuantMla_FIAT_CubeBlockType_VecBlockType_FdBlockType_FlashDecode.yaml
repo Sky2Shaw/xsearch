@@ -1,0 +1,40 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_mla_sink.h:648:FlashDecode
+  function_name: FlashDecode
+  qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+  canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>
+  owner_template_args:
+  - FIAT
+  - CubeBlockType
+  - VecBlockType
+  - FdBlockType
+  template_params:
+  - template<typename FIAT,typename CubeBlockType,typename VecBlockType,typename FdBlockType>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 648
+    end: 694
+  rough_role: sparse_or_mask_range
+  importance_score: 90
+  importance_reasons:
+  - structure_signal:tiling,s2
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - GetValue
+  - GetBaseMetaAbsIndex
+  - InitBuffers
+  - ICachePreLoad
+  - GetAICMetaAbsIndex
+  - GetAIVMetaAbsIndex
+  - SyncAll
+  - AllocEventID
+  - InitDecodeParams
+  - FreeEventID
+  called_by:
+  - Process

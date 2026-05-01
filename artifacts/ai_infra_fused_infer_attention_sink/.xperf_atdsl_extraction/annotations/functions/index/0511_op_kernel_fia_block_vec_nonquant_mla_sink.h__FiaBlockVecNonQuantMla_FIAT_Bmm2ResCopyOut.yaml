@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:1099:Bmm2ResCopyOut
+  function_name: Bmm2ResCopyOut
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::Bmm2ResCopyOut
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::Bmm2ResCopyOut
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 1099
+    end: 1115
+  rough_role: memory_transfer
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Bmm2FDDataCopyOut
+  - Bmm2CastAndCopyOut
+  called_by: []

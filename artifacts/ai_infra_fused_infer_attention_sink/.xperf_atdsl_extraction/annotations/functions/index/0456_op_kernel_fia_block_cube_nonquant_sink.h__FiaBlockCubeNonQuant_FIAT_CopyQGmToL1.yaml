@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:478:CopyQGmToL1
+  function_name: CopyQGmToL1
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::CopyQGmToL1
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::CopyQGmToL1
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 478
+    end: 493
+  rough_role: unknown
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CopyQDealSizeToL1
+  - Align
+  called_by:
+  - DealMm1SingleMKN

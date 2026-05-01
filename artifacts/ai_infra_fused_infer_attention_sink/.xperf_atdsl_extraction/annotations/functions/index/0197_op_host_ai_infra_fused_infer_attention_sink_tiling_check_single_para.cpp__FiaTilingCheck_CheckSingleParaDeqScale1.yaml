@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp:296:CheckSingleParaDeqScale1
+  function_name: CheckSingleParaDeqScale1
+  qualified_name: FiaTilingCheck::CheckSingleParaDeqScale1
+  canonical_name: FiaTilingCheck::CheckSingleParaDeqScale1
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+  line_range:
+    start: 296
+    end: 303
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - CheckDtypeSupport
+  called_by:
+  - CheckSinglePara

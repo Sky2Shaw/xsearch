@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:931:FixpipeCToGM
+  function_name: FixpipeCToGM
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::FixpipeCToGM
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::FixpipeCToGM
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  - template<CubeFormat GMFormat>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 931
+    end: 957
+  rough_role: unknown
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - Align
+  - ASCENDC_ASSERT
+  - KERNEL_LOG
+  called_by: []

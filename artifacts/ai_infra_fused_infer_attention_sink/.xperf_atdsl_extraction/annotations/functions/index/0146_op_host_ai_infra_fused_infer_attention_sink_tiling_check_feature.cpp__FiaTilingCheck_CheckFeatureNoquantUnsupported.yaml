@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp:87:CheckFeatureNoquantUnsupported
+  function_name: CheckFeatureNoquantUnsupported
+  qualified_name: FiaTilingCheck::CheckFeatureNoquantUnsupported
+  canonical_name: FiaTilingCheck::CheckFeatureNoquantUnsupported
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+  line_range:
+    start: 87
+    end: 107
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - OPS_CHECK
+  - OPS_LOG_E
+  - QuantModeToSerialString
+  - c_str
+  called_by:
+  - CheckFeatureGqaNoquantUnsupported
+  - CheckFeatureMlaNoquantUnsupported

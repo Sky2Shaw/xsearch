@@ -1,0 +1,72 @@
+suggested_dsl_sections:
+- name: pipeline.stage_graph
+  purpose: Represent owner-qualified MM1, Vec1, MM2, Vec2/output, nUpdate, and FD merge stages without collapsing templates.
+  fields:
+  - path: pipeline.stages[].canonical_name
+    meaning: Full template-qualified stage identity.
+    evidence: reports/function_index.yaml
+    confidence: high
+  - path: pipeline.stages[].owner_template_args
+    meaning: Template owner args such as FIAT, Config, CubeBlockType.
+    evidence: reports/function_index.yaml
+    confidence: high
+  - path: pipeline.stages[].sync_edges
+    meaning: CrossCoreWait/Set dependencies between stages.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:506-522
+    confidence: high
+- name: memory.l1_residency
+  purpose: Model Q/K/V/P L1 buffer reuse, event release, and snapshot signatures.
+  fields:
+  - path: memory.l1.gqa.v_snapshot_signature
+    meaning: GQA V reuse keyed by batch/head/S2 coordinate.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1140-1176
+    confidence: high
+  - path: memory.l1.gqa.q_snapshot_signature
+    meaning: GQA Q reuse keyed by batch/head/gS1 coordinate.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:988-1050
+    confidence: high
+- name: mla.nupdate
+  purpose: Represent MLA row-wise correction side channel and its MM2 atomic accumulation.
+  fields:
+  - path: mla.nupdate.compute_formula
+    meaning: n/cof/eps/clamp/scale sequence.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    confidence: high
+  - path: mla.nupdate.atomic_target
+    meaning: mm2ResInt32Gm atomic-add destination.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:700-713
+    confidence: high
+  - path: mla.nupdate.mm2_sync
+    meaning: syncV1NupdateC2 before first MM2 fixpipe.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
+    confidence: high
+- name: flash_decode.merge
+  purpose: Represent split-KV partial O/LSE export, FD metadata partition, and stable final merge.
+  fields:
+  - path: flash_decode.fdparams.metadata_arrays
+    meaning: AIC/AIV metadata arrays passed to FD service.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:731-761
+    confidence: high
+  - path: flash_decode.merge.weight_formula
+    meaning: ColMax, RowSub, Exp, sum-weight, divide normalization.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:258-290
+    confidence: high
+  - path: flash_decode.merge.output_layouts
+    meaning: BSH/BNSD/NBSD/TND/NTD output copy choices.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:292-349
+    confidence: high
+- name: workspace.layout
+  purpose: Encode normal, MLA nUpdate, and FD workspace sizes and offsets.
+  fields:
+  - path: workspace.normal.mm1_vec1_mm2_vec2
+    meaning: Preload-scaled normal workspace regions.
+    evidence: op_host/fia_tiling_nonquant_sink.cpp:517-530
+    confidence: high
+  - path: workspace.mla.nupdate_softmax_sum
+    meaning: Extra MLA int32 nUpdate and softmax sum regions.
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-508
+    confidence: high
+  - path: workspace.flash_decode.accum_lse
+    meaning: FD accumOut and LSE sum/max sizing.
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:511-517
+    confidence: high

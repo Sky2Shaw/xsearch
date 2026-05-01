@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:351:UpdateKey
+  function_name: UpdateKey
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::UpdateKey
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::UpdateKey
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 351
+    end: 360
+  rough_role: sparse_or_mask_range
+  importance_score: 14
+  importance_reasons:
+  - structure_signal:s2
+  extraction_level: index
+  calls:
+  - InitKeyGm
+  - Init
+  called_by:
+  - ComputeMm1

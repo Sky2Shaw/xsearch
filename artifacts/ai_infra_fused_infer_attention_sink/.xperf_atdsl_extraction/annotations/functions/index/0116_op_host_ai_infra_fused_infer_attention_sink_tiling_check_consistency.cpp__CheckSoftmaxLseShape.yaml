@@ -1,0 +1,22 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:693:CheckSoftmaxLseShape
+  function_name: CheckSoftmaxLseShape
+  qualified_name: CheckSoftmaxLseShape
+  canonical_name: CheckSoftmaxLseShape
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 693
+    end: 695
+  rough_role: vector_softmax_or_lse
+  importance_score: 70
+  importance_reasons:
+  - known_deep_name_pattern
+  extraction_level: deep
+  calls: []
+  called_by: []

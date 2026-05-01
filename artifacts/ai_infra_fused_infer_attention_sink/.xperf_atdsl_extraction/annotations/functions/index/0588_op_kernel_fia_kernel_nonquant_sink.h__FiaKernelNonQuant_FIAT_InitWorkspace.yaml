@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:370:InitWorkspace
+  function_name: InitWorkspace
+  qualified_name: FiaKernelNonQuant<FIAT>::InitWorkspace
+  canonical_name: FiaKernelNonQuant<FIAT>::InitWorkspace
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 370
+    end: 412
+  rough_role: workspace_or_address_helper
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  - structure_signal:tiling,workspace
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - SetGlobalBuffer
+  - GetBlockNum
+  called_by: []

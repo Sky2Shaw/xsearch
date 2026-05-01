@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:181:AllocEventID
+  function_name: AllocEventID
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::AllocEventID
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::AllocEventID
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: mm2
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 181
+    end: 194
+  rough_role: vector_softmax_or_lse
+  importance_score: 90
+  importance_reasons:
+  - attention_stage:mm2
+  - compute_sync_api:SetFlag
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls: []
+  called_by:
+  - FlashDecode
+  - Process

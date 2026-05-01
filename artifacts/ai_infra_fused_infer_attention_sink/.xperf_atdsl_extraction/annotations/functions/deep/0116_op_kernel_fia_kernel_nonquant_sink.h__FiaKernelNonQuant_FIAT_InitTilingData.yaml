@@ -1,0 +1,118 @@
+function_annotation:
+  function_name: InitTilingData
+  qualified_name: FiaKernelNonQuant<FIAT>::InitTilingData
+  canonical_name: FiaKernelNonQuant<FIAT>::InitTilingData
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: tiling
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 226
+    end: 292
+  role: Workspace sizing or address-layout helper.
+  confidence: medium
+  code_behavior:
+    summary: Workspace sizing or address-layout helper.
+    key_steps:
+    - 'Calls: GetValue, GetBaseMetaAbsIndex, Align, ARRAY_SIZE, copy_data_align64.'
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaKernelNonQuant<FIAT>::InitTilingData
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - tiling
+    - nonquant
+    - calls:GetValue,GetBaseMetaAbsIndex,Align,ARRAY_SIZE,copy_data_align64
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    - nBufferMBaseSize
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: mBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292
+  - name: s2BaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292
+  - name: headDimAlign
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292
+  - name: nBufferMBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292
+  constraints:
+  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - workspace.layout
+  suggested_dsl_fields:
+  - path: workspace.layout.source_function
+    meaning: Lowering evidence from FiaKernelNonQuant<FIAT>::InitTilingData
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:226-292
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

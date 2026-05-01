@@ -1,0 +1,32 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:657:ProcessAmlaNupdate
+  function_name: ProcessAmlaNupdate
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 657
+    end: 717
+  rough_role: sparse_or_mask_range
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:WaitFlag,SetFlag
+  - structure_signal:s1,tail
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - Align
+  called_by:
+  - ProcessVec1L

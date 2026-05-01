@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp:135:CheckFeatureNoquantBlockSize
+  function_name: CheckFeatureNoquantBlockSize
+  qualified_name: CheckFeatureNoquantBlockSize
+  canonical_name: CheckFeatureNoquantBlockSize
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+  line_range:
+    start: 135
+    end: 144
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - CheckFeatureHeadDim
+  called_by: []

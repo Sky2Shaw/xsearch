@@ -1,0 +1,32 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:835:ComputeMm2
+  function_name: ComputeMm2
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::ComputeMm2
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::ComputeMm2
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 835
+    end: 878
+  rough_role: unknown
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - critical_attention_stage_function
+  - attention_stage:mm2
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - UpdateValue
+  - CrossCoreWaitFlag
+  - DealMm2SingleMKN
+  called_by:
+  - ExecuteTask

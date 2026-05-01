@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:418:AllocEventID
+  function_name: AllocEventID
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::AllocEventID
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::AllocEventID
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 418
+    end: 431
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:SetFlag
+  - branch_signal
+  extraction_level: index
+  calls: []
+  called_by:
+  - FlashDecode
+  - Process

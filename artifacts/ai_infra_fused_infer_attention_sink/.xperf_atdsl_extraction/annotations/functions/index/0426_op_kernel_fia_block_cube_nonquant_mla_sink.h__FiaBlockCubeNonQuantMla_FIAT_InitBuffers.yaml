@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:367:InitBuffers
+  function_name: InitBuffers
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::InitBuffers
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::InitBuffers
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 367
+    end: 391
+  rough_role: unknown
+  importance_score: 88
+  importance_reasons:
+  - known_deep_name_pattern
+  - memory_tensor_api:L1,L0C
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Init
+  - InitBuffer
+  called_by:
+  - FlashDecode
+  - Process

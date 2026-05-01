@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_sink.cpp:381:GetL2CacheOffFlag
+  function_name: GetL2CacheOffFlag
+  qualified_name: FiaTilingNonQuant::GetL2CacheOffFlag
+  canonical_name: FiaTilingNonQuant::GetL2CacheOffFlag
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 381
+    end: 419
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:s1
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetStorageShape
+  - GetShapeSize
+  - PlatformAscendC
+  - GetCoreMemSize
+  - OPS_LOG_D
+  called_by:
+  - FillTilingBaseParams

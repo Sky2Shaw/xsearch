@@ -1,0 +1,22 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:350:Brcb
+  function_name: Brcb
+  qualified_name: Brcb
+  canonical_name: Brcb
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 350
+    end: 351
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

@@ -1,0 +1,32 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:485:ComputeMm1
+  function_name: ComputeMm1
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm1
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 485
+    end: 501
+  rough_role: unknown
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - critical_attention_stage_function
+  - attention_stage:mm1
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - InitKeyGm
+  - UpdateKey
+  - ProcessMm1
+  called_by:
+  - ExecuteTask

@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:314:InitFlashDecodeGlobalTensor
+  function_name: InitFlashDecodeGlobalTensor
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::InitFlashDecodeGlobalTensor
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::InitFlashDecodeGlobalTensor
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 314
+    end: 323
+  rough_role: unknown
+  importance_score: 90
+  importance_reasons:
+  - known_deep_name_pattern
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls: []
+  called_by: []

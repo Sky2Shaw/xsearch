@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_sink.h:876:Vec1GetSinkValue
+  function_name: Vec1GetSinkValue
+  qualified_name: FiaBlockVecNonQuant<FIAT>::Vec1GetSinkValue
+  canonical_name: FiaBlockVecNonQuant<FIAT>::Vec1GetSinkValue
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 876
+    end: 910
+  rough_role: sparse_or_mask_range
+  importance_score: 47
+  importance_reasons:
+  - attention_stage:vec1
+  - structure_signal:s1
+  - branch_signal
+  extraction_level: brief
+  calls:
+  - SetValue
+  - ToFloat
+  - GetValue
+  called_by:
+  - Vec1SinkCompute

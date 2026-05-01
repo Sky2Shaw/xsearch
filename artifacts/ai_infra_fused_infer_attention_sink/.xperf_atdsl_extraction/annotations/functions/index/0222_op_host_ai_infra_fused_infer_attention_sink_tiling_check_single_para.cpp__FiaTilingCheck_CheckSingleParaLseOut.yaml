@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp:470:CheckSingleParaLseOut
+  function_name: CheckSingleParaLseOut
+  qualified_name: FiaTilingCheck::CheckSingleParaLseOut
+  canonical_name: FiaTilingCheck::CheckSingleParaLseOut
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: softmax
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+  line_range:
+    start: 470
+    end: 477
+  rough_role: vector_softmax_or_lse
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CheckDtypeSupport
+  called_by: []

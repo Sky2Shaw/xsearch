@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp:369:CheckSingleParaKvPaddingSize
+  function_name: CheckSingleParaKvPaddingSize
+  qualified_name: FiaTilingCheck::CheckSingleParaKvPaddingSize
+  canonical_name: FiaTilingCheck::CheckSingleParaKvPaddingSize
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+  line_range:
+    start: 369
+    end: 382
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CheckFormatSupport
+  - CheckDimNumSupport
+  called_by:
+  - CheckSinglePara

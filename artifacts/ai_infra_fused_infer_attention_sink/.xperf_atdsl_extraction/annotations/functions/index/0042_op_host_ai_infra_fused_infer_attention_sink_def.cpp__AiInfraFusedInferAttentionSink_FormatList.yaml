@@ -1,0 +1,23 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_def.cpp:324:FormatList
+  function_name: FormatList
+  qualified_name: AiInfraFusedInferAttentionSink::FormatList
+  canonical_name: AiInfraFusedInferAttentionSink::FormatList
+  owner: AiInfraFusedInferAttentionSink
+  owner_qualified: AiInfraFusedInferAttentionSink
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_def.cpp
+  line_range:
+    start: 324
+    end: 331
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - this->Output

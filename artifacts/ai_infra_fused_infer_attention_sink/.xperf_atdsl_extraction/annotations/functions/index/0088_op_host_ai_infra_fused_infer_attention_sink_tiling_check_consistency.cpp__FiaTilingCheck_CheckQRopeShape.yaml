@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:79:CheckQRopeShape
+  function_name: CheckQRopeShape
+  qualified_name: FiaTilingCheck::CheckQRopeShape
+  canonical_name: FiaTilingCheck::CheckQRopeShape
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 79
+    end: 94
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:s1
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CompareShape
+  called_by: []

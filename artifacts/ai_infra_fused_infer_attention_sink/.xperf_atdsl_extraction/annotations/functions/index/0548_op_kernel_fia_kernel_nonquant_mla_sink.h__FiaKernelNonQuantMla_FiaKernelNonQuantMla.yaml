@@ -1,0 +1,22 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_mla_sink.h:39:FiaKernelNonQuantMla
+  function_name: FiaKernelNonQuantMla
+  qualified_name: FiaKernelNonQuantMla::FiaKernelNonQuantMla
+  canonical_name: FiaKernelNonQuantMla::FiaKernelNonQuantMla
+  owner: FiaKernelNonQuantMla
+  owner_qualified: FiaKernelNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: unknown
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  line_range:
+    start: 39
+    end: 40
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by: []

@@ -1,0 +1,355 @@
+analysis_result:
+  metadata:
+    operator_family: AiInfraFusedInferAttentionSink no-quant GQA/MLA sink attention
+    target_root: /Users/xiaoleixin/code/omni-ops-performance/inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink
+    output_root: /Users/xiaoleixin/code/omni-ops-performance/inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/.xperf_atdsl_extraction
+    generated_at: '2026-05-01T01:46:30.097086+00:00'
+  coverage:
+    files_total: 38
+    functions_total: 616
+    functions_indexed: 616
+    functions_brief: 18
+    functions_deep: 126
+    known_gaps:
+    - Final DSL must require canonical_name/owner/owner_template_args to avoid ComputeMm2 collapsing across GQA, MLA, and
+      generic nonquant.
+    - Current schema candidate needs a way to encode ordered vector numeric micro-steps, not only the existence of nUpdate.
+    - FD merge relies on metadata arrays whose producer is outside the analyzed kernel body; Stage 2 should bind producer
+      and consumer schemas.
+    - split_core range construction is referenced by host tiling but outside the current extraction boundary.
+  operator_summary:
+    role: Fused infer attention sink family with generic nonquant, GQA, MLA, and split-KV FlashDecode paths.
+    major_paths:
+    - Host tiling computes normal and FlashDecode workspace sizes and validates feature gates.
+    - Kernel schedulers use RunInfo rings to overlap MM1, Vec1/MM2, and Vec2 across AIC/AIV.
+    - GQA cube path has owner-qualified ComputeMm1/ComputeMm2 with Q/V L1 reuse and sink sparse handling.
+    - MLA cube path has owner-qualified ComputeMm1/ComputeMm2/ProcessMm1/ProcessMm2 with n-buffer splits.
+    - MLA vector path computes online softmax, emits nUpdate, applies nUpdate atomic correction, then writes output/LSE.
+    - FlashDecode vector post-pass merges split-KV partial output with stable LSE weights.
+    confidence: high
+  files_analyzed:
+  - file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    file_role: API wrapper or op registration surface.
+    artifact: annotations/files/op_api_aclnn_ai_infra_fused_infer_attention_sink_cpp.yaml
+  - file: op_api/aclnn_ai_infra_fused_infer_attention_sink.h
+    file_role: API wrapper or op registration surface.
+    artifact: annotations/files/op_api_aclnn_ai_infra_fused_infer_attention_sink_h.yaml
+  - file: op_api/ai_infra_fused_infer_attention_sink.cpp
+    file_role: API wrapper or op registration surface.
+    artifact: annotations/files/op_api_ai_infra_fused_infer_attention_sink_cpp.yaml
+  - file: op_api/ai_infra_fused_infer_attention_sink.h
+    file_role: API wrapper or op registration surface.
+    artifact: annotations/files/op_api_ai_infra_fused_infer_attention_sink_h.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_def.cpp
+    file_role: Source file with indexed helper or integration code.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_def_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+    file_role: Source file with indexed helper or integration code.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_infershape_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_h.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_check_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_check_h.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_check_consistency_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_check_existence_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_check_feature_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_check_single_para_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_compile_info.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_compile_info_h.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_index.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_index_h.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_info_parser_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_info_parser_h.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_register.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_register_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_v3_cpp.yaml
+  - file: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_ai_infra_fused_infer_attention_sink_tiling_v3_h.yaml
+  - file: op_host/fallback_ai_infra_fused_infer_attention_sink.cpp
+    file_role: Source file with indexed helper or integration code.
+    artifact: annotations/files/op_host_fallback_ai_infra_fused_infer_attention_sink_cpp.yaml
+  - file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_fia_tiling_nonquant_mla_sink_cpp.yaml
+  - file: op_host/fia_tiling_nonquant_mla_sink.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_fia_tiling_nonquant_mla_sink_h.yaml
+  - file: op_host/fia_tiling_nonquant_sink.cpp
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_fia_tiling_nonquant_sink_cpp.yaml
+  - file: op_host/fia_tiling_nonquant_sink.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_host_fia_tiling_nonquant_sink_h.yaml
+  - file: op_kernel/ai_infra_fused_infer_attention_sink.cpp
+    file_role: Source file with indexed helper or integration code.
+    artifact: annotations/files/op_kernel_ai_infra_fused_infer_attention_sink_cpp.yaml
+  - file: op_kernel/ai_infra_fused_infer_attention_sink_metadata.h
+    file_role: Kernel metadata ABI definitions.
+    artifact: annotations/files/op_kernel_ai_infra_fused_infer_attention_sink_metadata_h.yaml
+  - file: op_kernel/ai_infra_fused_infer_attention_sink_tilingkey.h
+    file_role: Host tiling, workspace sizing, validation, or tiling-key helper.
+    artifact: annotations/files/op_kernel_ai_infra_fused_infer_attention_sink_tilingkey_h.yaml
+  - file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    file_role: GQA cube MM1/MM2 service with L1 reuse and sink sparse handling.
+    artifact: annotations/files/op_kernel_fia_block_cube_nonquant_gqa_sink_h.yaml
+  - file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+    file_role: MLA cube service with 512+64 rope split MM1 and nUpdate-aware MM2.
+    artifact: annotations/files/op_kernel_fia_block_cube_nonquant_mla_sink_h.yaml
+  - file: op_kernel/fia_block_cube_nonquant_sink.h
+    file_role: Generic nonquant cube MM1/MM2 service.
+    artifact: annotations/files/op_kernel_fia_block_cube_nonquant_sink_h.yaml
+  - file: op_kernel/fia_block_vec_flashdecode_sink.h
+    file_role: FlashDecode split-KV merge vector service.
+    artifact: annotations/files/op_kernel_fia_block_vec_flashdecode_sink_h.yaml
+  - file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    file_role: MLA vector service for online softmax, nUpdate, output/LSE, and FD partial export.
+    artifact: annotations/files/op_kernel_fia_block_vec_nonquant_mla_sink_h.yaml
+  - file: op_kernel/fia_block_vec_nonquant_sink.h
+    file_role: Generic/GQA vector service for softmax, output, and FD partial export.
+    artifact: annotations/files/op_kernel_fia_block_vec_nonquant_sink_h.yaml
+  - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+    file_role: MLA kernel scheduler and FD orchestrator.
+    artifact: annotations/files/op_kernel_fia_kernel_nonquant_mla_sink_h.yaml
+  - file: op_kernel/fia_kernel_nonquant_sink.h
+    file_role: Generic/GQA kernel scheduler and FD orchestrator.
+    artifact: annotations/files/op_kernel_fia_kernel_nonquant_sink_h.yaml
+  - file: op_kernel/kernel_common_sink.h
+    file_role: Source file with indexed helper or integration code.
+    artifact: annotations/files/op_kernel_kernel_common_sink_h.yaml
+  optimization_cards:
+  - id: OC-GQA-MM2-L1-V-REUSE
+    title: GQA MM2 reuses V L1 tiles across M slices
+    pattern: ComputeMm2 caches V tiles with vL1Snapshot while streaming P tiles from Vec1 output.
+    evidence:
+    - op_kernel/fia_block_cube_nonquant_gqa_sink.h:1138-1222
+    criteria_met:
+    - performance relevance
+    - hard synchronization constraint
+    - DSL lowering impact
+    confidence: high
+  - id: OC-MLA-MM2-NUPDATE-BARRIER
+    title: MLA MM2 waits for nUpdate before first fixpipe
+    pattern: ProcessMm2 waits syncV1NupdateC2 and uses atomic add for non-first S-inner loops.
+    evidence:
+    - op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1057
+    criteria_met:
+    - correctness risk
+    - stage coupling
+    - DSL mapping
+    confidence: high
+  - id: OC-MLA-NUPDATE-SIDECHANNEL
+    title: MLA vector stage emits row-wise nUpdate side channel
+    pattern: AmlaVecCompute derives nUpdate, ProcessAmlaNupdate broadcasts it over 128-wide D groups, then atomically adds
+      to MM2 workspace.
+    evidence:
+    - op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    criteria_met:
+    - reusable pattern
+    - correctness risk
+    - lowering impact
+    confidence: high
+  - id: OC-FD-STABLE-MERGE
+    title: FlashDecode stable merge combines split-KV partials
+    pattern: FD merge computes max/sum-normalized weights then reduces partial accumOut before final copy out.
+    evidence:
+    - op_kernel/fia_block_vec_flashdecode_sink.h:258-290
+    - op_kernel/fia_block_vec_flashdecode_sink.h:437-556
+    criteria_met:
+    - performance relevance
+    - correctness risk
+    - DSL mapping
+    confidence: high
+  - id: OC-WORKSPACE-FD-ABI
+    title: Host workspace formulas encode normal and FD region ABI
+    pattern: Normal workspace accounts for mm1/vec1/mm2/vec2 and MLA nUpdate; FD workspace accounts for accumOut plus LSE
+      sum/max.
+    evidence:
+    - op_host/fia_tiling_nonquant_mla_sink.cpp:491-517
+    - op_host/fia_tiling_nonquant_sink.cpp:517-539
+    criteria_met:
+    - hard constraint
+    - tunable parameter
+    - DSL mapping
+    confidence: high
+  - id: OC-RUNINFO-THREE-STAGE-RING
+    title: RunInfo ring overlaps MM1, Vec1/MM2, and Vec2
+    pattern: Kernel ExecuteTask uses current, previous, and older RunInfo slots to overlap AIC/AIV stages.
+    evidence:
+    - op_kernel/fia_kernel_nonquant_sink.h:881-908
+    - op_kernel/fia_kernel_nonquant_mla_sink.h:834-862
+    criteria_met:
+    - pipeline pattern
+    - performance relevance
+    - lowering impact
+    confidence: high
+  tunable_knobs:
+  - name: s2BaseSize
+    scope: tiling and RunInfo S2 loop
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1001-1003
+  - name: mBaseSize
+    scope: M tile and FD gS1 base
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:443-476
+  - name: nBufferMBaseSize
+    scope: MLA n-buffer split
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:512-519
+  - name: preLoadNum
+    scope: workspace and pipeline ring slots
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:501-508
+  - name: headDimAlign
+    scope: MM2/FD workspace stride
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:463-468
+  - name: splitKVFlag
+    scope: FD workspace inclusion
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:520-526
+  constraints:
+  - id: C-TEMPLATE-IDENTITY
+    description: Same-name stage functions must preserve owner/template identity.
+    evidence: reports/function_index.yaml
+  - id: C-GQA-MM2-SYNC
+    description: GQA MM2 must wait syncV1C2 and set syncC2V2 around PV compute.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1125-1237
+  - id: C-MLA-MM2-NUPDATE
+    description: MLA MM2 waits syncV1NupdateC2 before first fixpipe.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
+  - id: C-MLA-NUPDATE-FIRST-LOOP
+    description: ProcessAmlaNupdate returns on first S-inner loop.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-666
+  - id: C-FD-METADATA
+    description: FlashDecode requires AIC/AIV metadata arrays and usedVecNumOfFd bounds.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:438-458
+  - id: C-WORKSPACE-MLA-FD
+    description: MLA workspace includes nUpdate/softmaxSum plus FD accumOut/LSE when splitKV is enabled.
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-526
+  risks:
+  - id: R-MM2-OWNER-COLLAPSE
+    description: Collapsing ComputeMm2 across owners hides distinct GQA, MLA, and generic nonquant semantics.
+    evidence: reports/function_index.yaml
+  - id: R-GQA-V-L1-LIFETIME
+    description: Incorrect V_EVENT release can overwrite reusable V L1 tiles.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1140-1222
+  - id: R-MLA-NUPDATE-NUMERIC
+    description: Changing AmlaVecCompute order can alter nUpdate correction numerics.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+  - id: R-MLA-MM2-ATOMIC
+    description: Missing SetAtomicNone or wrong stride can corrupt MM2 accumulation.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1039-1057
+  - id: R-FD-LSE-MERGE
+    description: Wrong LSE max/sum offsets or weights corrupt split-KV final output.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:241-290
+  suggested_dsl_sections:
+  - name: pipeline.stage_graph
+    purpose: Represent owner-qualified MM1, Vec1, MM2, Vec2/output, nUpdate, and FD merge stages without collapsing templates.
+    fields:
+    - path: pipeline.stages[].canonical_name
+      meaning: Full template-qualified stage identity.
+      evidence: reports/function_index.yaml
+      confidence: high
+    - path: pipeline.stages[].owner_template_args
+      meaning: Template owner args such as FIAT, Config, CubeBlockType.
+      evidence: reports/function_index.yaml
+      confidence: high
+    - path: pipeline.stages[].sync_edges
+      meaning: CrossCoreWait/Set dependencies between stages.
+      evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:506-522
+      confidence: high
+  - name: memory.l1_residency
+    purpose: Model Q/K/V/P L1 buffer reuse, event release, and snapshot signatures.
+    fields:
+    - path: memory.l1.gqa.v_snapshot_signature
+      meaning: GQA V reuse keyed by batch/head/S2 coordinate.
+      evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1140-1176
+      confidence: high
+    - path: memory.l1.gqa.q_snapshot_signature
+      meaning: GQA Q reuse keyed by batch/head/gS1 coordinate.
+      evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:988-1050
+      confidence: high
+  - name: mla.nupdate
+    purpose: Represent MLA row-wise correction side channel and its MM2 atomic accumulation.
+    fields:
+    - path: mla.nupdate.compute_formula
+      meaning: n/cof/eps/clamp/scale sequence.
+      evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+      confidence: high
+    - path: mla.nupdate.atomic_target
+      meaning: mm2ResInt32Gm atomic-add destination.
+      evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:700-713
+      confidence: high
+    - path: mla.nupdate.mm2_sync
+      meaning: syncV1NupdateC2 before first MM2 fixpipe.
+      evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
+      confidence: high
+  - name: flash_decode.merge
+    purpose: Represent split-KV partial O/LSE export, FD metadata partition, and stable final merge.
+    fields:
+    - path: flash_decode.fdparams.metadata_arrays
+      meaning: AIC/AIV metadata arrays passed to FD service.
+      evidence: op_kernel/fia_kernel_nonquant_sink.h:731-761
+      confidence: high
+    - path: flash_decode.merge.weight_formula
+      meaning: ColMax, RowSub, Exp, sum-weight, divide normalization.
+      evidence: op_kernel/fia_block_vec_flashdecode_sink.h:258-290
+      confidence: high
+    - path: flash_decode.merge.output_layouts
+      meaning: BSH/BNSD/NBSD/TND/NTD output copy choices.
+      evidence: op_kernel/fia_block_vec_flashdecode_sink.h:292-349
+      confidence: high
+  - name: workspace.layout
+    purpose: Encode normal, MLA nUpdate, and FD workspace sizes and offsets.
+    fields:
+    - path: workspace.normal.mm1_vec1_mm2_vec2
+      meaning: Preload-scaled normal workspace regions.
+      evidence: op_host/fia_tiling_nonquant_sink.cpp:517-530
+      confidence: high
+    - path: workspace.mla.nupdate_softmax_sum
+      meaning: Extra MLA int32 nUpdate and softmax sum regions.
+      evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-508
+      confidence: high
+    - path: workspace.flash_decode.accum_lse
+      meaning: FD accumOut and LSE sum/max sizing.
+      evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:511-517
+      confidence: high
+  lowering_hints:
+  - hint: Lower stage functions by canonical owner-qualified identity, not bare function name.
+    evidence: reports/function_index.yaml
+    confidence: high
+  - hint: Represent MLA nUpdate as a vector-to-cube side channel with sync and atomic add semantics.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    confidence: high
+  - hint: Represent FlashDecode as a separate vector merge pass over partial O plus LSE sum/max.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:437-556
+    confidence: high
+  - hint: Workspace lowering should derive normal, MLA, and FD regions from host formulas.
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-526
+    confidence: high
+  open_questions:
+  - question: How is split_core constructing all FD and BN2/GS1/S2 partitions?
+    missing_evidence: split_core implementation is outside this target directory.
+  - question: Which Stage 2 DSL object should own metadata producer/consumer binding?
+    missing_evidence: Kernel consumes metadataGm, but producer layout is only partially visible through host metadata indexes.

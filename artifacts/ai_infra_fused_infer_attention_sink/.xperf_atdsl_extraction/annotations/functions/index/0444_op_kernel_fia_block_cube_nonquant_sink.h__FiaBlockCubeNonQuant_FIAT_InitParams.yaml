@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:236:InitParams
+  function_name: InitParams
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::InitParams
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::InitParams
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 236
+    end: 244
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 35
+  importance_reasons:
+  - known_deep_name_pattern
+  - simple_accessor_or_wrapper_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - DoOpTiling

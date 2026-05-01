@@ -1,0 +1,34 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp:124:GetQkvD
+  function_name: GetQkvD
+  qualified_name: GetQkvD
+  canonical_name: GetQkvD
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp
+  line_range:
+    start: 124
+    end: 180
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetInputShape
+  - GetOptionalInputShape
+  - GetStorageShape
+  - GetAttrs
+  - string
+  - GetDimNum
+  - GetDim
+  - GetValueD
+  called_by:
+  - CheckGqaDSupport
+  - CheckMlaDSupport
+  - isNotLegacyGQA

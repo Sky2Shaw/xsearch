@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:171:GetActualSeqLenQSize
+  function_name: GetActualSeqLenQSize
+  qualified_name: FiaInfoParser::GetActualSeqLenQSize
+  canonical_name: FiaInfoParser::GetActualSeqLenQSize
+  owner: FiaInfoParser
+  owner_qualified: FiaInfoParser
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 171
+    end: 176
+  rough_role: sparse_or_mask_range
+  importance_score: 14
+  importance_reasons:
+  - structure_signal:actualSeq
+  extraction_level: index
+  calls:
+  - GetActualSeqLenSize
+  called_by:
+  - GetBatchSize
+  - GetS1Size

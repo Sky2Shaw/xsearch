@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp:36:CheckRopeExistence
+  function_name: CheckRopeExistence
+  qualified_name: FiaTilingCheck::CheckRopeExistence
+  canonical_name: FiaTilingCheck::CheckRopeExistence
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  line_range:
+    start: 36
+    end: 61
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - OPS_CHECK
+  - OPS_LOG_E
+  - c_str
+  - QuantModeToSerialString
+  - OPS_LOG_I
+  - RopeModeToSerialString
+  called_by:
+  - CheckParaExistence

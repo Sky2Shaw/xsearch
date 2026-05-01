@@ -1,0 +1,99 @@
+function_annotation:
+  function_name: ComputeScaleValue
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 255
+    end: 289
+  role: FlashDecode setup, workspace sizing, or merge helper.
+  confidence: medium
+  code_behavior:
+    summary: FlashDecode setup, workspace sizing, or merge helper.
+    key_steps:
+    - 'Calls: Duplicate, ColMax, RowSub, Exp, Mul, ColAdd, MatDivsVec.'
+  dataflow:
+    inputs:
+    - FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - unknown
+  pipeline:
+    stages:
+    - flash_decode
+    - flash_decode
+    - calls:Duplicate,ColMax,RowSub,Exp,Mul,ColAdd
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:255-289'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - flash_decode.merge
+  suggested_dsl_fields:
+  - path: flash_decode.merge.source_function
+    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:255-289
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

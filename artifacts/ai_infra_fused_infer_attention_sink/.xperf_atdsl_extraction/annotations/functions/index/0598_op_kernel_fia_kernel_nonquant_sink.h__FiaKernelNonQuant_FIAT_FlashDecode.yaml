@@ -1,0 +1,37 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:722:FlashDecode
+  function_name: FlashDecode
+  qualified_name: FiaKernelNonQuant<FIAT>::FlashDecode
+  canonical_name: FiaKernelNonQuant<FIAT>::FlashDecode
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 722
+    end: 761
+  rough_role: sparse_or_mask_range
+  importance_score: 90
+  importance_reasons:
+  - structure_signal:tiling,s2
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - InitBuffers
+  - ICachePreLoad
+  - SyncAll
+  - GetValue
+  - GetBaseMetaAbsIndex
+  - GetAICMetaAbsIndex
+  - GetAIVMetaAbsIndex
+  - AllocEventID
+  - InitDecodeParams
+  - FreeEventID
+  called_by:
+  - Process

@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:41:TensorPreProcess
+  function_name: TensorPreProcess
+  qualified_name: TensorPreProcess
+  canonical_name: TensorPreProcess
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 41
+    end: 85
+  rough_role: unknown
+  importance_score: 78
+  importance_reasons:
+  - known_deep_name_pattern
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - OP_LOGD
+  - GetDataType
+  - Size
+  - GetViewShape
+  - GetDimNum
+  - SetViewShape
+  - SetDataType
+  called_by: []

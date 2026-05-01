@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:208:CopyAccumOutIn
+  function_name: CopyAccumOutIn
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::CopyAccumOutIn
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::CopyAccumOutIn
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 208
+    end: 228
+  rough_role: memory_transfer
+  importance_score: 90
+  importance_reasons:
+  - structure_signal:split
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - DataCopyPad
+  called_by:
+  - FlashDecode

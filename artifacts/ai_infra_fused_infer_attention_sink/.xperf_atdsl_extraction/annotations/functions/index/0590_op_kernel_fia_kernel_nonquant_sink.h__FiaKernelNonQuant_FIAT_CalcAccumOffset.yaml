@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_kernel_nonquant_sink.h:528:CalcAccumOffset
+  function_name: CalcAccumOffset
+  qualified_name: FiaKernelNonQuant<FIAT>::CalcAccumOffset
+  canonical_name: FiaKernelNonQuant<FIAT>::CalcAccumOffset
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: tiling
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 528
+    end: 556
+  rough_role: sparse_or_mask_range
+  importance_score: 30
+  importance_reasons:
+  - structure_signal:tiling,taskId,s2
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetValue
+  - GetAICMetaAbsIndex
+  called_by:
+  - Bmm2FDDataCopyOut
+  - ComputeLogSumExpAndCopyToGm

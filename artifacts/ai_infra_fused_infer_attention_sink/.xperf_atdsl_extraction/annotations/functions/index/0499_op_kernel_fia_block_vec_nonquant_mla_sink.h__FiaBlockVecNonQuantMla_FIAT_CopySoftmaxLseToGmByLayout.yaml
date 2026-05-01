@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:747:CopySoftmaxLseToGmByLayout
+  function_name: CopySoftmaxLseToGmByLayout
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: softmax
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 747
+    end: 771
+  rough_role: sparse_or_mask_range
+  importance_score: 82
+  importance_reasons:
+  - known_deep_name_pattern
+  - structure_signal:actualSeq
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - GetValue
+  - DataCopySoftmaxLseTND
+  - DataCopySoftmaxLseBSND
+  called_by: []

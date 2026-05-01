@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_mla_sink.h:474:CopyInMm2AToL1
+  function_name: CopyInMm2AToL1
+  qualified_name: FiaBlockCubeNonQuantMla<FIAT>::CopyInMm2AToL1
+  canonical_name: FiaBlockCubeNonQuantMla<FIAT>::CopyInMm2AToL1
+  owner: FiaBlockCubeNonQuantMla
+  owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+  line_range:
+    start: 474
+    end: 484
+  rough_role: unknown
+  importance_score: 35
+  importance_reasons:
+  - attention_stage:mm2
+  extraction_level: index
+  calls:
+  - CopyGmToL1
+  called_by:
+  - ProcessMm2

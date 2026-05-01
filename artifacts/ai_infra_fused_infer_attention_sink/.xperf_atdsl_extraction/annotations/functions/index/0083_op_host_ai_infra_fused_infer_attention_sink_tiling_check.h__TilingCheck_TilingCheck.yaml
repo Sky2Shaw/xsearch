@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check.h:59:TilingCheck
+  function_name: TilingCheck
+  qualified_name: TilingCheck::TilingCheck
+  canonical_name: TilingCheck::TilingCheck
+  owner: TilingCheck
+  owner_qualified: TilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.h
+  line_range:
+    start: 59
+    end: 61
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - fiaInfo_
+  called_by:
+  - FiaTilingCheck

@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp:134:Process
+  function_name: Process
+  qualified_name: FiaTilingCheck::Process
+  canonical_name: FiaTilingCheck::Process
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp
+  line_range:
+    start: 134
+    end: 139
+  rough_role: main_process
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - process_or_main_path
+  - branch_signal
+  extraction_level: deep
+  calls:
+  - Init
+  - CheckSinglePara
+  called_by:
+  - Check
+  - INVOKE_FIA_GQA_NO_QUANT_OP_IMPL
+  - INVOKE_FIA_OP_GENERAL_IMPL

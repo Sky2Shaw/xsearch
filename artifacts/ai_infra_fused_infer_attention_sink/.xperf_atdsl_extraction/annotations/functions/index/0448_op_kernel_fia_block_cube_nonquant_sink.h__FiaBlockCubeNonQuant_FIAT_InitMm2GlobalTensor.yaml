@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_sink.h:342:InitMm2GlobalTensor
+  function_name: InitMm2GlobalTensor
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::InitMm2GlobalTensor
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::InitMm2GlobalTensor
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 342
+    end: 350
+  rough_role: unknown
+  importance_score: 95
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  extraction_level: deep
+  calls: []
+  called_by: []

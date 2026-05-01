@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/ai_infra_fused_infer_attention_sink_metadata.h:64:GetAICMetaAbsIndex
+  function_name: GetAICMetaAbsIndex
+  qualified_name: GetAICMetaAbsIndex
+  canonical_name: GetAICMetaAbsIndex
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: metadata
+  file: op_kernel/ai_infra_fused_infer_attention_sink_metadata.h
+  line_range:
+    start: 64
+    end: 72
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 0
+  importance_reasons:
+  - simple_accessor_or_wrapper_penalty
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - CalcAccumOffset
+  - FlashDecode
+  - InitCalcParamsEach

@@ -1,0 +1,33 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:614:DealBmm1ResBaseBlock
+  function_name: DealBmm1ResBaseBlock
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::DealBmm1ResBaseBlock
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::DealBmm1ResBaseBlock
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm1
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 614
+    end: 654
+  rough_role: memory_transfer
+  importance_score: 100
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm1
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:DataCopy,WaitFlag,SetFlag
+  extraction_level: deep
+  calls:
+  - DataCopy
+  - ElewiseCompute
+  - SoftmaxFlashV2Compute
+  - AmlaVecCompute
+  - Cast
+  called_by:
+  - ProcessVec1SingleBuf

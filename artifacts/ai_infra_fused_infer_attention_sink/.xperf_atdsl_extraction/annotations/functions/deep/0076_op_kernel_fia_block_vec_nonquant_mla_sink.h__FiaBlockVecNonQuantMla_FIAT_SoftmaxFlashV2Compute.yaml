@@ -1,0 +1,124 @@
+function_annotation:
+  function_name: SoftmaxFlashV2Compute
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: softmax
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 440
+    end: 467
+  role: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+  confidence: medium
+  code_behavior:
+    summary: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+    key_steps:
+    - 'Calls: SoftMaxFlashV2TilingFunc, GetSize.'
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - softmax
+    - mla
+    - calls:SoftMaxFlashV2TilingFunc,GetSize
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:440-467'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - uint32_t baseOffset = mSplitInfo.nBufferStartM / 2 + startRow;
+    - uint32_t softmaxOutOffset = outIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset;
+    - inMaxTensor = softmaxMaxUb[inIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset];
+    - inSumTensor = softmaxSumUb[inIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset];
+    - mmResUb, softmaxSumUb[softmaxOutOffset], softmaxMaxUb[softmaxOutOffset], mmResUb,
+    - softmaxExpUb[softmaxOutOffset], inSumTensor, inMaxTensor, softmaxTmpUb, newTiling, srcShape);
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:440-467
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:440-467
+    confidence: medium
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:440-467
+    confidence: medium
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:440-467
+    confidence: medium
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::SoftmaxFlashV2Compute
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:440-467
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

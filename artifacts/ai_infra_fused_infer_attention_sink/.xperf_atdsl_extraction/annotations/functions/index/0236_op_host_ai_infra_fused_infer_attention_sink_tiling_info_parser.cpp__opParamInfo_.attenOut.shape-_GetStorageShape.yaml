@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp:97:opParamInfo_.attenOut.shape->GetStorageShape
+  function_name: opParamInfo_.attenOut.shape->GetStorageShape
+  qualified_name: opParamInfo_.attenOut.shape->GetStorageShape
+  canonical_name: opParamInfo_.attenOut.shape->GetStorageShape
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+  line_range:
+    start: 97
+    end: 103
+  rough_role: unknown
+  importance_score: 3
+  importance_reasons:
+  - branch_signal
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls:
+  - GetStorageShape
+  - GetShapeSize
+  - OPS_LOG_E
+  called_by: []

@@ -1,0 +1,127 @@
+function_annotation:
+  function_name: Bmm2FDDataCopyOut
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 988
+    end: 1014
+  role: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+  confidence: medium
+  code_behavior:
+    summary: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+    key_steps:
+    - 'Calls: DealInvalidRows, DealInvalidMaskRows, DataCopy, CalcAccumOffset, DataCopyPad.'
+    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
+    - Coordinates pipeline state with event or cross-core flags.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - unknown
+  pipeline:
+    stages:
+    - vec2
+    - mla
+    - calls:DealInvalidRows,DealInvalidMaskRows,DataCopy,CalcAccumOffset,DataCopyPad
+    sync:
+    - WaitFlag
+    - SetFlag
+  memory_behavior:
+    buffers:
+    - GlobalTensor
+    - LocalTensor
+    - accumOutGm
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:988-1014'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - uint64_t accumTmpOutNum = CalcAccumOffset(info.bIdx, info.gS1Idx);
+    - uint64_t offset = accumTmpOutNum * kvHeadNum * constInfo.mBaseSize * headDim +              // taskoffset
+    - "info.tndCoreStartKVSplitPos * kvHeadNum * constInfo.mBaseSize * headDim + // \u4EFD\u6570offset"
+    - "wsMStart * actualColumnCount;                                             // m\u8F74offset"
+    - GlobalTensor<T> dst = accumOutGm[offset];
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: mBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:988-1014
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Pad/copy stride mismatch can overrun row tails.
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:988-1014
+    confidence: medium
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:988-1014
+    confidence: medium
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:988-1014
+    confidence: medium
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::Bmm2FDDataCopyOut
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:988-1014
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

@@ -1,0 +1,31 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp:116:CheckDtypeAndSetQuantFlagGqa
+  function_name: CheckDtypeAndSetQuantFlagGqa
+  qualified_name: FiaTilingCheck::CheckDtypeAndSetQuantFlagGqa
+  canonical_name: FiaTilingCheck::CheckDtypeAndSetQuantFlagGqa
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: gqa
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+  line_range:
+    start: 116
+    end: 140
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: index
+  calls:
+  - VecContains
+  - OPS_LOG_E
+  - QuantModeToSerialString
+  - c_str
+  - DtypeDoubleListToStr
+  - DtypeListToStr
+  - OPS_LOG_I
+  called_by:
+  - CheckDtypeAndSetQuantFlag

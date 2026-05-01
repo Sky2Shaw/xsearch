@@ -1,0 +1,116 @@
+function_annotation:
+  function_name: CalcNormalWorkspaceSize
+  qualified_name: FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+  canonical_name: FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: mm2
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 489
+    end: 508
+  role: mla cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  confidence: high
+  code_behavior:
+    summary: mla cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - unknown
+  pipeline:
+    stages:
+    - mm2
+    - mla
+    - 'calls:'
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:489-508'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: mBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:489-508
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - memory.l1_residency
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.cube_stages
+  - workspace.layout
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:489-508
+    confidence: high
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:489-508
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:489-508
+    confidence: high
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:489-508
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

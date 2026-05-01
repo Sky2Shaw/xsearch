@@ -1,0 +1,120 @@
+function_annotation:
+  function_name: ProcessVec2L
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 921
+    end: 943
+  role: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+  confidence: high
+  code_behavior:
+    summary: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+    key_steps:
+    - 'Calls: GetBlockIdx, CrossCoreWaitFlag, ProcessVec2SingleBuf.'
+    - Coordinates pipeline state with event or cross-core flags.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - for
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - vec2
+    - mla
+    - calls:GetBlockIdx,CrossCoreWaitFlag,ProcessVec2SingleBuf
+    sync:
+    - WaitFlag
+    - CrossCoreWaitFlag
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - nBufferMBaseSize
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: nBufferMBaseSize
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - mla.nupdate
+  - mla.shape_contract
+  - pipeline.vector_stages
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: mla.nupdate.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
+    confidence: high
+  - path: mla.shape_contract.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
+    confidence: high
+  - path: pipeline.vector_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
+    confidence: high
+  - path: softmax.online_state.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
+    confidence: high
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - unknown

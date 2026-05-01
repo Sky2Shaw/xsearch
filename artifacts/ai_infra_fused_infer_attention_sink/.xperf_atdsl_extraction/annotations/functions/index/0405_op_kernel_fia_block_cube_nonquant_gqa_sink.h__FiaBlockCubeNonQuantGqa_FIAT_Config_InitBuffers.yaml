@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:648:InitBuffers
+  function_name: InitBuffers
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitBuffers
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitBuffers
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 648
+    end: 679
+  rough_role: unknown
+  importance_score: 90
+  importance_reasons:
+  - known_deep_name_pattern
+  - memory_tensor_api:L1,L0A,L0B,L0C
+  extraction_level: deep
+  calls:
+  - InitBuffer
+  - Init
+  called_by:
+  - FlashDecode
+  - Process

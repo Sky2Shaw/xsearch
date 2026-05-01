@@ -1,0 +1,39 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp:282:InferShapeAiInfraFusedInferAttentionSink
+  function_name: InferShapeAiInfraFusedInferAttentionSink
+  qualified_name: InferShapeAiInfraFusedInferAttentionSink
+  canonical_name: InferShapeAiInfraFusedInferAttentionSink
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+  line_range:
+    start: 282
+    end: 359
+  rough_role: vector_softmax_or_lse
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - OP_LOGE
+  - OP_LOGD
+  - GetNodeName
+  - GetInputShape
+  - OP_CHECK_NULL_WITH_CONTEXT
+  - GetDynamicInputShape
+  - GetOptionalInputShape
+  - GetOutputShape
+  - GetAttrs
+  - GetInt
+  - GetDimNum
+  - GetDim
+  - SetDimNum
+  - GetQueryAndOutLayout
+  - GetValueD
+  - InferAttentionOutShape
+  - InferLseOutShape
+  called_by: []

@@ -1,0 +1,45 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:227:Align
+  function_name: Align
+  qualified_name: FiaBlockCubeNonQuantGqa::Align
+  canonical_name: FiaBlockCubeNonQuantGqa::Align
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa
+  owner_template_args: []
+  template_params:
+  - template<typename T1>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 227
+    end: 238
+  rough_role: unknown
+  importance_score: 30
+  importance_reasons:
+  - structure_signal:align
+  - branch_signal
+  - tail_alignment_or_mask_signal
+  extraction_level: index
+  calls:
+  - uint64_t
+  called_by:
+  - BlockAlign
+  - CalcInnerSize
+  - CalcMmResSize
+  - CalcParams
+  - ComputeMm1
+  - CopyKToL1
+  - CopyKeyToL1
+  - CopyPToL1
+  - CopyQGmToL1
+  - CopyVToL1
+  - DealBmm1ResBaseBlock
+  - DealMm1SingleMKN
+  - DealMm2SingleMKN
+  - FixpipeCToGM
+  - InitParams
+  - InitTilingData
+  - ProcessAmlaNupdate
+  - ProcessMm1
+  - ProcessMm2

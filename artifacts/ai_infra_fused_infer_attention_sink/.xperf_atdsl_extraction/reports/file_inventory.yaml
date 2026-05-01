@@ -1,0 +1,154 @@
+file_inventory:
+  files:
+    -
+      path: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+      extension: .cpp
+      functions_indexed: 9
+    -
+      path: op_api/aclnn_ai_infra_fused_infer_attention_sink.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_api/ai_infra_fused_infer_attention_sink.cpp
+      extension: .cpp
+      functions_indexed: 0
+    -
+      path: op_api/ai_infra_fused_infer_attention_sink.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_def.cpp
+      extension: .cpp
+      functions_indexed: 52
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+      extension: .cpp
+      functions_indexed: 11
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling.cpp
+      extension: .cpp
+      functions_indexed: 3
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp
+      extension: .cpp
+      functions_indexed: 6
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_check.h
+      extension: .h
+      functions_indexed: 3
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+      extension: .cpp
+      functions_indexed: 39
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_check_existence.cpp
+      extension: .cpp
+      functions_indexed: 20
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+      extension: .cpp
+      functions_indexed: 28
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+      extension: .cpp
+      functions_indexed: 59
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_compile_info.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_index.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.cpp
+      extension: .cpp
+      functions_indexed: 66
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.h
+      extension: .h
+      functions_indexed: 1
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_register.cpp
+      extension: .cpp
+      functions_indexed: 2
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.cpp
+      extension: .cpp
+      functions_indexed: 16
+    -
+      path: op_host/ai_infra_fused_infer_attention_sink_tiling_v3.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_host/fallback_ai_infra_fused_infer_attention_sink.cpp
+      extension: .cpp
+      functions_indexed: 6
+    -
+      path: op_host/fia_tiling_nonquant_mla_sink.cpp
+      extension: .cpp
+      functions_indexed: 32
+    -
+      path: op_host/fia_tiling_nonquant_mla_sink.h
+      extension: .h
+      functions_indexed: 1
+    -
+      path: op_host/fia_tiling_nonquant_sink.cpp
+      extension: .cpp
+      functions_indexed: 34
+    -
+      path: op_host/fia_tiling_nonquant_sink.h
+      extension: .h
+      functions_indexed: 1
+    -
+      path: op_kernel/ai_infra_fused_infer_attention_sink.cpp
+      extension: .cpp
+      functions_indexed: 2
+    -
+      path: op_kernel/ai_infra_fused_infer_attention_sink_metadata.h
+      extension: .h
+      functions_indexed: 3
+    -
+      path: op_kernel/ai_infra_fused_infer_attention_sink_tilingkey.h
+      extension: .h
+      functions_indexed: 0
+    -
+      path: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+      extension: .h
+      functions_indexed: 24
+    -
+      path: op_kernel/fia_block_cube_nonquant_mla_sink.h
+      extension: .h
+      functions_indexed: 20
+    -
+      path: op_kernel/fia_block_cube_nonquant_sink.h
+      extension: .h
+      functions_indexed: 22
+    -
+      path: op_kernel/fia_block_vec_flashdecode_sink.h
+      extension: .h
+      functions_indexed: 17
+    -
+      path: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      extension: .h
+      functions_indexed: 36
+    -
+      path: op_kernel/fia_block_vec_nonquant_sink.h
+      extension: .h
+      functions_indexed: 34
+    -
+      path: op_kernel/fia_kernel_nonquant_mla_sink.h
+      extension: .h
+      functions_indexed: 31
+    -
+      path: op_kernel/fia_kernel_nonquant_sink.h
+      extension: .h
+      functions_indexed: 34
+    -
+      path: op_kernel/kernel_common_sink.h
+      extension: .h
+      functions_indexed: 4

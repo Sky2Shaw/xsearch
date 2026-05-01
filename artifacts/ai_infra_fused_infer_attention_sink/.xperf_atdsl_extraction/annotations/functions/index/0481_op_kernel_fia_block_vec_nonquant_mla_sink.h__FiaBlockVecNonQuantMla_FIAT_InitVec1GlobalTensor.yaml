@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_nonquant_mla_sink.h:297:InitVec1GlobalTensor
+  function_name: InitVec1GlobalTensor
+  qualified_name: FiaBlockVecNonQuantMla<FIAT>::InitVec1GlobalTensor
+  canonical_name: FiaBlockVecNonQuantMla<FIAT>::InitVec1GlobalTensor
+  owner: FiaBlockVecNonQuantMla
+  owner_qualified: FiaBlockVecNonQuantMla<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: mla
+  stage: mm2
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  line_range:
+    start: 297
+    end: 304
+  rough_role: unknown
+  importance_score: 95
+  importance_reasons:
+  - known_deep_name_pattern
+  - attention_stage:mm2
+  extraction_level: deep
+  calls: []
+  called_by: []

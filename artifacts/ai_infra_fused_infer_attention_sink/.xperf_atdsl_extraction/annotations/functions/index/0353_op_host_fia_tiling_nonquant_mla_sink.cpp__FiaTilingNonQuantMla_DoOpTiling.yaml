@@ -1,0 +1,37 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:551:DoOpTiling
+  function_name: DoOpTiling
+  qualified_name: FiaTilingNonQuantMla::DoOpTiling
+  canonical_name: FiaTilingNonQuantMla::DoOpTiling
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: workspace
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 551
+    end: 580
+  rough_role: workspace_or_address_helper
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:tiling,workspace
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetPlatformInfo
+  - InitParams
+  - CalcMaxWorkspaceSize
+  - GenTilingKey
+  - Split
+  - FillTiling
+  - CalcBlockDim
+  - CalcScheduleMode
+  - CalcWorkspaceSize
+  - SetBlockDim
+  - SetTilingKey
+  - SetWorkspaceSize
+  - SetTilingData
+  - SetScheduleMode
+  called_by: []

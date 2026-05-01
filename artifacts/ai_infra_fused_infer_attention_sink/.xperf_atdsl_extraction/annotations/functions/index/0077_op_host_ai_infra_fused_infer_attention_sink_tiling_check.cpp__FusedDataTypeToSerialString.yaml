@@ -1,0 +1,32 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp:47:FusedDataTypeToSerialString
+  function_name: FusedDataTypeToSerialString
+  qualified_name: FusedDataTypeToSerialString
+  canonical_name: FusedDataTypeToSerialString
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check.cpp
+  line_range:
+    start: 47
+    end: 93
+  rough_role: unknown
+  importance_score: 18
+  importance_reasons:
+  - branch_signal
+  extraction_level: index
+  calls:
+  - find
+  - end
+  - OPS_LOG_E
+  called_by:
+  - CheckFeatureNoQuantDtype
+  - CheckKVDType
+  - CheckKVShapeForPageAttention
+  - CheckQAndQRopeDType
+  - CheckSoftmaxLseDType
+  - DtypeListToStr
+  - LogErrorDtypeSupport

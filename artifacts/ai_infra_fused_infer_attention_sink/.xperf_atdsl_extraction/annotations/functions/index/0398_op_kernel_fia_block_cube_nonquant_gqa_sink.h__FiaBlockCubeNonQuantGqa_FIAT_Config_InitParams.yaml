@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_cube_nonquant_gqa_sink.h:408:InitParams
+  function_name: InitParams
+  qualified_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitParams
+  canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::InitParams
+  owner: FiaBlockCubeNonQuantGqa
+  owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
+  owner_template_args:
+  - FIAT
+  - Config
+  template_params:
+  - template<typename FIAT,typename Config>
+  variant: gqa
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  line_range:
+    start: 408
+    end: 441
+  rough_role: unknown
+  importance_score: 70
+  importance_reasons:
+  - known_deep_name_pattern
+  extraction_level: deep
+  calls: []
+  called_by:
+  - DoOpTiling

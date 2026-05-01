@@ -1,0 +1,104 @@
+function_annotation:
+  function_name: InitKVBuffer
+  qualified_name: FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+  canonical_name: FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+  owner: FiaBlockCubeNonQuant
+  owner_qualified: FiaBlockCubeNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: unknown
+  file: op_kernel/fia_block_cube_nonquant_sink.h
+  line_range:
+    start: 311
+    end: 331
+  role: decode_kv_cache
+  confidence: medium
+  code_behavior:
+    summary: decode_kv_cache
+    key_steps:
+    - 'Calls: Init.'
+  dataflow:
+    inputs:
+    - FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - unknown
+    - nonquant
+    - calls:Init
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - GlobalTensor
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - headDim
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_cube_nonquant_sink.h:311-331'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - kvGmTensor.offsetCalculator.Init(kvHeadNum, kvCacheBlockSize, headDim, blockTableGm, constInfo.maxBlockNumPerBatch,
+      stride);
+    - kvGmTensor.offsetCalculator.Init(kvHeadNum, kvCacheBlockSize, d1, d0, blockTableGm, constInfo.maxBlockNumPerBatch, stride);
+    - kvGmTensor.offsetCalculator.Init(batchSize, kvHeadNum, kvSeqSize, headDim);
+    - kvGmTensor.offsetCalculator.Init(kvHeadNum, headDim, actualSeqLengthsGm, actualLenDims);
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - operator.helpers
+  suggested_dsl_fields:
+  - path: operator.helpers.source_function
+    meaning: Lowering evidence from FiaBlockCubeNonQuant<FIAT>::InitKVBuffer
+    evidence: op_kernel/fia_block_cube_nonquant_sink.h:311-331
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

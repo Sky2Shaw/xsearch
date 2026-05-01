@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:184:ContiguousInput
+  function_name: ContiguousInput
+  qualified_name: ContiguousInput
+  canonical_name: ContiguousInput
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 184
+    end: 220
+  rough_role: decode_kv_cache
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:blockTable
+  - branch_signal
+  extraction_level: index
+  calls:
+  - Contiguous
+  - CHECK_RET
+  called_by: []

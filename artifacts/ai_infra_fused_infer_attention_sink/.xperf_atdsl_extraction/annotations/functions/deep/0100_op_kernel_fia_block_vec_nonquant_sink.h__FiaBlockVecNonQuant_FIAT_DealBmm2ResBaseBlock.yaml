@@ -1,0 +1,119 @@
+function_annotation:
+  function_name: DealBmm2ResBaseBlock
+  qualified_name: FiaBlockVecNonQuant<FIAT>::DealBmm2ResBaseBlock
+  canonical_name: FiaBlockVecNonQuant<FIAT>::DealBmm2ResBaseBlock
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 587
+    end: 626
+  role: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  confidence: medium
+  code_behavior:
+    summary: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - 'Calls: DataCopy, EnQue, GetTPipePtr, FetchEventID.'
+    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
+    - Coordinates pipeline state with event or cross-core flags.
+    - Touches online softmax state or LSE outputs.
+  dataflow:
+    inputs:
+    - FiaBlockVecNonQuant<FIAT>::DealBmm2ResBaseBlock
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - GM tensors referenced in function body
+      writes:
+      - DataCopy/Fixpipe destinations visible in body
+    ub:
+      reads:
+      - LocalTensor/UB operands
+      writes:
+      - LocalTensor/UB temporaries
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - if
+    - else
+  pipeline:
+    stages:
+    - mm2
+    - nonquant
+    - calls:DataCopy,EnQue,GetTPipePtr,FetchEventID
+    sync:
+    - WaitFlag
+    - SetFlag
+  memory_behavior:
+    buffers:
+    - LocalTensor
+    - TPipe
+    - mm2ResGm
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - preLoadNum
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_block_vec_nonquant_sink.h:587-626'
+  workspace:
+    layout:
+    - workspace region or GM temporary referenced
+    offsets:
+    - uint32_t baseOffset = mSplitInfo.nBufferStartM / 2 + startRow;
+    - baseOffset = baseOffset * this->brcbNum;
+    - uint64_t inOutBaseOffset = mStart * columnCount;
+    - uint64_t srcGmOffset = (info.loop % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + inOutBaseOffset;
+    - DataCopy(bmm2ResUb, mm2ResGm[srcGmOffset], vec2ComputeSize);
+    - uint64_t vec2ResGmOffset = ((info.loop - 1) % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + inOutBaseOffset;
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields:
+  - name: preLoadNum
+    role: shape, stride, or pipeline structural field
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:587-626
+  constraints:
+  - Event wait/set ordering is part of correctness, not only performance.
+  risks_if_changed:
+  - Missing event release can stall producer/consumer queues.
+  possible_dsl_sections:
+  - memory.l1_residency
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::DealBmm2ResBaseBlock
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:587-626
+    confidence: medium
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::DealBmm2ResBaseBlock
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:587-626
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

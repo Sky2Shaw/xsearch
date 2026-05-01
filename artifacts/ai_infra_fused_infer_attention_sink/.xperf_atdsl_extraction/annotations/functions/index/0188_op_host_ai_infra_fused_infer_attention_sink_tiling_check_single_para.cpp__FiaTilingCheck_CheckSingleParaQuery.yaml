@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp:244:CheckSingleParaQuery
+  function_name: CheckSingleParaQuery
+  qualified_name: FiaTilingCheck::CheckSingleParaQuery
+  canonical_name: FiaTilingCheck::CheckSingleParaQuery
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_single_para.cpp
+  line_range:
+    start: 244
+    end: 249
+  rough_role: unknown
+  importance_score: 23
+  importance_reasons:
+  - compute_sync_api:vector
+  - branch_signal
+  extraction_level: index
+  calls:
+  - CheckDtypeSupport
+  called_by:
+  - CheckSinglePara

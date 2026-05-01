@@ -1,0 +1,42 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:33:Align
+  function_name: Align
+  qualified_name: Align
+  canonical_name: Align
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params:
+  - template<typename T>
+  variant: mla
+  stage: unknown
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 33
+    end: 37
+  rough_role: unknown
+  importance_score: 0
+  importance_reasons:
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - BlockAlign
+  - CalcInnerSize
+  - CalcMmResSize
+  - CalcParams
+  - ComputeMm1
+  - CopyKToL1
+  - CopyKeyToL1
+  - CopyPToL1
+  - CopyQGmToL1
+  - CopyVToL1
+  - DealBmm1ResBaseBlock
+  - DealMm1SingleMKN
+  - DealMm2SingleMKN
+  - FixpipeCToGM
+  - InitParams
+  - InitTilingData
+  - ProcessAmlaNupdate
+  - ProcessMm1
+  - ProcessMm2

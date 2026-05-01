@@ -1,0 +1,25 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp:258:InferLseOutShape
+  function_name: InferLseOutShape
+  qualified_name: InferLseOutShape
+  canonical_name: InferLseOutShape
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: unknown
+  file: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+  line_range:
+    start: 258
+    end: 271
+  rough_role: sparse_or_mask_range
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:s1
+  - branch_signal
+  extraction_level: index
+  calls:
+  - strcmp
+  called_by:
+  - InferShapeAiInfraFusedInferAttentionSink

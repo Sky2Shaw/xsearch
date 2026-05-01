@@ -1,0 +1,104 @@
+function_annotation:
+  function_name: ComputeMm2
+  qualified_name: FiaKernelNonQuant<FIAT>::ComputeMm2
+  canonical_name: FiaKernelNonQuant<FIAT>::ComputeMm2
+  owner: FiaKernelNonQuant
+  owner_qualified: FiaKernelNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: mm2
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  line_range:
+    start: 704
+    end: 709
+  role: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  confidence: high
+  code_behavior:
+    summary: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+    key_steps:
+    - Behavior is indexed from source body and call context; no richer stage behavior was visible inside the target.
+  dataflow:
+    inputs:
+    - FiaKernelNonQuant<FIAT>::ComputeMm2
+    - RunInfo/ConstInfo or metadata as visible in signature/body
+    outputs:
+    - stage outputs in GM/UB/L1 according to function body
+    gm:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    ub:
+      reads:
+      - unknown
+      writes:
+      - unknown
+    l1:
+      reads:
+      - L1 tiles or buffers
+      writes:
+      - L1 copies from GM or prior stage
+    l0:
+      l0a:
+      - unknown
+      l0b:
+      - unknown
+      l0c:
+      - unknown
+  control_flow:
+    loops:
+    - unknown
+    branches:
+    - unknown
+  pipeline:
+    stages:
+    - mm2
+    - nonquant
+    - 'calls:'
+    sync:
+    - unknown
+  memory_behavior:
+    buffers:
+    - unknown
+    l1_residency:
+    - unknown
+    l1_partition:
+    - unknown
+  tiling_and_shape:
+    fields:
+    - unknown
+    shape_assumptions:
+    - 'source line evidence: op_kernel/fia_kernel_nonquant_sink.h:704-709'
+  workspace:
+    layout:
+    - unknown
+    offsets:
+    - unknown
+  optimization_intent:
+  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
+  - Explicit synchronization exposes producer/consumer lifetime.
+  tunable_or_structural_fields: []
+  constraints:
+  - unknown
+  risks_if_changed:
+  - unknown
+  possible_dsl_sections:
+  - memory.l1_residency
+  - pipeline.cube_stages
+  suggested_dsl_fields:
+  - path: memory.l1_residency.source_function
+    meaning: Lowering evidence from FiaKernelNonQuant<FIAT>::ComputeMm2
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:704-709
+    confidence: medium
+  - path: pipeline.cube_stages.source_function
+    meaning: Lowering evidence from FiaKernelNonQuant<FIAT>::ComputeMm2
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:704-709
+    confidence: medium
+  lowering_hints:
+  - Preserve owner/template identity when lowering same-named stage functions.
+  - Treat synchronization and workspace offsets as part of the stage contract.
+  open_questions:
+  - No additional source-local question identified.

@@ -1,0 +1,26 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp:520:CheckFeatureActualSeqLensKvData
+  function_name: CheckFeatureActualSeqLensKvData
+  qualified_name: FiaTilingCheck::CheckFeatureActualSeqLensKvData
+  canonical_name: FiaTilingCheck::CheckFeatureActualSeqLensKvData
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_feature.cpp
+  line_range:
+    start: 520
+    end: 540
+  rough_role: sparse_or_mask_range
+  importance_score: 26
+  importance_reasons:
+  - structure_signal:actualSeq,s2
+  - branch_signal
+  extraction_level: index
+  calls:
+  - push_back
+  - GetActualSeqLenSize
+  called_by:
+  - CheckFeatureActualSeqLensQData

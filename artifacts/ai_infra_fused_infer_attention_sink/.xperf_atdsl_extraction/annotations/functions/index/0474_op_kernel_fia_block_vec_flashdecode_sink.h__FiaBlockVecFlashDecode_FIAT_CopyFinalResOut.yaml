@@ -1,0 +1,33 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:382:CopyFinalResOut
+  function_name: CopyFinalResOut
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::CopyFinalResOut
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: mm2
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 382
+    end: 403
+  rough_role: memory_transfer
+  importance_score: 90
+  importance_reasons:
+  - attention_stage:mm2
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:WaitFlag,SetFlag
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - SetShapeInfo
+  - ShapeInfo
+  - Cast
+  - Bmm2DataCopyOutTrans
+  called_by:
+  - FlashDecode

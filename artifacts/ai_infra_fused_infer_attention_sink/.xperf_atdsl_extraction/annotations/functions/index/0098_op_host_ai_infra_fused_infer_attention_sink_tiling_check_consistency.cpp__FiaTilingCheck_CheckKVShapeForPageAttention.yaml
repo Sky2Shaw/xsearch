@@ -1,0 +1,30 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:253:CheckKVShapeForPageAttention
+  function_name: CheckKVShapeForPageAttention
+  qualified_name: FiaTilingCheck::CheckKVShapeForPageAttention
+  canonical_name: FiaTilingCheck::CheckKVShapeForPageAttention
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 253
+    end: 298
+  rough_role: decode_kv_cache
+  importance_score: 22
+  importance_reasons:
+  - structure_signal:kvBlock
+  - branch_signal
+  extraction_level: index
+  calls:
+  - GetTypeSize
+  - OPS_LOG_E
+  - FusedDataTypeToSerialString
+  - c_str
+  - GetDim
+  - CompareShape
+  called_by:
+  - CheckKVShape

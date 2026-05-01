@@ -1,0 +1,27 @@
+function_index_entry:
+  function_id: op_host/fia_tiling_nonquant_mla_sink.cpp:79:IsCapable
+  function_name: IsCapable
+  qualified_name: FiaTilingNonQuantMla::IsCapable
+  canonical_name: FiaTilingNonQuantMla::IsCapable
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 79
+    end: 154
+  rough_role: sparse_or_mask_range
+  importance_score: 27
+  importance_reasons:
+  - compute_sync_api:vector
+  - structure_signal:sparse
+  - branch_signal
+  extraction_level: index
+  calls:
+  - find
+  - begin
+  - end
+  called_by: []

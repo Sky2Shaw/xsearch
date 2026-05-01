@@ -1,0 +1,29 @@
+function_index_entry:
+  function_id: op_kernel/fia_block_vec_flashdecode_sink.h:229:CopyLseIn
+  function_name: CopyLseIn
+  qualified_name: FiaBlockVecFlashDecode<FIAT>::CopyLseIn
+  canonical_name: FiaBlockVecFlashDecode<FIAT>::CopyLseIn
+  owner: FiaBlockVecFlashDecode
+  owner_qualified: FiaBlockVecFlashDecode<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: flash_decode
+  stage: flash_decode
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  line_range:
+    start: 229
+    end: 254
+  rough_role: memory_transfer
+  importance_score: 90
+  importance_reasons:
+  - memory_tensor_api:LocalTensor
+  - compute_sync_api:DataCopy,WaitFlag,SetFlag
+  - branch_signal
+  - gap_driven_deepening_for_stage1
+  extraction_level: deep
+  calls:
+  - DataCopy
+  called_by:
+  - FlashDecode

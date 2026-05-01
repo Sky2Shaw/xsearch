@@ -1,0 +1,24 @@
+function_index_entry:
+  function_id: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp:68:CheckQShape
+  function_name: CheckQShape
+  qualified_name: FiaTilingCheck::CheckQShape
+  canonical_name: FiaTilingCheck::CheckQShape
+  owner: FiaTilingCheck
+  owner_qualified: FiaTilingCheck
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: tiling
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling_check_consistency.cpp
+  line_range:
+    start: 68
+    end: 78
+  rough_role: sparse_or_mask_range
+  importance_score: 14
+  importance_reasons:
+  - structure_signal:s1
+  extraction_level: index
+  calls:
+  - CompareShape
+  called_by:
+  - CheckQAndQRopeShape

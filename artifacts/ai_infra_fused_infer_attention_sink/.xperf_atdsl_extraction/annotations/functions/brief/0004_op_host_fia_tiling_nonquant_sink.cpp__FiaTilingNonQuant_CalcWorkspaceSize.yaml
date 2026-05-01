@@ -1,0 +1,33 @@
+function_brief:
+  function_name: CalcWorkspaceSize
+  qualified_name: FiaTilingNonQuant::CalcWorkspaceSize
+  canonical_name: FiaTilingNonQuant::CalcWorkspaceSize
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: mm2
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 540
+    end: 547
+  role: nonquant cube compute stage for mm2 with source-visible memory, tiling, and synchronization behavior.
+  touches:
+  - workspace
+  - FlashDecode
+  calls:
+  - CalcNormalWorkspaceSize
+  - CalcFlashDecodeWorkspace
+  called_by:
+  - DoOpTiling
+  possible_risks:
+  - unknown
+  related_dsl_sections:
+  - memory.l1_residency
+  - pipeline.cube_stages
+  - workspace.layout
+  need_deep_extract:
+    value: false
+    reason: Current Stage 1 keeps this as brief unless later gap-driven extraction requires more evidence.
+  confidence: medium

@@ -1,0 +1,28 @@
+function_index_entry:
+  function_id: op_kernel/ai_infra_fused_infer_attention_sink_metadata.h:79:GetBaseMetaAbsIndex
+  function_name: GetBaseMetaAbsIndex
+  qualified_name: GetBaseMetaAbsIndex
+  canonical_name: GetBaseMetaAbsIndex
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: unknown
+  stage: metadata
+  file: op_kernel/ai_infra_fused_infer_attention_sink_metadata.h
+  line_range:
+    start: 79
+    end: 86
+  rough_role: simple_accessor_or_wrapper
+  importance_score: 0
+  importance_reasons:
+  - simple_accessor_or_wrapper_penalty
+  - no_performance_or_dsl_signal_penalty
+  extraction_level: index
+  calls: []
+  called_by:
+  - CalcAccumOffset
+  - FlashDecode
+  - InitActualSeqLenKV
+  - InitActualSeqLenQ
+  - InitTilingData
