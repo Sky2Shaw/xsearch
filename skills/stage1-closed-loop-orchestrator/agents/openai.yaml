@@ -1,0 +1,6 @@
+interface:
+  display_name: "Stage1 Closed-Loop Orchestrator"
+  short_description: "Run isolated extraction and scoring loops for Stage 1 artifacts"
+  default_prompt: "Use $stage1-closed-loop-orchestrator with isolated subagents on this operator directory."
+policy:
+  allow_implicit_invocation: true
