@@ -10,6 +10,10 @@ source code -> fresh extractor subagent -> <loop_root>/round_NNN/extraction -> s
 
 Each round's review outputs live in `<loop_root>/round_NNN/review/`.
 
+## Helper Availability
+
+Orchestrator helper commands in this workflow are planned completed-skill entrypoints. During implementation, do not invoke an orchestrator helper script until that script file exists. The scorer context prep command at `skills/stage1-artifact-scorer/scripts/prepare_review_context.py` already exists and can remain a concrete command.
+
 ## Round 1
 
 1. Run `init_loop.py` for the source root.
