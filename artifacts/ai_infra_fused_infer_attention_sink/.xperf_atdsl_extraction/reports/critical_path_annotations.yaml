@@ -1,5 +1,5 @@
 critical_path_annotations:
-  coverage_policy: Variant/stage coverage for GQA, MLA, generic nonquant, MLA nUpdate, and FlashDecode merge.
+  coverage_policy: Variant/stage coverage for GQA, MLA, generic nonquant, MLA nUpdate, and FlashDecode merge. Alias-aware vector stages remain owner-qualified instead of being rewritten as fake GQA-local owners.
   stages:
   - stage: gqa.mm1
     canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
@@ -13,10 +13,37 @@ critical_path_annotations:
     line_range:
       start: 958
       end: 1112
-    why_critical: GQA QK stage produces scores for Vec1 and owns Q/K L1 reuse.
+    why_critical: GQA QK stage produces scores for the shared Vec1 owner and owns Q/K L1 reuse.
     sync_edges:
     - sets syncC1V1
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm1.yaml
+    deep_annotation: annotations/functions/deep/0035_op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm1.yaml
+  - stage: gqa.vec1
+    canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+    owner: FiaBlockVecNonQuant
+    owner_qualified: FiaBlockVecNonQuant<FIAT>
+    owner_template_args:
+    - FIAT
+    variant: gqa
+    alias_of_shared_stage: shared.nonquant.vec1
+    dispatcher: FiaKernelNonQuant<FIAT>::ComputeVec1
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    line_range:
+      start: 976
+      end: 981
+    why_critical: GQA Vec1 is dispatched into the shared vector owner and materializes vec1ResGm plus online softmax/LSE state for GQA MM2 or FD consumers.
+    producer_links:
+    - gqa.mm1
+    consumer_links:
+    - gqa.mm2
+    - flash_decode.merge
+    sync_edges:
+    - waits syncC1V1 in the shared vector owner
+    - sets syncV1C2 after the shared Vec1 contract
+    deep_annotation: annotations/functions/deep/0126_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec1.yaml
+    source_evidence_ids:
+    - SE-GQA-SHARED-VECTOR-OWNER
+    - SE-GQA-VEC1-DISPATCH
+    - SE-SHARED-VEC1-SYNC
   - stage: gqa.mm2
     canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
     owner: FiaBlockCubeNonQuantGqa
@@ -29,12 +56,40 @@ critical_path_annotations:
     line_range:
       start: 1113
       end: 1240
-    why_critical: GQA PV stage consumes Vec1 output and writes mm2ResGm.
+    why_critical: GQA PV stage consumes shared Vec1 output, reuses V in L1, and writes mm2ResGm.
     sync_edges:
     - waits syncV1C2
     - waits syncV2C2 before first fixpipe
     - sets syncC2V2
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm2.yaml
+    deep_annotation: annotations/functions/deep/0036_op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm2.yaml
+  - stage: gqa.vec2.output
+    canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+    owner: FiaBlockVecNonQuant
+    owner_qualified: FiaBlockVecNonQuant<FIAT>
+    owner_template_args:
+    - FIAT
+    variant: gqa
+    alias_of_shared_stage: shared.nonquant.vec2
+    legacy_stage_alias: gqa.vec2
+    dispatcher: FiaKernelNonQuant<FIAT>::ComputeVec2
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    line_range:
+      start: 983
+      end: 988
+    why_critical: GQA Vec2 is dispatched into the shared vector owner and emits either final attention output or split-KV partials for FlashDecode merge.
+    producer_links:
+    - gqa.mm2
+    consumer_links:
+    - output.final_attention
+    - flash_decode.merge
+    sync_edges:
+    - waits syncC2V2 in the shared vector owner
+    - sets syncV2C2 after the shared Vec2 contract
+    deep_annotation: annotations/functions/deep/0127_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec2.yaml
+    source_evidence_ids:
+    - SE-GQA-SHARED-VECTOR-OWNER
+    - SE-GQA-VEC2-DISPATCH
+    - SE-SHARED-VEC2-SYNC
   - stage: mla.mm1
     canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
     owner: FiaBlockCubeNonQuantMla
@@ -46,10 +101,10 @@ critical_path_annotations:
     line_range:
       start: 485
       end: 501
-    why_critical: MLA wrapper partitions M into n-buffer chunks and delegates ProcessMm1.
+    why_critical: MLA MM1 wrapper partitions M into n-buffer chunks and delegates ProcessMm1.
     sync_edges:
     - sets syncC1V1 per n-buffer split
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm1.yaml
+    deep_annotation: annotations/functions/deep/0042_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm1.yaml
   - stage: mla.mm1.process
     canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
     owner: FiaBlockCubeNonQuantMla
@@ -64,7 +119,7 @@ critical_path_annotations:
     why_critical: MLA cube QK stage implements 512+64 rope/nope L1 packing.
     sync_edges:
     - MTE1/MTE2 events around Q/K L1
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm1.yaml
+    deep_annotation: annotations/functions/deep/0044_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm1.yaml
   - stage: mla.vec1
     canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
     owner: FiaBlockVecNonQuantMla
@@ -76,11 +131,12 @@ critical_path_annotations:
     line_range:
       start: 775
       end: 867
-    why_critical: MLA Vec1 stage waits MM1, computes softmax, and emits Vec1 GM output.
+    why_critical: MLA Vec1 waits MM1, computes softmax, emits Vec1 GM output, and gates the nUpdate side channel.
     sync_edges:
     - waits syncC1V1
     - sets syncV1C2
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec1L.yaml
+    - waits syncC2V1 before nUpdate apply
+    deep_annotation: annotations/functions/deep/0082_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec1L.yaml
   - stage: mla.nupdate.compute
     canonical_name: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
     owner: FiaBlockVecNonQuantMla
@@ -92,10 +148,10 @@ critical_path_annotations:
     line_range:
       start: 470
       end: 561
-    why_critical: Computes nUpdate numeric side channel from online softmax max/sum state.
+    why_critical: Computes row-wise nUpdate and aMlaSum from online softmax state.
     sync_edges:
-    - V/MTE3 outputBuff2 events
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_AmlaVecCompute.yaml
+    - V/MTE3 handoff for outputBuff2 nUpdate staging
+    deep_annotation: annotations/functions/deep/0077_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_AmlaVecCompute.yaml
   - stage: mla.nupdate.apply
     canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
     owner: FiaBlockVecNonQuantMla
@@ -107,11 +163,11 @@ critical_path_annotations:
     line_range:
       start: 657
       end: 717
-    why_critical: Broadcasts nUpdate and atomically adds it into MM2 int32 workspace.
+    why_critical: Broadcasts nUpdate and atomically adds it into the MM2 int32 alias before the first MLA fixpipe is allowed to proceed.
     sync_edges:
     - waits syncC2V1
     - sets syncV1NupdateC2
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessAmlaNupdate.yaml
+    deep_annotation: annotations/functions/deep/0079_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessAmlaNupdate.yaml
   - stage: mla.mm2
     canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
     owner: FiaBlockCubeNonQuantMla
@@ -123,12 +179,12 @@ critical_path_annotations:
     line_range:
       start: 502
       end: 521
-    why_critical: MLA MM2 wrapper waits Vec1 and coordinates ProcessMm2/nUpdate/Vec2 handoff.
+    why_critical: MLA MM2 wrapper waits Vec1 and coordinates ProcessMm2, nUpdate apply, and Vec2 handoff.
     sync_edges:
     - waits syncV1C2
     - sets syncC2V2
     - sets syncC2V1
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm2.yaml
+    deep_annotation: annotations/functions/deep/0043_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm2.yaml
   - stage: mla.mm2.process
     canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
     owner: FiaBlockCubeNonQuantMla
@@ -143,7 +199,7 @@ critical_path_annotations:
     why_critical: MLA MM2 body consumes vec1ResGm and V/value tiles, waits nUpdate, and fixpipes MM2 output.
     sync_edges:
     - waits syncV1NupdateC2 before first fixpipe
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm2.yaml
+    deep_annotation: annotations/functions/deep/0045_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm2.yaml
   - stage: mla.vec2.output
     canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
     owner: FiaBlockVecNonQuantMla
@@ -155,10 +211,10 @@ critical_path_annotations:
     line_range:
       start: 921
       end: 943
-    why_critical: MLA Vec2 stage waits MM2 and writes final output or FD partials.
+    why_critical: MLA Vec2 waits MM2 and writes final output or FD partials.
     sync_edges:
     - waits syncC2V2
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec2L.yaml
+    deep_annotation: annotations/functions/deep/0084_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec2L.yaml
   - stage: flash_decode.merge
     canonical_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
     owner: FiaBlockVecFlashDecode
@@ -174,7 +230,7 @@ critical_path_annotations:
     sync_edges:
     - FD local event IDs
     - AIV metadata partition
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml
+    deep_annotation: annotations/functions/deep/0070_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml
   - stage: generic.mm2
     canonical_name: FiaBlockCubeNonQuant<FIAT>::ComputeMm2
     owner: FiaBlockCubeNonQuant
@@ -186,8 +242,8 @@ critical_path_annotations:
     line_range:
       start: 835
       end: 878
-    why_critical: Generic nonquant MM2 is distinct from GQA/MLA owners and remains separately indexed.
+    why_critical: Generic nonquant MM2 is distinct from GQA and MLA owners and remains separately indexed.
     sync_edges:
     - waits syncV1C2
     - sets syncC2V2
-    deep_annotation: annotations/functions/deep/op_kernel_fia_block_cube_nonquant_sink.h__FiaBlockCubeNonQuant_FIAT_ComputeMm2.yaml
+    deep_annotation: annotations/functions/deep/0054_op_kernel_fia_block_cube_nonquant_sink.h__FiaBlockCubeNonQuant_FIAT_ComputeMm2.yaml

@@ -5,124 +5,135 @@ function_annotation:
   owner: FiaBlockVecNonQuantMla
   owner_qualified: FiaBlockVecNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
-  stage: softmax
+  stage: mla.nupdate.compute
   file: op_kernel/fia_block_vec_nonquant_mla_sink.h
   line_range:
     start: 470
     end: 561
-  role: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+  role: MLA Vec1 numeric micro-kernel that derives row-wise nUpdate and aMlaSum from online-softmax state, rescales the current MM1 result rows, and materializes the int32 correction vector.
   confidence: high
+  source_evidence_ids:
+    - SE-MLA-NUPDATE-FORMULA
+    - SE-MLA-SOFTMAX-SUM-GEN
   code_behavior:
-    summary: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Converts current and previous online max state into the ordered n/cof/eps correction sequence, applies the resulting row scale to mmResUb, and writes an int32 nUpdate vector for later atomic injection into MM2.
     key_steps:
-    - Computes rounded n(i) from softmaxMax and derives n(i)-n(i-1).
-    - Updates nValueUb and rescales softmax output with exp/row multiply.
-    - Computes cof/eps correction, clamps nUpdate at -30, scales by pow(2, 23), and casts to int32.
-    - Stores row-wise nUpdate into outputBuff2 guarded by MTE3/V events.
+      - Computes the current rounded n(i) from softmaxMaxUb, subtracts the previous preload-slot n(i-1), and stores the new n(i) in nValueUb.
+      - Builds the row scale via exp and cast round-trip, multiplies softmaxSumUb into aMlaSumUb on the last S2 loop, and row-multiplies mmResUb in place.
+      - Computes cof(i) and eps from the previous and current states, clamps nUpdate at -30, adds eps, and scales by 2^23.
+      - Waits for outputBuff2 ownership, casts the final nUpdate vector to int32, and leaves it in outputBuff2 for ProcessAmlaNupdate.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - softmaxMaxUb, softmaxSumUb, nValueUb, and cofValueUb preload-slot state
+      - mmResUb current Vec1 tile
+      - info.loop, info.isFirstSInnerLoop, and info.isLastS2Loop
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - mmResUb rescaled by the MLA row factor
+      - nValueUb and cofValueUb updated for the current preload slot
+      - aMlaSumUb on the last S2 loop
+      - outputBuff2 int32 nUpdate vector
     gm:
-      reads:
-      - unknown
-      writes:
-      - DataCopy/Fixpipe destinations visible in body
+      reads: []
+      writes: []
     ub:
       reads:
-      - LocalTensor/UB operands
+        - softmaxMaxUb
+        - softmaxSumUb
+        - nValueUb previous slot
+        - cofValueUb previous slot
+        - mmResUb
       writes:
-      - LocalTensor/UB temporaries
+        - nValueUb current slot
+        - cofValueUb current slot
+        - aMlaSumUb current slot when info.isLastS2Loop
+        - outputBuff2 int32 nUpdate vector
+        - mmResUb row-scaled in place
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - if
-    - else
+      - if info.isFirstSInnerLoop
+      - if info.isLastS2Loop
   pipeline:
     stages:
-    - softmax
-    - mla
-    - calls:Muls,Cast,Duplicate,Sub,Adds,Add
+      - mla.vec1
+      - mla.nupdate.compute
+      - softmax.online_state_update
     sync:
-    - WaitFlag
-    - SetFlag
+      - WaitFlag<HardEvent::MTE3_V> / SetFlag<HardEvent::MTE3_V> around outputBuff2 ownership
+      - PipeBarrier<PIPE_V> between ordered vector math steps
   memory_behavior:
     buffers:
-    - LocalTensor
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - softmaxTmpUb reinterpret scratch
+      - softmaxMaxUb
+      - softmaxSumUb
+      - nValueUb
+      - cofValueUb
+      - aMlaSumUb
+      - outputBuff2
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - preLoadNum
+      - preLoadNum
+      - SOFTMAX_TMP_BUFFER_OFFSET
+      - FLOAT_E_SCALAR
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561'
+      - baseOffset = nBufferStartM / 2 + startRow indexes row-wise softmax state.
+      - softmaxOutOffset and PreSoftmaxOutOffset select current and previous preload-slot state within the same UB ring.
   workspace:
     layout:
-    - unknown
+      - outputBuff2 is a local UB side-channel, not a standalone GM workspace tail
     offsets:
-    - uint32_t baseOffset = mSplitInfo.nBufferStartM / 2 + startRow;
-    - uint32_t softmaxOutOffset = outIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset;
-    - Muls(nTmp, softmaxMaxUb[softmaxOutOffset], ((T)(-1.0)) * RECIP_OF_LN2, calCount);
-    - uint32_t PreSoftmaxOutOffset = prOutIdx * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset;
-    - Sub(nUpdateTmp, nTmp, nValueUb[PreSoftmaxOutOffset], calCount);
-    - Adds(nValueUb[softmaxOutOffset], nTmp, FLOAT_ZERO, calCount);
+      - softmaxOutOffset = (loop % preLoadNum) * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset
+      - PreSoftmaxOutOffset = ((loop - 1) % preLoadNum) * SOFTMAX_TMP_BUFFER_OFFSET / sizeof(T) + baseOffset
+      - nInt32Out = outputBuff2[startRow]
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Keep MLA numeric correction inside the Vec1 UB pipeline so MM2 can consume a compact int32 side channel instead of a separate GM reduction pass.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    - name: preLoadNum
+      role: Selects current versus previous preload-slot online-softmax state.
+      source_evidence_ids:
+        - SE-KNOB-PRELOAD-NUM
+        - SE-MLA-NUPDATE-FORMULA
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - The first S-inner loop must duplicate zero into nUpdate rather than subtracting a previous state.
+    - aMlaSumUb is only produced on the last S2 loop and must match the same preload slot as the MM2 tile it will normalize.
+    - nUpdate must be clamped at -30 before the eps adjustment and 2^23 scaling.
   risks_if_changed:
-  - Numerical order of n/cof/eps updates is sensitive to cast, clamp, and barrier placement.
-  - Missing event release can stall producer/consumer queues.
+    - Reordering the n/cof/eps steps changes the numerical correction that later MM2 accumulation expects.
+    - Writing the int32 vector before the outputBuff2 barrier resolves can race ProcessAmlaNupdate.
   possible_dsl_sections:
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.vector_stages
-  - softmax.online_state
+    - mla.nupdate
+    - softmax.online_state
+    - pipeline.vector_stages
   suggested_dsl_fields:
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
-    confidence: high
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
-    confidence: high
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
-    confidence: high
+    - path: mla.nupdate.compute_formula
+      meaning: Ordered n(i), n(i)-n(i-1), exp, cof, eps, clamp, and 2^23 scale sequence used to derive the MLA correction vector.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-FORMULA
+      confidence: high
+    - path: mla.nupdate.last_loop_amlasum
+      meaning: On the last S2 loop, softmaxSumUb is multiplied by the MLA row scale and stored in aMlaSumUb for Vec2 normalization.
+      source_evidence_ids:
+        - SE-MLA-SOFTMAX-SUM-GEN
+      confidence: high
+    - path: softmax.online_state.preload_slot_ring
+      meaning: Current and previous preload slots provide the row-wise nValueUb and cofValueUb state used by MLA correction.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-FORMULA
+        - SE-KNOB-PRELOAD-NUM
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this as the MLA numeric micro-sequence, not as a generic softmax post-process.
+  open_questions: []

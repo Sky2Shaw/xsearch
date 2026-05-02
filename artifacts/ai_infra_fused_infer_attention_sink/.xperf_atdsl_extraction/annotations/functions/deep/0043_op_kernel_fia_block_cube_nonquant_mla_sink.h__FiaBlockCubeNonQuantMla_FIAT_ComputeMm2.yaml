@@ -5,121 +5,117 @@ function_annotation:
   owner: FiaBlockCubeNonQuantMla
   owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
   stage: mm2
   file: op_kernel/fia_block_cube_nonquant_mla_sink.h
   line_range:
     start: 502
     end: 521
-  role: MLA MM2 wrapper over n-buffer M splits. Waits for Vec1, delegates to ProcessMm2, and signals both Vec2 and MLA nUpdate
-    handoff.
+  role: MLA MM2 wrapper that partitions the active M range into n-buffer chunks, waits the Vec1 handoff for each chunk, delegates the cube body to ProcessMm2, and releases both Vec2 and the nUpdate follow-on path.
   confidence: high
+  source_evidence_ids:
+    - SE-MLA-MM2-NBUFFER-WRAPPER
+    - SE-MLA-NUPDATE-BARRIER
   code_behavior:
-    summary: MLA MM2 wrapper over n-buffer M splits. Waits for Vec1, delegates to ProcessMm2, and signals both Vec2 and MLA
-      nUpdate handoff.
+    summary: Updates value bindings on batch changes, computes n-buffer chunk ranges, waits syncV1C2 for each chunk, and calls ProcessMm2 before signaling both syncC2V2 and syncC2V1.
     key_steps:
-    - Refreshes value GM tensors on batch change.
-    - Splits actMBaseSize by nBufferMBaseSize and builds MSplitInfo.
-    - Waits syncV1C2 for Vec1 softmax output before ProcessMm2.
-    - Signals syncC2V2 for Vec2 and syncC2V1 for MLA nUpdate after each n-buffer split.
+      - Initializes value GM bindings and updates valueGm on batch transitions.
+      - Computes nBufferLoopTimes and nBufferTail from actMBaseSize and nBufferMBaseSize.
+      - Builds MSplitInfo for each chunk with nBufferStartM and nBufferDealM.
+      - Waits syncV1C2 before ProcessMm2 for every chunk.
+      - Signals syncC2V2 for Vec2 and syncC2V1 for the Vec1-side nUpdate apply path after each ProcessMm2 chunk.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - valueGm bindings prepared by InitValueGm / UpdateValue
+      - vec1ResGm chunk readiness signaled through syncV1C2
+      - actMBaseSize and nBufferMBaseSize from run-time tiling state
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - delegated mm2ResGm writes through ProcessMm2
+      - per-chunk syncC2V2 and syncC2V1 release signals
     gm:
       reads:
-      - GM tensors referenced in function body
-      writes:
-      - unknown
+        - valueGm rebinding inputs on batch changes
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - L1 tiles or buffers
-      writes:
-      - L1 copies from GM or prior stage
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each n-buffer M chunk
     branches:
-    - if
+      - batch-change value update branch
+      - tail-chunk size branch
   pipeline:
     stages:
-    - mm2
-    - mla
-    - calls:InitValueGm,UpdateValue,CrossCoreWaitFlag,ProcessMm2
+      - mm2
+      - mla
+      - nbuffer_wrapper
     sync:
-    - WaitFlag
-    - SetFlag
-    - CrossCoreWaitFlag
-    - CrossCoreSetFlag
+      - CrossCoreWaitFlag<constInfo.syncV1C2> before each ProcessMm2 chunk
+      - CrossCoreSetFlag<constInfo.syncC2V2> after each chunk
+      - CrossCoreSetFlag<constInfo.syncC2V1> after each chunk
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - MSplitInfo chunk descriptors
+      - downstream normal.mm2 ring delegated to ProcessMm2
+      - nUpdate follow-on path delegated to ProcessAmlaNupdate
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - nBufferMBaseSize
+      - actMBaseSize
+      - nBufferMBaseSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521'
+      - Each chunk covers a contiguous M subrange of size nBufferMBaseSize except the tail chunk.
+      - The wrapper keeps the cube-body details in ProcessMm2 and only owns chunking plus cross-stage synchronization.
   workspace:
     layout:
-    - unknown
+      - normal.mm2 delegated through ProcessMm2
+      - nUpdate alias readiness delegated through ProcessAmlaNupdate
     offsets:
-    - unknown
+      - mSplitInfo.nBufferStartM = i * constInfo.nBufferMBaseSize
+      - mSplitInfo.nBufferDealM = tail-aware chunk size
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve MLA's chunked MM2 schedule so Vec2 and Vec1 nUpdate can overlap on bounded M windows.
+    - Keep syncC2V2 and syncC2V1 attached to each chunk rather than the whole outer task.
   tunable_or_structural_fields:
-  - name: nBufferMBaseSize
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
+    - name: nBufferMBaseSize
+      role: Outer M chunk size for MLA MM2 overlap and nUpdate scheduling.
+      source_evidence_ids:
+        - SE-MLA-MM2-NBUFFER-WRAPPER
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - Preserve per-chunk syncV1C2 wait, syncC2V2 release, and syncC2V1 release.
+    - Keep this wrapper distinct from ProcessMm2 because it owns the chunked nUpdate-facing synchronization boundary.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Moving syncC2V1 outside the loop delays ProcessAmlaNupdate and can shift the first chunk that observes corrected data.
+    - Replacing the tail-aware chunking formula can skip or duplicate MLA MM2 rows.
   possible_dsl_sections:
-  - memory.l1_residency
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.cube_stages
+    - pipeline.cube_stages
+    - mla.nupdate
+    - mla.shape_contract
   suggested_dsl_fields:
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
-    confidence: high
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:502-521
-    confidence: high
+    - path: mla.shape_contract.nbuffer_chunks[].m_range
+      meaning: MLA MM2 uses the same n-buffer chunk partition as MLA MM1.
+      source_evidence_ids:
+        - SE-MLA-MM2-NBUFFER-WRAPPER
+      confidence: high
+    - path: mla.nupdate.chunk_sync
+      meaning: Each MM2 chunk waits Vec1 through syncV1C2 and releases the Vec1 nUpdate side path through syncC2V1.
+      source_evidence_ids:
+        - SE-MLA-MM2-NBUFFER-WRAPPER
+        - SE-MLA-NUPDATE-BARRIER
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this wrapper as the chunking boundary around ProcessMm2 rather than duplicating the inner cube logic.
+    - Keep the syncC2V1 edge visible in Stage-2 because ProcessAmlaNupdate depends on it.
+  open_questions: []

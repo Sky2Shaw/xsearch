@@ -1,0 +1,65 @@
+split_core_range_contract:
+  status: external_producer_with_verified_host_bridge
+  dsl_contract_artifact: dsl/split_core_range_contract.yaml
+  external_producer:
+    file: split_core.h
+    note: The range builder implementation remains outside the extracted operator boundary.
+  host_input_surface:
+    functions:
+      - FiaTilingNonQuant::CreateSplitInput
+      - FiaTilingNonQuantMla::CreateSplitInput
+    source_evidence_ids:
+      - SE-SPLIT-CORE-INPUT-PARAMS
+      - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+    base_info_fields:
+      - bSize
+      - n2Size
+      - gSize
+      - s1Size
+      - s2Size
+      - actualLenQDims
+      - actualLenKvDims
+      - preToken
+      - nextToken
+      - isS1G
+      - sparseMode
+      - attenMaskFlag
+      - sinkNumber
+      - keySinkNumber
+    split_param_fields:
+      - mBaseSize
+      - s2BaseSize
+      - gS1BaseSizeOfFd
+  host_output_surface:
+    functions:
+      - FiaTilingNonQuant::SetSplitOutput
+      - FiaTilingNonQuantMla::SetSplitOutput
+    source_evidence_ids:
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    copied_outputs:
+      outer_split_params:
+        - bN2End[]
+        - gS1End[]
+        - s2End[]
+      fd_params:
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - s2SplitStartIdxOfCore[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+  stage2_stub_fields:
+    - split_core.range_assignments[].core_idx
+    - split_core.range_assignments[].bn2_range
+    - split_core.range_assignments[].gs1_range
+    - split_core.range_assignments[].s2_range
+    - split_core.range_assignments[].fd_task_count
+  validators:
+    - C-SPLIT-CORE-RANGE-ORDER
+    - C-SPLIT-CORE-FD-BRIDGE
+  current_known_unknowns:
+    - Exact internal heuristics that choose the blockIdx -> BN2/GS1/S2 ranges remain external.
+    - Stage-1 can verify the bridge fields and writer/consumer ordering, but not the opaque planner's internal search algorithm.

@@ -1,0 +1,280 @@
+pipeline_graphs:
+  schema_version: 1
+  graphs:
+  - id: graph.gqa.main
+    variant: gqa
+    description: GQA cube/vector/FD pipeline with explicit shared-vector alias stages.
+    preload_scheduler:
+      pattern: current.mm1 -> older.vec1_and_mm2 -> previous.vec2
+      source_evidence_ids:
+      - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+      - SE-KNOB-PRELOAD-NUM
+    nodes:
+    - id: gqa.mm1
+      stage: gqa.mm1
+      canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+      owner: FiaBlockCubeNonQuantGqa<FIAT,Config>
+      role: QK cube stage with Q/K L1 snapshot reuse.
+    - id: gqa.vec1
+      stage: gqa.vec1
+      canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+      owner: FiaBlockVecNonQuant<FIAT>
+      role: Shared Vec1 alias that computes online softmax and vec1ResGm.
+      alias_of: shared.nonquant.vec1
+    - id: gqa.mm2
+      stage: gqa.mm2
+      canonical_name: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+      owner: FiaBlockCubeNonQuantGqa<FIAT,Config>
+      role: PV cube stage with V L1 snapshot reuse.
+    - id: gqa.vec2.output
+      stage: gqa.vec2.output
+      canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+      owner: FiaBlockVecNonQuant<FIAT>
+      role: Shared Vec2 alias that emits final output or split-KV partials.
+      alias_of: shared.nonquant.vec2
+    - id: flash_decode.merge
+      stage: flash_decode.merge
+      canonical_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+      owner: FiaBlockVecFlashDecode<FIAT>
+      role: Split-KV partial O/LSE merge.
+    - id: output.final_attention
+      stage: output.final_attention
+      owner: output_boundary
+      role: Final attentionOut copy-out boundary.
+    edges:
+    - id: edge.gqa.mm1_to_vec1
+      from: gqa.mm1
+      to: gqa.vec1
+      kind: sync
+      signal: syncC1V1
+      source_evidence_ids:
+      - SE-SHARED-VEC1-SYNC
+    - id: edge.gqa.vec1_to_mm2
+      from: gqa.vec1
+      to: gqa.mm2
+      kind: sync
+      signal: syncV1C2
+      source_evidence_ids:
+      - SE-SHARED-VEC1-SYNC
+    - id: edge.gqa.mm2_to_vec2
+      from: gqa.mm2
+      to: gqa.vec2.output
+      kind: sync
+      signal: syncC2V2
+      source_evidence_ids:
+      - SE-SHARED-VEC2-SYNC
+      - SE-GQA-V-L1-RELEASE
+    - id: edge.gqa.vec2_to_output
+      from: gqa.vec2.output
+      to: output.final_attention
+      kind: conditional_data
+      when: info.isLastS2Loop && !info.tndIsS2SplitCore
+      source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+    - id: edge.gqa.vec2_to_fd
+      from: gqa.vec2.output
+      to: flash_decode.merge
+      kind: conditional_data
+      when: info.isLastS2Loop && info.tndIsS2SplitCore && FLASH_DECODE
+      source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+      - SE-FD-METADATA-PARTITION
+  - id: graph.mla.main
+    variant: mla
+    description: MLA cube/vector pipeline with explicit nUpdate side-channel and Vec2 output path.
+    preload_scheduler:
+      pattern: current.mm1 -> older.vec1_and_mm2 -> previous.vec2
+      source_evidence_ids:
+      - SE-RUNINFO-THREE-STAGE-RING-MLA
+      - SE-KNOB-PRELOAD-NUM
+    nodes:
+    - id: mla.mm1
+      stage: mla.mm1
+      canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
+      owner: FiaBlockCubeNonQuantMla<FIAT>
+      role: MLA MM1 wrapper for n-buffer chunking.
+    - id: mla.mm1.process
+      stage: mla.mm1.process
+      canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+      owner: FiaBlockCubeNonQuantMla<FIAT>
+      role: Rope/nope QK cube body with L1 packing.
+    - id: mla.vec1
+      stage: mla.vec1
+      canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
+      owner: FiaBlockVecNonQuantMla<FIAT>
+      role: MLA Vec1 softmax stage and lse export boundary.
+    - id: mla.nupdate.compute
+      stage: mla.nupdate.compute
+      canonical_name: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+      owner: FiaBlockVecNonQuantMla<FIAT>
+      role: Derives nUpdate and aMlaSum from online softmax state.
+    - id: mla.mm2
+      stage: mla.mm2
+      canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+      owner: FiaBlockCubeNonQuantMla<FIAT>
+      role: MLA MM2 wrapper that coordinates Vec1, nUpdate, and Vec2 handoff.
+    - id: mla.nupdate.apply
+      stage: mla.nupdate.apply
+      canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+      owner: FiaBlockVecNonQuantMla<FIAT>
+      role: Broadcasts and atomically applies nUpdate correction.
+    - id: mla.mm2.process
+      stage: mla.mm2.process
+      canonical_name: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+      owner: FiaBlockCubeNonQuantMla<FIAT>
+      role: MLA MM2 cube body that waits on nUpdate before first fixpipe.
+    - id: mla.vec2.output
+      stage: mla.vec2.output
+      canonical_name: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+      owner: FiaBlockVecNonQuantMla<FIAT>
+      role: MLA Vec2 output or FD partial-export stage.
+    - id: flash_decode.merge
+      stage: flash_decode.merge
+      canonical_name: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+      owner: FiaBlockVecFlashDecode<FIAT>
+      role: Split-KV partial O/LSE merge.
+    - id: output.final_attention
+      stage: output.final_attention
+      owner: output_boundary
+      role: Final attentionOut copy-out boundary.
+    edges:
+    - id: edge.mla.mm1_to_mm1_process
+      from: mla.mm1
+      to: mla.mm1.process
+      kind: control
+      signal: nBuffer_chunk_dispatch
+      source_evidence_ids:
+      - SE-KNOB-NBUFFER-MBASE-SIZE
+    - id: edge.mla.mm1_process_to_vec1
+      from: mla.mm1.process
+      to: mla.vec1
+      kind: sync
+      signal: syncC1V1
+      source_evidence_ids:
+      - SE-MLA-VEC1-NUPDATE-SYNC
+    - id: edge.mla.vec1_to_nupdate_compute
+      from: mla.vec1
+      to: mla.nupdate.compute
+      kind: local_data
+      signal: shared_online_softmax_state
+      source_evidence_ids:
+      - SE-MLA-SOFTMAX-SUM-GEN
+    - id: edge.mla.vec1_to_mm2
+      from: mla.vec1
+      to: mla.mm2
+      kind: sync
+      signal: syncV1C2
+      source_evidence_ids:
+      - SE-MLA-VEC1-NUPDATE-SYNC
+    - id: edge.mla.mm2_to_nupdate_apply
+      from: mla.mm2
+      to: mla.nupdate.apply
+      kind: sync
+      signal: syncC2V1
+      source_evidence_ids:
+      - SE-MLA-VEC1-NUPDATE-SYNC
+    - id: edge.mla.nupdate_compute_to_apply
+      from: mla.nupdate.compute
+      to: mla.nupdate.apply
+      kind: local_data
+      signal: outputBuff2_rowwise_nupdate
+      source_evidence_ids:
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - id: edge.mla.nupdate_apply_to_mm2_process
+      from: mla.nupdate.apply
+      to: mla.mm2.process
+      kind: sync
+      signal: syncV1NupdateC2
+      source_evidence_ids:
+      - SE-MLA-NUPDATE-BARRIER
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - id: edge.mla.mm2_to_vec2
+      from: mla.mm2
+      to: mla.vec2.output
+      kind: sync
+      signal: syncC2V2
+      source_evidence_ids:
+      - SE-MLA-NUPDATE-BARRIER
+    - id: edge.mla.vec2_to_output
+      from: mla.vec2.output
+      to: output.final_attention
+      kind: conditional_data
+      when: info.isLastS2Loop && !info.tndIsS2SplitCore
+      source_evidence_ids:
+      - SE-MLA-SOFTMAX-SUM-CONSUME
+    - id: edge.mla.vec2_to_fd
+      from: mla.vec2.output
+      to: flash_decode.merge
+      kind: conditional_data
+      when: info.isLastS2Loop && info.tndIsS2SplitCore && FLASH_DECODE
+      source_evidence_ids:
+      - SE-FD-METADATA-PARTITION
+      - SE-WORKSPACE-FD-SIZE-MLA
+  - id: graph.common.buffer_event_policy
+    variant: common
+    description: Common buffer, event, copy, and vector legality facts imported from attention/common helpers.
+    preload_scheduler:
+      pattern: policy-owned buffers with explicit producer/consumer wait and set edges
+      source_evidence_ids:
+      - SE-COMMON-BUFFER-H
+      - SE-COMMON-BUFFERS-POLICY-H
+      - SE-COMMON-MATMUL-H
+      - SE-COMMON-MEMORY-COPY-H
+      - SE-COMMON-VECTOR-COMMON-H
+    nodes:
+    - id: common.copy.gm_to_l1
+      stage: copy.gm_to_l1
+      canonical_name: CopyQueryGmToL1 / CopyKvGmToL1
+      owner: common memory_copy helpers
+      role: Selects GmFormat/FormatCategory offsets and materializes query/KV tiles into L1 NZ layout.
+    - id: common.buffer.policy
+      stage: buffer.policy
+      canonical_name: BuffersPolicySingleBuffer / BuffersPolicyDB / BuffersPolicy3buff / BuffersPolicy4buff / Matrix2x2BufferPolicy
+      owner: common buffer policy helpers
+      role: Owns buffer allocation count, traversal state, Init/Uninit, and reuse cursors.
+    - id: common.event.sync
+      stage: buffer.event_sync
+      canonical_name: Buffer<bufferType, syncType>
+      owner: common buffer helper
+      role: Applies hard-event wait/set pairs and cross-core ID rules for producer-consumer handoff.
+    - id: common.matmul.compute
+      stage: cube.matmul
+      canonical_name: MatmulBase / MatmulKPP
+      owner: common matmul helper
+      role: Consumes policy-managed L0A/L0B buffers and applies unitFlag behavior across K/N/full split paths.
+    - id: common.vector.invalid_rows
+      stage: vector.invalid_rows
+      canonical_name: InvalidRows / InvalidMaskRows / GetSafeActToken
+      owner: common vector helper
+      role: Clamps active tokens, zeroes invalid sparse/mask rows, and inserts PIPE_V barriers for invalid-row and split-reduction paths.
+    edges:
+    - id: edge.common.copy_to_buffer
+      from: common.copy.gm_to_l1
+      to: common.buffer.policy
+      kind: data
+      signal: l1_nz_tile
+      source_evidence_ids:
+      - SE-COMMON-MEMORY-COPY-H
+    - id: edge.common.buffer_to_event
+      from: common.buffer.policy
+      to: common.event.sync
+      kind: sync
+      signal: policy_owned_wait_set
+      source_evidence_ids:
+      - SE-COMMON-BUFFER-H
+      - SE-COMMON-BUFFERS-POLICY-H
+    - id: edge.common.event_to_matmul
+      from: common.event.sync
+      to: common.matmul.compute
+      kind: sync
+      signal: hard_event_pair
+      source_evidence_ids:
+      - SE-COMMON-BUFFER-H
+      - SE-COMMON-MATMUL-H
+    - id: edge.common.vector_barrier
+      from: common.vector.invalid_rows
+      to: common.vector.invalid_rows
+      kind: barrier
+      signal: PIPE_V
+      source_evidence_ids:
+      - SE-COMMON-VECTOR-COMMON-H

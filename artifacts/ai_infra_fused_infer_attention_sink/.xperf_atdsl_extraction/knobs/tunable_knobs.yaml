@@ -1,19 +1,190 @@
 tunable_knobs:
 - name: s2BaseSize
-  scope: tiling and RunInfo S2 loop
-  evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1001-1003
+  type: integer
+  domain:
+    kind: positive_integer
+    minimum: 1
+    unit: kv_tokens_per_s2_tile
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    consumers:
+    - task creation and sparse-range builders
+    - GQA MM1/MM2 inner loops
+    - shared Vec1/Vec2 softmax and output tiles
+  default_behavior:
+    source: metadata S_INNER_SIZE_INDEX populated by host tilingData.innerSplitParams.s2BaseSize
+    fixed_or_derived: host_selected_per_tiling
+  coupled_constraints:
+  - C-EVENT-ORDER-RUNINFO
+  - C-INVALID-ROW-LSE-CORRECTION
+  searchable: true
+  source_evidence:
+  - id: SE-KNOB-S2-BASE-SIZE
 - name: mBaseSize
-  scope: M tile and FD gS1 base
-  evidence: op_kernel/fia_block_vec_flashdecode_sink.h:443-476
+  type: integer
+  domain:
+    kind: positive_integer
+    minimum: 1
+    unit: query_rows_per_m_tile
+  applies_to:
+    variants:
+    - nonquant
+    - mla
+    owners:
+    - FiaTilingNonQuant
+    - FiaTilingNonQuantMla
+    consumers:
+    - split-core input builder
+    - FD gS1 partition sizing
+    - workspace formulas that scale per-task accumOut
+  default_behavior:
+    source: host tiling mBaseSize_ forwarded into splitParam.mBaseSize and innerSplitParams.mBaseSize
+    fixed_or_derived: host_selected_per_tiling
+  coupled_constraints:
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  - C-FD-USED-VEC-BOUNDS
+  searchable: true
+  source_evidence:
+  - id: SE-KNOB-MBASE-SIZE
 - name: nBufferMBaseSize
-  scope: MLA n-buffer split
-  evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:512-519
+  type: integer
+  domain:
+    kind: positive_integer
+    minimum: 1
+    unit: mla_rows_per_nbuffer_chunk
+  applies_to:
+    variants:
+    - mla
+    owners:
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    - FiaBlockCubeNonQuantMla<FIAT>
+    - FiaBlockVecNonQuantMla<FIAT>
+    consumers:
+    - MLA MM1/MM2 wrappers
+    - MLA Vec1/Vec2 n-buffer partition loops
+  default_behavior:
+    source: constInfo.nBufferMBaseSize = N_BUFFER_M_BASIC_SIZE
+    fixed_or_derived: compile_time_constant
+  coupled_constraints:
+  - C-MLA-MM2-NUPDATE
+  - C-VEC-UB-ALIGNMENT
+  searchable: false
+  source_evidence:
+  - id: SE-KNOB-NBUFFER-MBASE-SIZE
 - name: preLoadNum
-  scope: workspace and pipeline ring slots
-  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:501-508
+  type: integer
+  domain:
+    kind: fixed_positive_integer
+    values:
+    - PRELOAD_NUM
+    - PRE_LOAD_NUM_MLA
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    consumers:
+    - workspace ring slot addressing
+    - RunInfo scheduler overlap
+    - shared Vec and MLA local-UB preload buffers
+  default_behavior:
+    source: compile-time constants PRELOAD_NUM and PRE_LOAD_NUM_MLA copied into constInfo.preLoadNum
+    fixed_or_derived: compile_time_constant
+  coupled_constraints:
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  - C-EVENT-ORDER-RUNINFO
+  - C-VEC2-PARTIAL-RING-SEPARATION
+  searchable: false
+  source_evidence:
+  - id: SE-KNOB-PRELOAD-NUM
 - name: headDimAlign
-  scope: MM2/FD workspace stride
-  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:463-468
+  type: derived_integer
+  domain:
+    kind: alignment
+    derived_from: headDim aligned to fa_base_vector::BYTE_BLOCK
+    minimum_alignment_bytes: 32
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    - FiaBlockVecNonQuant<FIAT>
+    - FiaBlockVecFlashDecode<FIAT>
+    consumers:
+    - MM2 and Vec2 workspace stride
+    - FD accumOut sizing
+    - final output padding strip rule
+  default_behavior:
+    source: constInfo.headDimAlign = Align(constInfo.headDim, fa_base_vector::BYTE_BLOCK)
+    fixed_or_derived: derived_from_input_shape
+  coupled_constraints:
+  - C-VEC-UB-ALIGNMENT
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  searchable: false
+  source_evidence:
+  - id: SE-KNOB-HEADDIM-ALIGN
 - name: splitKVFlag
-  scope: FD workspace inclusion
-  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:520-526
+  type: boolean
+  domain:
+    kind: enum
+    values:
+    - false
+    - true
+  applies_to:
+    variants:
+    - flash_decode
+    owners:
+    - FiaTilingNonQuant
+    - FiaTilingNonQuantMla
+    consumers:
+    - FD workspace sizing
+    - Vec2 partial export path
+    - FlashDecode merge activation
+  default_behavior:
+    source: host split path enables splitKVFlag before workspace sizing; FD workspace is appended only when the flag is active
+    fixed_or_derived: route_flag_from_host_split_logic
+  coupled_constraints:
+  - C-FD-USED-VEC-BOUNDS
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  searchable: false
+  source_evidence:
+  - id: SE-KNOB-SPLITKV-FLAG
+- name: gS1BaseSizeOfFd
+  type: integer
+  domain:
+    kind: positive_integer
+    minimum: 1
+    unit: query_rows_per_fd_gs1_partition
+  applies_to:
+    variants:
+    - flash_decode
+    - mla
+    owners:
+    - FiaTilingNonQuant
+    - FiaTilingNonQuantMla
+    consumers:
+    - split-core FD range planning
+    - FlashDecode actualGSplitSize tails
+    - FD taskOffset and startRow addressing
+  default_behavior:
+    source: host splitParam.gS1BaseSizeOfFd is forwarded from mFdBaseSize_ and later reconstructed from metadata M_FD_BASE_SIZE_INDEX
+    fixed_or_derived: host_selected_per_tiling
+  coupled_constraints:
+  - C-FD-USED-VEC-BOUNDS
+  - C-SPLIT-CORE-FD-BRIDGE
+  searchable: false
+  source_evidence:
+  - id: SE-SPLIT-CORE-INPUT-PARAMS
+  - id: SE-FD-METADATA-PARTITION

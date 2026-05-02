@@ -5,119 +5,156 @@ function_annotation:
   owner: FiaBlockCubeNonQuantGqa
   owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
   owner_template_args:
-  - FIAT
-  - Config
+    - FIAT
+    - Config
   template_params:
-  - template<typename FIAT,typename Config>
-  - template<CubeFormat OutFormat,CubeFormat BFormat>
+    - template<typename FIAT,typename Config>
+    - template<CubeFormat OutFormat,CubeFormat BFormat>
   variant: gqa
   stage: mm1
   file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
   line_range:
     start: 958
     end: 1112
-  role: gqa cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+  role: GQA cube MM1 stage that tiles Q and K into L1/L0, preserves a Q_L1 snapshot keyed by batch-head-gS1, and writes QK scores into the normal mm1 ring.
   confidence: high
+  source_evidence_ids:
+    - SE-GQA-Q-L1-SNAPSHOT
+    - SE-GQA-MM1-SPARSE-L1-SNAPSHOT
   code_behavior:
-    summary: gqa cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    summary: Splits the current GQA QK workload by N and M tiles, performs sparse skip checks before loading Q/K, reuses Q_L1 when the batch-head-gS1 signature matches, and fixpipes the QK result into mm1ResGm before signaling Vec1.
     key_steps:
-    - 'Calls: UpdateKey, m, n, k, Split, size, CopyKToL1, CopyQToL1, AlignedSize, LoadBTransposeToL0.'
-    - Uses cube matmul/MMAD operations.
-    - Coordinates pipeline state with event or cross-core flags.
-    - Writes cube results through Fixpipe.
+      - Updates key GM bindings on batch changes when the KV layout is BNSD-backed.
+      - Uses M_SPLIT_SIZE 128 or 256 depending on CFG::S2_BASICSIZE_IS_1024, N_SPLIT_SIZE 128, and a concatenated K axis of headDim + headDimRope.
+      - Computes qCoord = (bIdx, n2Idx, gS1Idx) and reuses qL1Snapshot only when canFullLoadQ stays true and the signature matches.
+      - Runs sparse skip checks once for the full M range and again per mL1 tile before issuing CopyKToL1 or CopyQToL1.
+      - Loads Q and K into L1, stages them into L0A/L0B, accumulates with Mmad, and fixpipes the result to the mm1 workspace ring.
+      - Signals syncC1V1 only after the full cube stage completes.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - queryGm and qRopeGm tiles addressed by info.bIdx, info.n2Idx, and info.gS1Idx
+      - keyGm and keyRopeGm tiles, or keySinkGm and keyRopeSinkGm when sink tensors are active
+      - sparse skip state derived from constInfo.keySinkNumber and fa_base_kernel::IsSkipCal
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - mm1ResGm[info.loop % CFG::PRELOAD_NUM]
+      - qL1Snapshot.signature, qL1Snapshot.bufCnt, and qL1Snapshot.firstBufId for same-stage L1 reuse
     gm:
       reads:
-      - GM tensors referenced in function body
+        - queryGm / qRopeGm through CopyQToL1
+        - keyGm / keyRopeGm through CopyKToL1
+        - keySinkGm / keyRopeSinkGm through CopySingleMatrixNDToNZ on sink rows
       writes:
-      - DataCopy/Fixpipe destinations visible in body
+        - mm1ResGm through FixpipeCToGM
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
       reads:
-      - L1 tiles or buffers
+        - qL1Tensor[qBufId]
+        - kpL1Tensor[tmpBufId] or kSinkL1Tensor[0]
       writes:
-      - L1 copies from GM or prior stage
+        - Q tiles copied by CopyQToL1
+        - K and rope tiles copied by CopyKToL1 or CopySingleMatrixNDToNZ
     l0:
       l0a:
-      - A operand tiles loaded to L0A
+        - Q tiles loaded by LoadAToL0
       l0b:
-      - B operand tiles loaded to L0B
+        - K tiles loaded by LoadBTransposeToL0
       l0c:
-      - MMAD accumulation in L0C
+        - QK scores accumulated by Mmad before FixpipeCToGM
   control_flow:
     loops:
-    - for
+      - for each nL1 tile
+      - for each mL1 tile and nested mL0 / nL0 / kL0 cube block
     branches:
-    - if
-    - else
+      - batch-change key update branch
+      - sparse skip branch over full-M and per-mL1 windows
+      - reuseQBuf versus CopyQToL1 branch
+      - sink tensor versus regular key copy branch
   pipeline:
     stages:
-    - mm1
-    - gqa
-    - calls:UpdateKey,m,n,k,Split,size
+      - mm1
+      - gqa
+      - qk_cube_with_q_snapshot
     sync:
-    - WaitFlag
-    - SetFlag
-    - CrossCoreSetFlag
+      - WaitFlag and SetFlag around KP_EVENT, Q_EVENT, L0_READY_EVENT, and L0C_EVENT ping-pong
+      - CrossCoreSetFlag<constInfo.syncC1V1> after the cube stage completes
   memory_behavior:
     buffers:
-    - mm1ResGm
+      - qL1Snapshot and qL1Tensor
+      - kpL1Tensor or kSinkL1Tensor
+      - aL0Tensor / bL0Tensor / cL0Tensor ping-pong buffers
+      - mm1ResGm workspace ring
     l1_residency:
-    - L1 reuse/snapshot visible in body
+      - qL1Snapshot retains Q tiles when canFullLoadQ is true and the qCoord signature is unchanged.
+      - KP buffers rotate independently from Q snapshot buffers so the Q lifetime can span multiple nL1 iterations.
     l1_partition:
-    - L1 buffer iterators or split sizes visible
+      - Q uses L1_Q_BUFCNT snapshot slots keyed by mL1Id.
+      - K uses kpOrSinkL1BufId rotation and separate sink-tensor handling.
   tiling_and_shape:
     fields:
-    - M_SPLIT_SIZE
-    - headDim
-    - actualSingleProcessSInnerSize
+      - M_SPLIT_SIZE
+      - N_SPLIT_SIZE
+      - K_BASE
+      - s2BaseSize
+      - headDim
+      - headDimRope
+      - actualSingleProcessSInnerSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:958-1112'
+      - The K axis is split as headDim plus headDimRope for GQA rope/nope packing.
+      - ND output rows for mm1ResGm use info.actualSingleProcessSInnerSizeAlign when OutFormat is ND.
+      - Sparse skip checks consume both gS1 and s2BaseSize-derived coordinates.
   workspace:
     layout:
-    - workspace region or GM temporary referenced
+      - normal.mm1 as the QK score ring consumed by shared Vec1
     offsets:
-    - unknown
+      - mm1Res slot = info.loop % CFG::PRELOAD_NUM
+      - qCoord = (uint64_t(info.bIdx) << 48) | (uint64_t(info.n2Idx) << 32) | info.gS1Idx
+      - sparse S2 coordinate = info.s2Idx * constInfo.s2BaseSize + nL1.start
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse Q_L1 across mL1 tiles when the current batch-head-gS1 signature is stable.
+    - Skip empty sparse windows before issuing GM-to-L1 traffic.
+    - Keep the cube stage owner-qualified so GQA MM1 is not collapsed into the generic nonquant path.
   tunable_or_structural_fields:
-  - name: s2BaseSize
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:958-1112
+    - name: s2BaseSize
+      role: Converts info.s2Idx into the actual sparse-window coordinate used by skip checks.
+      source_evidence_ids:
+        - SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+    - name: actualSingleProcessSInnerSize
+      role: Determines the active N extent of the current QK tile.
+      source_evidence_ids:
+        - SE-GQA-MM1-SPARSE-L1-SNAPSHOT
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
-  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+    - Preserve both sparse skip sites; removing the full-M or per-mL1 guard changes which rows can bypass Q/K loads and MMAD work.
+    - Preserve qCoord-based Q snapshot reuse and the deferred Q_EVENT release semantics around CopyQToL1.
+    - Keep syncC1V1 as the only cross-core release point for the downstream shared Vec1 stage.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Breaking qCoord reuse can refill or overwrite live Q_L1 tiles and erase the intended GQA L1 residency benefit.
+    - Moving sparse skip checks after L1 loads or Mmad work wastes bandwidth and can alter sink-row behavior.
+    - Weakening the owner-qualified stage identity makes GQA MM1 indistinguishable from generic MM1 in Stage-2 lowering.
   possible_dsl_sections:
-  - gqa.grouped_query
-  - memory.l1_residency
-  - pipeline.cube_stages
+    - gqa.grouped_query
+    - memory.l1_residency
+    - pipeline.cube_stages
+    - sparse.policy
   suggested_dsl_fields:
-  - path: gqa.grouped_query.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:958-1112
-    confidence: high
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:958-1112
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:958-1112
-    confidence: high
+    - path: memory.l1.gqa.q_snapshot_signature
+      meaning: Q_L1 reuse is keyed by batch-head-gS1 and only valid when canFullLoadQ remains true.
+      source_evidence_ids:
+        - SE-GQA-Q-L1-SNAPSHOT
+        - SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+      confidence: high
+    - path: sparse.policy.skip_cal_windows
+      meaning: GQA MM1 performs sparse skip checks before K loads and again before each mL1 compute tile.
+      source_evidence_ids:
+        - SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+      confidence: high
+    - path: pipeline.stage_graph.edges[].sync_signal
+      meaning: GQA MM1 releases the shared Vec1 stage only through syncC1V1 after the cube fixpipe completes.
+      source_evidence_ids:
+        - SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower GQA MM1 as its own owner-qualified cube stage rather than rewriting it as a generic nonquant wrapper.
+    - Keep q snapshot reuse and sparse skip policy in the same lowering rule so Stage-2 does not separate two coupled correctness/performance contracts.
+  open_questions: []

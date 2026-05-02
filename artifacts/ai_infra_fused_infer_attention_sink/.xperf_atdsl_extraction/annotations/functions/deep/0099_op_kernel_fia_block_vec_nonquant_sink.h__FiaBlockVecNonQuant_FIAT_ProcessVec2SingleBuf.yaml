@@ -5,103 +5,159 @@ function_annotation:
   owner: FiaBlockVecNonQuant
   owner_qualified: FiaBlockVecNonQuant<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: nonquant
   stage: vec2
   file: op_kernel/fia_block_vec_nonquant_sink.h
   line_range:
-    start: 563
-    end: 586
-  role: nonquant vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
-  confidence: medium
+    start: 566
+    end: 669
+  role: Shared generic Vec2 contract that consumes MM2 ring output, merges split-KV partials, and emits either final attention output or FD partial accumOut scratch.
+  confidence: high
+  source_evidence_ids:
+    - SE-GQA-VEC2-DISPATCH
+    - SE-SHARED-VEC2-CONTRACT
+    - SE-SHARED-VEC2-SYNC
   code_behavior:
-    summary: nonquant vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Tiles the current M partition by headDimAlign, loads MM2 output from mm2ResGm, optionally merges prior split-KV partials from vec2ResGm using softmaxExp, then either normalizes and copies out final output or stores the next partial back to workspace.
     key_steps:
-    - 'Calls: DealBmm2ResBaseBlock.'
+      - Returns when vecDealM is zero.
+      - Chooses mSplitSize from BASE_BLOCK_MAX_ELEMENT_NUM / headDimAlign with 32B-safe rounding when SOFTMAX_WITH_BRC is disabled.
+      - Calls DealBmm2ResBaseBlock for each tile with columnCount = headDimAlign and actualColumnCount = headDim.
+      - For non-first S2 loops rereads vec2ResGm from the previous preload slot and multiplies it by the current softmaxExp before accumulation.
+      - On the last S2 loop divides by softmaxSum and dispatches final output through Bmm2ResCopyOut.
+      - On intermediate S2 loops stores the accumulated partial back to vec2ResGm for the next merge step.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - mm2ResGm current preload slot
+      - vec2ResGm previous preload slot when info.isFirstSInnerLoop is false
+      - softmaxExpUb and softmaxSumUb from the shared Vec1 stage
+      - run-info flags that choose FD partial export versus normal attentionOut copy-out
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - attentionOutGm on the final non-FD path
+      - accumOutGm on the final FD split-core path
+      - vec2ResGm partial workspace on intermediate S2 loops
     gm:
       reads:
-      - unknown
+        - mm2ResGm[srcGmOffset]
+        - vec2ResGm[vec2ResGmOffset] when merging a prior split-KV partial
       writes:
-      - unknown
+        - vec2ResGm[vec2ResGmOffset] on non-final S2 loops
+        - attentionOutGm through Bmm2CastAndCopyOut plus Bmm2DataCopyOutTrans on final non-FD paths
+        - accumOutGm through Bmm2FDDataCopyOut when FLASH_DECODE and tndIsS2SplitCore are both true
     ub:
       reads:
-      - LocalTensor/UB operands
+        - bmm2ResUb current tile
+        - bmm2ResPreUb prior partial tile
+        - softmaxExpUb and softmaxSumUb broadcast inputs
       writes:
-      - LocalTensor/UB temporaries
+        - bmm2ResUb after merge and normalization
+        - tmpExpBrcbResUb or tmpSumBrcbResUb during non-BRC broadcast paths
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each M sub-tile in the current vecDealM range
     branches:
-    - if
+      - previous-partial merge branch when info.isFirstSInnerLoop is false
+      - final output branch when info.isLastS2Loop is true
+      - FLASH_DECODE split-core branch inside Bmm2ResCopyOut
+      - SOFTMAX_WITH_BRC versus explicit BRC temporary path
   pipeline:
     stages:
-    - vec2
-    - nonquant
-    - calls:DealBmm2ResBaseBlock
+      - vec2
+      - shared_generic_nonquant
+      - calls DealBmm2ResBaseBlock, Bmm2ResCopyOut, Bmm2FDDataCopyOut, and Bmm2CastAndCopyOut
     sync:
-    - unknown
+      - ComputeVec2 waits syncC2V2 before entering this function
+      - DealBmm2ResBaseBlock uses an MTE3_MTE2 event handshake before rereading vec2ResGm partials
+      - ComputeVec2 signals syncV2C2 after this function completes
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - inputQue1 bmm2ResUb and bmm2ResPreUb tiles
+      - outputQue1 tmpBmm2Res or cast output tiles
+      - tmpBuff1 temporary BRC scratch
+    l1_residency: []
+    l1_partition: []
+  head_dim_contract:
+    aligned_column_count: columnCount is headDimAlign for workspace stride and UB compute shape
+    logical_column_count: actualColumnCount is headDim for user-visible output width
+    final_output_rule: Non-FD copy-out uses layout-aware GM writers, while FD copy-out uses DataCopyPad with srcStride = columnCount - actualColumnCount
   tiling_and_shape:
     fields:
-    - headDim
+      - headDimAlign
+      - headDim
+      - preLoadNum
+      - vecDealM
+      - brcbNum
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586'
+      - mSplitSize is derived from BASE_BLOCK_MAX_ELEMENT_NUM divided by headDimAlign
+      - all workspace ring slots stride by constInfo.bmm2ResUbSize, which is measured in aligned headDim columns
+      - final copy-out strips headDimAlign padding down to headDim
   workspace:
     layout:
-    - unknown
+      - normal.mm2 as current MM2 input ring
+      - normal.vec2 as split-KV partial ring
+      - flash_decode.accum_out on FD final partial export
     offsets:
-    - unknown
+      - srcGmOffset = (info.loop % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + mStart * columnCount
+      - prior partial offset = ((info.loop - 1) % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + inOutBaseOffset
+      - partial write-back offset = (info.loop % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + inOutBaseOffset
+      - FD accumOut offset = info.accumTmpOutNum * constInfo.mBaseSize * constInfo.headDim + info.tndCoreStartKVSplitPos * constInfo.mBaseSize * constInfo.headDim + wsMStart * actualColumnCount
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse the MM2 ring output and a separate vec2 partial ring to avoid materializing all split-KV partials in the final output tensor.
+    - Keep normalization late so intermediate S2 loops accumulate numerators rather than repeatedly dividing and re-scaling.
+    - Preserve headDimAlign as the workspace stride while stripping padding only at the final output boundary.
   tunable_or_structural_fields:
-  - name: headDimAlign
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586
+    - name: headDimAlign
+      role: Workspace stride and Vec2 tile width.
+      source_evidence_ids:
+        - SE-SHARED-VEC2-CONTRACT
+        - SE-WORKSPACE-NORMAL-SIZE
+    - name: preLoadNum
+      role: Ring depth for current and previous partial lookup.
+      source_evidence_ids:
+        - SE-SHARED-VEC2-CONTRACT
+        - SE-WORKSPACE-NORMAL-SIZE
   constraints:
-  - unknown
+    - Preserve the previous-partial merge order RowMuls then Add before any final normalization.
+    - Preserve the syncC2V2 wait and syncV2C2 signal around the shared Vec2 contract.
+    - Keep columnCount at headDimAlign and actualColumnCount at headDim so workspace stride and output copy-out remain consistent.
+    - Final FD split-core output must go through Bmm2FDDataCopyOut rather than the normal attentionOut copy path.
   risks_if_changed:
-  - unknown
+    - Dropping the MTE3_MTE2 handshake can read a stale or still-being-written vec2ResGm partial.
+    - Collapsing the final output path with the FD partial-export path corrupts split-KV merge semantics.
+    - Changing headDimAlign or actualColumnCount handling misaligns workspace slots and can write padded garbage into GM output.
   possible_dsl_sections:
-  - pipeline.vector_stages
-  - softmax.online_state
+    - pipeline.vector_stages.shared_vec2
+    - flash_decode.partial_export
+    - output.layout_contract
+    - softmax.online_state
   suggested_dsl_fields:
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586
-    confidence: medium
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:563-586
-    confidence: medium
+    - path: pipeline.vector_stages.shared_vec2.partial_merge
+      meaning: Shared Vec2 merges previous split-KV partials from vec2ResGm before the last-loop normalization.
+      source_evidence_ids:
+        - SE-SHARED-VEC2-CONTRACT
+      confidence: high
+    - path: output.layout_contract.head_dim_padding
+      meaning: Workspace uses headDimAlign for stride, but final output uses headDim and strips padding at copy-out.
+      source_evidence_ids:
+        - SE-SHARED-VEC2-CONTRACT
+      confidence: high
+    - path: flash_decode.partial_export.accum_out
+      meaning: FD split-core export writes normalized partial output into accumOutGm instead of attentionOutGm.
+      source_evidence_ids:
+        - SE-SHARED-VEC2-CONTRACT
+        - SE-FD-WORKSPACE-OFFSETS
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this as the shared Vec2 owner for GQA and generic nonquant dispatch, not as a missing owner-specific GQA Vec2 stage.
+    - Model the non-final vec2ResGm write-back as a first-class partial-output contract because FD merge depends on it.
+  open_questions: []

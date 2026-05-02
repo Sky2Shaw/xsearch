@@ -1,0 +1,1072 @@
+source_evidence:
+  - id: SE-GQA-SHARED-VECTOR-OWNER
+    artifact_ids:
+      - dsl/shared_stage_aliases.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::vectorService
+    line_range:
+      start: 87
+      end: 89
+    observed_fact: FiaKernelNonQuant owns a shared FiaBlockVecNonQuant<FIAT> vectorService alongside the GQA matmul service and FD service.
+    confidence: high
+  - id: SE-GQA-VEC1-DISPATCH
+    artifact_ids:
+      - dsl/shared_stage_aliases.yaml
+      - annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::ComputeVec1
+    line_range:
+      start: 713
+      end: 716
+    observed_fact: Kernel-level ComputeVec1 forwards directly to vectorService.ComputeVec1(info), so the GQA Vec1 slot is serviced by the shared generic vector owner.
+    confidence: high
+  - id: SE-GQA-VEC2-DISPATCH
+    artifact_ids:
+      - dsl/shared_stage_aliases.yaml
+      - annotations/functions/deep/0099_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec2SingleBuf.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::ComputeVec2
+    line_range:
+      start: 719
+      end: 722
+    observed_fact: Kernel-level ComputeVec2 forwards directly to vectorService.ComputeVec2(info), so the GQA Vec2 slot is serviced by the shared generic vector owner.
+    confidence: high
+  - id: SE-SHARED-VEC1-CONTRACT
+    artifact_ids:
+      - annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+      - annotations/functions/deep/0105_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_Vec1SinkSoftmaxProc.yaml
+      - auxiliary/workspace_layout.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
+    line_range:
+      start: 305
+      end: 401
+    observed_fact: Shared Vec1 tiles the M split, calls DealBmm1ResBaseBlock for each tile, optionally injects learnable sink rows, then either exports FD LSE scratch or writes layout-aware softmaxLse output.
+    confidence: high
+  - id: SE-SHARED-VEC1-SYNC
+    artifact_ids:
+      - dsl/shared_stage_aliases.yaml
+      - annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+    line_range:
+      start: 976
+      end: 981
+    observed_fact: Shared Vec1 waits syncC1V1 before ProcessVec1SingleBuf and signals syncV1C2 after it finishes, forming the producer contract for downstream MM2 or FD consumers.
+    confidence: high
+  - id: SE-VEC1-SINK-SOFTMAX
+    artifact_ids:
+      - annotations/functions/deep/0105_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_Vec1SinkSoftmaxProc.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
+    line_range:
+      start: 916
+      end: 938
+    observed_fact: Sink softmax correction subtracts softmaxMaxUb, exponentiates, optionally zeroes invalid split-KV rows through AdjustSoftMaxRes when tndIsS2SplitCore, then accumulates the contribution into softmaxSumUb.
+    confidence: high
+  - id: SE-SHARED-VEC2-CONTRACT
+    artifact_ids:
+      - annotations/functions/deep/0099_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec2SingleBuf.yaml
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    line_range:
+      start: 566
+      end: 669
+    observed_fact: Shared Vec2 tiles M by headDimAlign, rereads mm2ResGm, merges prior split-KV partials from vec2ResGm with softmaxExp, divides by softmaxSum on the last S2 loop, and otherwise writes the next partial back to vec2ResGm.
+    confidence: high
+  - id: SE-SHARED-VEC2-SYNC
+    artifact_ids:
+      - dsl/shared_stage_aliases.yaml
+      - annotations/functions/deep/0099_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec2SingleBuf.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+    line_range:
+      start: 984
+      end: 989
+    observed_fact: Shared Vec2 waits syncC2V2 before ProcessVec2SingleBuf and signals syncV2C2 after it finishes, so the C2 to V2 handoff is part of the stage contract.
+    confidence: high
+  - id: SE-WORKSPACE-NORMAL-SIZE
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::CalcNormalWorkspaceSize
+    line_range:
+      start: 517
+      end: 530
+    observed_fact: Generic normal workspace size is the sum of mm1Res, vec1Res, mm2Res, and vec2Res regions, each scaled by preload slots, core count, and their element widths.
+    confidence: high
+  - id: SE-WORKSPACE-NORMAL-ABI
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::InitWorkspace
+    line_range:
+      start: 373
+      end: 409
+    observed_fact: Generic nonquant InitWorkspace binds contiguous regions in the fixed order mm1Res, vec1Res, mm2Res, vec2Res, then optional FD accumOut, lseSum, and lseMax.
+    confidence: high
+  - id: SE-WORKSPACE-MLA-ABI
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+    file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    symbol: FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    line_range:
+      start: 491
+      end: 508
+    observed_fact: MLA normal workspace extends the generic four-region sum with an extra nUpdate term and an extra softmaxSum term, one preload-slot-sized slice per core.
+    confidence: high
+  - id: SE-WORKSPACE-MLA-INIT-ORDER
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+    file: op_kernel/fia_kernel_nonquant_mla_sink.h
+    symbol: FiaKernelNonQuantMla<FIAT>::InitWorkspace
+    line_range:
+      start: 415
+      end: 443
+    observed_fact: MLA InitWorkspace advances offsets only through mm1Res, vec1Res, mm2Res, vec2Res, then optional FD accumOut/lseSum/lseMax; there is no additional named GlobalTensor bound between vec2Res and FD scratch.
+    confidence: high
+  - id: SE-WORKSPACE-FD-SIZE-NONQUANT
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::CalcFlashDecodeWorkspace
+    line_range:
+      start: 533
+      end: 539
+    observed_fact: Generic FD workspace size is accumOutSize plus logSumExpSize, where accumOut scales with headDimAlign and logSumExp reserves equal-sized sum and max storage.
+    confidence: high
+  - id: SE-WORKSPACE-FD-SIZE-MLA
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    symbol: FiaTilingNonQuantMla::CalcFlashDecodeWorkspace
+    line_range:
+      start: 511
+      end: 517
+    observed_fact: MLA FD workspace size also splits into accumOut and logSumExp halves, but the parameter count is multiplied by n2Size because each FD reduction task spans MLA heads.
+    confidence: high
+  - id: SE-FD-WORKSPACE-OFFSETS
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::CopyLseIn
+    line_range:
+      start: 241
+      end: 248
+    observed_fact: FD LSE scratch is addressed as split-KV-major contiguous regions using combineLseOffset and combineLoopOffset, with lseSumFdGm and lseMaxFdGm read in matching strides per partial.
+    confidence: high
+  - id: SE-MLA-NUPDATE-BARRIER
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+      - risks/risks.yaml
+    file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+    symbol: FiaBlockCubeNonQuantMla<FIAT,Config>::ComputeMm2
+    line_range:
+      start: 1034
+      end: 1037
+    observed_fact: The first MLA MM2 fixpipe waits syncV1NupdateC2 at the end of the first complete K-slice for the first nL1 and mL1 tile.
+    confidence: high
+  - id: SE-MLA-SOFTMAX-SUM-GEN
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    line_range:
+      start: 518
+      end: 519
+    observed_fact: On the last S2 loop, MLA Vec1 multiplies softmaxSumUb by the nUpdate scaling term and stores the result in aMlaSumUb for later Vec2 normalization.
+    confidence: high
+  - id: SE-MLA-SOFTMAX-SUM-CONSUME
+    artifact_ids:
+      - auxiliary/workspace_layout.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
+    line_range:
+      start: 1147
+      end: 1152
+    observed_fact: MLA Vec2 broadcasts aMlaSumUb and divides bmm2Res by that value before final copy-out, making the stored softmaxSum correction order-sensitive.
+    confidence: high
+  - id: SE-GQA-V-L1-RELEASE
+    artifact_ids:
+      - constraints/forbidden_transforms.yaml
+      - risks/risks.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    line_range:
+      start: 1140
+      end: 1221
+    observed_fact: GQA MM2 caches V tiles in L1 while canFullLoadV holds and releases V_EVENT only when full-load reuse is impossible or the current mL1 slice is the tail.
+    confidence: high
+  - id: SE-FD-MERGE-WEIGHT-FORMULA
+    artifact_ids:
+      - constraints/forbidden_transforms.yaml
+      - risks/risks.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::ComputeScaleValue
+    line_range:
+      start: 263
+      end: 289
+    observed_fact: FD merge computes weights by colmax over lseMax, exponentiating shifted values, multiplying by lseSum, summing across partials, and normalizing with MatDivsVec.
+    confidence: high
+  - id: SE-GQA-Q-L1-SNAPSHOT
+    artifact_ids:
+      - auxiliary/memory_lifetime.yaml
+      - cards/optimization_cards.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    line_range:
+      start: 988
+      end: 1050
+    observed_fact: GQA MM1 caches Q tiles in qL1Snapshot keyed by batch/head/gS1 coordinate and only refills Q_L1 when the signature or required buffer count changes.
+    confidence: high
+  - id: SE-KNOB-S2-BASE-SIZE
+    artifact_ids:
+      - knobs/tunable_knobs.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::InitTilingData
+    line_range:
+      start: 254
+      end: 266
+    observed_fact: s2BaseSize is loaded from metadata S_INNER_SIZE_INDEX and drives the per-task S2 tile width used by task creation and stage kernels.
+    confidence: high
+  - id: SE-KNOB-MBASE-SIZE
+    artifact_ids:
+      - knobs/tunable_knobs.yaml
+      - cards/optimization_cards.yaml
+      - reports/external_dependencies.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::CreateSplitInput
+    line_range:
+      start: 326
+      end: 328
+    observed_fact: Host split input forwards mBaseSize and gS1BaseSizeOfFd into splitParam, so M-tile width participates in split-core planning and FD metadata generation.
+    confidence: high
+  - id: SE-KNOB-PRELOAD-NUM
+    artifact_ids:
+      - knobs/tunable_knobs.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::InitTilingData
+    line_range:
+      start: 266
+      end: 267
+    observed_fact: preLoadNum is a compile-time constant copied into constInfo and governs workspace ring depth plus RunInfo overlap behavior.
+    confidence: high
+  - id: SE-KNOB-NBUFFER-MBASE-SIZE
+    artifact_ids:
+      - knobs/tunable_knobs.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: op_kernel/fia_kernel_nonquant_mla_sink.h
+    symbol: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitTilingData
+    line_range:
+      start: 236
+      end: 237
+    observed_fact: nBufferMBaseSize is a compile-time MLA constant that drives n-buffer chunking in MLA MM1, Vec1, MM2, and Vec2 loops.
+    confidence: high
+  - id: SE-KNOB-HEADDIM-ALIGN
+    artifact_ids:
+      - knobs/tunable_knobs.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/dataflow_graphs.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::InitTilingData
+    line_range:
+      start: 258
+      end: 260
+    observed_fact: headDimAlign is derived by Align(headDim, BYTE_BLOCK) and becomes the aligned workspace stride for MM2, Vec2, and FD accumOut paths.
+    confidence: high
+  - id: SE-KNOB-SPLITKV-FLAG
+    artifact_ids:
+      - knobs/tunable_knobs.yaml
+      - cards/optimization_cards.yaml
+      - reports/external_dependencies.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::Split
+    line_range:
+      start: 366
+      end: 379
+    observed_fact: The host split path enables splitKVFlag before workspace sizing, so FD workspace and downstream partial-merge behavior are gated by split routing rather than an inner-kernel constexpr.
+    confidence: medium
+  - id: SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/pipeline_graphs.yaml
+      - learning/learned_patterns.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::ExecuteTask
+    line_range:
+      start: 882
+      end: 909
+    observed_fact: Nonquant/GQA ExecuteTask overlaps MM1 on the current slot, Vec1 and MM2 on the older slot, and Vec2 on the previous slot before invalidating that slot.
+    confidence: high
+  - id: SE-RUNINFO-THREE-STAGE-RING-MLA
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/pipeline_graphs.yaml
+      - learning/learned_patterns.yaml
+    file: op_kernel/fia_kernel_nonquant_mla_sink.h
+    symbol: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ExecuteTask
+    line_range:
+      start: 836
+      end: 862
+    observed_fact: 'MLA ExecuteTask uses the same three-slot overlap pattern as the nonquant scheduler: current MM1, older Vec1/MM2, and previous Vec2.'
+    confidence: high
+  - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/dataflow_graphs.yaml
+      - auxiliary/workspace_cross_reference.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    line_range:
+      start: 657
+      end: 717
+    observed_fact: ProcessAmlaNupdate broadcasts row-wise int32 corrections in 128-lane groups and atomically adds them into mm2ResInt32Gm at the current preload-slot offset.
+    confidence: high
+  - id: SE-MLA-MM2-INT32-ALIAS
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/workspace_cross_reference.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_kernel_nonquant_mla_sink.h
+    symbol: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitWorkspace
+    line_range:
+      start: 427
+      end: 431
+    observed_fact: MLA InitWorkspace binds mm2ResInt32Gm as an int32 reinterpretation of mm2ResGm rather than a separate dedicated GM tail region.
+    confidence: high
+  - id: SE-MLA-AMLASUM-UB-ONLY
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/workspace_cross_reference.yaml
+      - auxiliary/memory_lifetime.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::InitBuffers
+    line_range:
+      start: 266
+      end: 279
+    observed_fact: aMlaSum is allocated from the local TBuf aMlaSumBuff per preload slot and no workspace SetGlobalBuffer binds it as a dedicated GM region.
+    confidence: high
+  - id: SE-MLA-VEC1-NUPDATE-SYNC
+    artifact_ids:
+      - auxiliary/pipeline_graphs.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
+    line_range:
+      start: 795
+      end: 804
+    observed_fact: MLA Vec1 waits syncC2V1 after ProcessVec1SingleBuf, applies nUpdate, then signals syncV1NupdateC2 for downstream MM2.
+    confidence: high
+  - id: SE-VEC1-UB-ALIGNMENT
+    artifact_ids:
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - knobs/tunable_knobs.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
+    line_range:
+      start: 305
+      end: 318
+    observed_fact: Shared Vec1 rounds mSplitSize down to a 32B-safe multiple when SOFTMAX_WITH_BRC is disabled, making UB alignment part of the stage contract.
+    confidence: high
+  - id: SE-VEC2-UB-ALIGNMENT
+    artifact_ids:
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - knobs/tunable_knobs.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    line_range:
+      start: 566
+      end: 579
+    observed_fact: Shared Vec2 rounds mSplitSize down to a 32B-safe multiple and uses headDimAlign as workspace stride, so alignment and padding stripping are correctness-visible.
+    confidence: high
+  - id: SE-FD-METADATA-PARTITION
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - reports/external_dependencies.yaml
+      - dsl/schema_gaps.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_kernel/fia_kernel_nonquant_sink.h
+    symbol: FiaKernelNonQuant<FIAT>::FlashDecode
+    line_range:
+      start: 731
+      end: 761
+    observed_fact: FlashDecode reconstructs fdParams from metadata arrays such as bN2IdxOfFdHead, gS1IdxOfFdHead, s2SplitNumOfFdHead, gS1SplitNumOfFdHead, gS1IdxEndOfFdHead, and gS1IdxEndOfFdHeadSplit.
+    confidence: high
+  - id: SE-SPLIT-CORE-OUTPUT-BRIDGE
+    artifact_ids:
+      - annotations/functions/deep/0131_op_host_fia_tiling_nonquant_sink.cpp__FiaTilingNonQuant_SetSplitOutput.yaml
+      - dsl/split_core_range_contract.yaml
+      - reports/external_dependencies.yaml
+      - dsl/schema_gaps.yaml
+      - reports/split_core_range_contract.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::SetSplitOutput
+    line_range:
+      start: 331
+      end: 360
+    observed_fact: Host SetSplitOutput copies SplitResult.fdRes arrays into tilingData fdParams, forming the bridge between an external split-core producer and kernel FlashDecode consumers.
+    confidence: high
+  - id: SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+    artifact_ids:
+      - annotations/functions/deep/0035_op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm1.yaml
+      - auxiliary/memory_lifetime.yaml
+      - dsl/sparse_policy.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    line_range:
+      start: 958
+      end: 1112
+    observed_fact: GQA MM1 splits N and M into 128-sized tiles, applies sparse skip checks before K/Q loads and per-mL1 compute, caches Q_L1 by a batch-head-gS1 signature, and signals syncC1V1 after the fixpipe stage completes.
+    confidence: high
+  - id: SE-MLA-MM1-NBUFFER-WRAPPER
+    artifact_ids:
+      - annotations/functions/deep/0042_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm1.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+    symbol: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
+    line_range:
+      start: 485
+      end: 501
+    observed_fact: MLA ComputeMm1 partitions the current M range by nBufferMBaseSize, delegates each chunk to ProcessMm1, and emits syncC1V1 after every n-buffer chunk instead of only once per outer loop.
+    confidence: high
+  - id: SE-MLA-MM2-NBUFFER-WRAPPER
+    artifact_ids:
+      - annotations/functions/deep/0043_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm2.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+    symbol: FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2
+    line_range:
+      start: 502
+      end: 521
+    observed_fact: MLA ComputeMm2 uses the same n-buffer M partitioning, waits syncV1C2 before each ProcessMm2 chunk, then signals both syncC2V2 and syncC2V1 so Vec2 and the Vec1 nUpdate path can observe MM2 completion.
+    confidence: high
+  - id: SE-MLA-MM1-ROPE-NOPE-PACKING
+    artifact_ids:
+      - annotations/functions/deep/0044_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm1.yaml
+      - auxiliary/dataflow_graphs.yaml
+    file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+    symbol: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    line_range:
+      start: 522
+      end: 850
+    observed_fact: MLA ProcessMm1 uses two fixed K_L1 passes to pack 512-dim key/nope data and 64-dim rope data into L1, reuses QP buffers across mL1 tiles, and fixpipes the ND mm1ResGm ring once the second K_L1 pass finishes.
+    confidence: high
+  - id: SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
+    artifact_ids:
+      - annotations/functions/deep/0045_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm2.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_cube_nonquant_mla_sink.h
+    symbol: FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    line_range:
+      start: 851
+      end: 1077
+    observed_fact: MLA ProcessMm2 reloads Vec1 output from vec1ResGm, streams V tiles in 256x128 L1 blocks, waits syncV1NupdateC2 before the first fixpipe, and on non-first S-inner loops fixpipes through the mm2ResInt32Gm alias under SetAtomicAdd/SetAtomicNone.
+    confidence: high
+  - id: SE-NONQUANT-MM2-TILED-WRAPPER
+    artifact_ids:
+      - annotations/functions/deep/0054_op_kernel_fia_block_cube_nonquant_sink.h__FiaBlockCubeNonQuant_FIAT_ComputeMm2.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: op_kernel/fia_block_cube_nonquant_sink.h
+    symbol: FiaBlockCubeNonQuant<FIAT>::ComputeMm2
+    line_range:
+      start: 835
+      end: 878
+    observed_fact: Generic nonquant ComputeMm2 waits syncV1C2, tiles the workload with fixed M/K/N wrapper loops of 256/512/128, delegates the body to DealMm2SingleMKN, and signals syncC2V2 after all tiles complete.
+    confidence: high
+  - id: SE-MLA-NUPDATE-FORMULA
+    artifact_ids:
+      - annotations/functions/deep/0077_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_AmlaVecCompute.yaml
+      - cards/optimization_cards.yaml
+      - dsl/suggested_dsl_sections.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute
+    line_range:
+      start: 470
+      end: 561
+    observed_fact: AmlaVecCompute derives nUpdate from the current and previous online max state, converts through exp/cast/cof/eps steps, materializes aMlaSum on the last S2 loop, scales the MM1 result rows in place, and writes an int32 nUpdate vector into outputBuff2.
+    confidence: high
+  - id: SE-FD-SPARSE-POLICY
+    artifact_ids:
+      - annotations/functions/deep/0070_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml
+      - dsl/sparse_policy.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::CalaPreNextTokens
+    line_range:
+      start: 390
+      end: 438
+    observed_fact: FlashDecode derives preTokensPerBatch and nextTokensPerBatch from sparseMode, attenMaskFlag, sinkNumber, and actual query/KV lengths, with distinct BAND, DEFAULT_MASK, RIGHT_DOWN_CAUSAL, and LEFT_UP_CAUSAL branches.
+    confidence: high
+  - id: SE-FD-OUTPUT-LAYOUTS
+    artifact_ids:
+      - annotations/functions/deep/0070_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml
+      - dsl/shape_layout_contract.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::Bmm2DataCopyOutTrans
+    line_range:
+      start: 292
+      end: 349
+    observed_fact: FlashDecode final output copy-out switches across BSH, BNSD, NBSD, TND, and NTD layout families by constructing a layout-specific GM tensor wrapper and offset calculator before copying the normalized attention rows.
+    confidence: high
+  - id: SE-SPLIT-CORE-INPUT-PARAMS
+    artifact_ids:
+      - annotations/functions/deep/0130_op_host_fia_tiling_nonquant_sink.cpp__FiaTilingNonQuant_CreateSplitInput.yaml
+      - dsl/split_core_range_contract.yaml
+      - reports/split_core_range_contract.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::CreateSplitInput
+    line_range:
+      start: 307
+      end: 329
+    observed_fact: Host CreateSplitInput packages mBaseSize, s2BaseSize, gS1BaseSizeOfFd, sparse-mode flags, sink counts, and actual-length metadata into SplitParam and BaseInfo before the external split-core planner produces SplitResult.
+    confidence: high
+  - id: SE-FD-INIT-BLOCKIDX
+    artifact_ids:
+      - annotations/functions/deep/0058_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_InitDecodeParams.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::InitDecodeParams
+    line_range:
+      start: 159
+      end: 161
+    observed_fact: FlashDecode setup captures the current AIV block index into the service member blockIdx so later merge code can gate work against usedVecNumOfFd and consume the matching fdParams slice.
+    confidence: high
+  - id: SE-SHAPE-LAYOUT-CONTRACT
+    artifact_ids:
+      - dsl/shape_layout_contract.yaml
+      - constraints/constraints.yaml
+    file: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+    symbol: GetQueryBSND / GetQueryTND / InferAttentionOutShape / InferLseOutShape
+    line_range:
+      start: 120
+      end: 296
+    observed_fact: Host infer-shape normalizes query layouts BSH, BSND, BNSD, NSD, TND, and NTD into canonical batch, sequence, head, and dim axes; attentionOut can be emitted as BSH, BSND, BNSD, NBSD, TND, NTD, or NSD; softmaxLse is shaped as T,N,1 for TND-family inputs and B,N,S1,1 otherwise.
+    confidence: high
+  - id: SE-SPARSE-MASK-PARAMS
+    artifact_ids:
+      - dsl/sparse_policy.yaml
+      - constraints/constraints.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::FillTilingMaskParams
+    line_range:
+      start: 461
+      end: 475
+    observed_fact: Host mask-parameter packing writes attenMaskFlag, sparseMode, preToken, sinkNumber, keySinkNumber, nextToken, and isRowInvalid into tilingData.maskParams, and forces nextToken to sinkNumber when sink rows are present under SPARSE_MODE_2.
+    confidence: high
+  - id: SE-SPARSE-LEFTUP-INVALID-ROW
+    artifact_ids:
+      - dsl/sparse_policy.yaml
+      - risks/risks.yaml
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    symbol: FiaTilingNonQuant::IsExistRowInvalid
+    line_range:
+      start: 591
+      end: 639
+    observed_fact: Host invalid-row detection converts BAND and DEFAULT_MASK into left-up window bounds from safe pre/next tokens and reports invalid rows when either derived bound becomes negative, while LEFT_UP_CAUSAL is treated as no-invalid-row and ALL_MASK is always invalid.
+    confidence: high
+  - id: SE-MLA-LSE-LAYOUT-COPY
+    artifact_ids:
+      - annotations/functions/deep/0081_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_CopySoftmaxLseToGmByLayout.yaml
+      - annotations/functions/deep/0082_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec1L.yaml
+      - dsl/shape_layout_contract.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
+    line_range:
+      start: 751
+      end: 774
+    observed_fact: 'MLA Vec1 exports softmaxLse with layout-specific offset formulas: TND uses prefixBS1 and bN2Offset from actualSeqLengthsGmQ, BSH and BSND share the BSND copier, and the remaining branch uses the BNSD copier with qActSeqLensParser.'
+    confidence: high
+  - id: SE-FD-METADATA-PARTITION-MLA
+    artifact_ids:
+      - annotations/functions/deep/0133_op_host_fia_tiling_nonquant_mla_sink.cpp__FiaTilingNonQuantMla_SetSplitOutput.yaml
+      - reports/external_dependencies.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_kernel/fia_kernel_nonquant_mla_sink.h
+    symbol: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+    line_range:
+      start: 650
+      end: 691
+    observed_fact: The MLA kernel reconstructs the same fdParams arrays from metadataGm as the generic kernel, gates entry on usedVecNumOfFd, then SyncAlls before invoking the FD service.
+    confidence: high
+  - id: SE-FD-TASK-OFFSET-SCALARS
+    artifact_ids:
+      - annotations/functions/deep/0070_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml
+      - dsl/scalar_offset_contract.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    line_range:
+      start: 438
+      end: 491
+    observed_fact: FlashDecode rebuilds per-task scalar offsets by prefix-summing s2SplitNumOfFdHead into combineTaskPrefixSum, multiplying by mBaseSize to form taskOffset, and then adding gS1-part and row offsets for LSE and accumOut access.
+    confidence: high
+  - id: SE-MLA-VEC2-LAST-LOOP-WRAPPER
+    artifact_ids:
+      - annotations/functions/deep/0084_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec2L.yaml
+      - dsl/scalar_offset_contract.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::ProcessVec2SingleBuf / ProcessVec2L
+    line_range:
+      start: 903
+      end: 943
+    observed_fact: MLA Vec2 keeps the same nBufferMBaseSize-driven M partitioning as Vec1, waits syncC2V2 for each partition, and only dispatches ProcessVec2Inner when the current S2 loop is the last one and vecDealM is non-zero.
+    confidence: high
+  - id: SE-MLA-VEC2-NORMALIZE-COPY
+    artifact_ids:
+      - annotations/functions/deep/0090_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_DealBmm2ResBaseBlock.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+      - dsl/scalar_offset_contract.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
+    line_range:
+      start: 1120
+      end: 1163
+    observed_fact: MLA Vec2 rereads mm2ResGm from the preload-slot ring, zeroes numerically invalid large values, divides rows by aMlaSumUb, then either exports FD partial accumOut or performs layout-aware final copy-out.
+    confidence: high
+  - id: SE-HOST-TENSOR-PREPROCESS
+    artifact_ids:
+      - annotations/functions/deep/0001_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__TensorPreProcess.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: TensorPreProcess
+    line_range:
+      start: 41
+      end: 85
+    observed_fact: TensorPreProcess exits unless both tensor lists exist and both first entries still report DT_INT32, then rewrites each non-null key/value tensor in place by scaling the last view-shape dimension by INT4_NUMS_IN_INT32 and setting the dtype to DT_INT4.
+    confidence: high
+  - id: SE-HOST-PREFIX-TENSOR-PREPROCESS
+    artifact_ids:
+      - annotations/functions/deep/0002_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__PrefixTensorPreProcess.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: PrefixTensorPreProcess
+    line_range:
+      start: 86
+      end: 119
+    observed_fact: PrefixTensorPreProcess exits unless both prefix tensors exist and still report DT_INT32, then rewrites the last view-shape dimension of each tensor by a factor of 8 and retags both tensors as DT_INT4.
+    confidence: high
+  - id: SE-HOST-PROCESS-SOFTMAX-LSE
+    artifact_ids:
+      - annotations/functions/deep/0003_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__AiInfraFusedInferAttentionSinkProcessSoftmaxLse.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: AiInfraFusedInferAttentionSinkProcessSoftmaxLse
+    line_range:
+      start: 137
+      end: 149
+    observed_fact: AiInfraFusedInferAttentionSinkProcessSoftmaxLse binds placeHolder to a zero-shape ACL_FLOAT tensor created by aclCreateTensor when softmaxLseFlag is false, and otherwise forwards the caller-provided softmaxLse pointer unchanged.
+    confidence: high
+  - id: SE-HOST-PROCESS-TENSOR-CONTIGUOUS
+    artifact_ids:
+      - annotations/functions/deep/0004_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__ProcessTensorContiguous.yaml
+      - annotations/functions/deep/0005_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__ProcessTensorListContiguous.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: ProcessTensorContiguous
+    line_range:
+      start: 170
+      end: 183
+    observed_fact: ProcessTensorContiguous returns nullptr for null input, preserves non-contiguous storage/view metadata by delegating to CalcNoContiguous and CreateView, and otherwise routes the tensor through l0op::Contiguous.
+    confidence: high
+  - id: SE-HOST-PROCESS-TENSOR-LIST-CONTIGUOUS
+    artifact_ids:
+      - annotations/functions/deep/0005_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__ProcessTensorListContiguous.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: ProcessTensorListContiguous
+    line_range:
+      start: 221
+      end: 249
+    observed_fact: ProcessTensorListContiguous iterates the source tensor list in order, stages nullptr entries, still calls ProcessTensorContiguous on the same iteration, and only reaches AllocTensorList if every loop iteration passes the subsequent CHECK_RET.
+    confidence: high
+  - id: SE-HOST-CONTIGUOUS-INPUT
+    artifact_ids:
+      - annotations/functions/deep/0128_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__ContiguousInput.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: ContiguousInput
+    line_range:
+      start: 184
+      end: 220
+    observed_fact: ContiguousInput always materializes query through l0op::Contiguous, conditionally materializes each present optional direct tensor, and returns ACLNN_ERR_INNER_NULLPTR if any requested contiguous conversion fails.
+    confidence: high
+  - id: SE-ACLNN-ENTRY-CONTRACT
+    artifact_ids:
+      - annotations/functions/deep/0129_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__aclnnAiInfraFusedInferAttentionSink.yaml
+    file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: aclnnAiInfraFusedInferAttentionSink
+    line_range:
+      start: 458
+      end: 466
+    observed_fact: The public ACLNN execution entrypoint emits L2_DFX_PHASE_2 and forwards workspace, workspaceSize, executor, and stream unchanged to CommonOpExecutorRun.
+    confidence: high
+  - id: SE-SPLIT-CORE-INPUT-PARAMS-MLA
+    artifact_ids:
+      - annotations/functions/deep/0132_op_host_fia_tiling_nonquant_mla_sink.cpp__FiaTilingNonQuantMla_CreateSplitInput.yaml
+      - dsl/split_core_range_contract.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    symbol: FiaTilingNonQuantMla::CreateSplitInput
+    line_range:
+      start: 329
+      end: 351
+    observed_fact: MLA CreateSplitInput packages shapes, actual lengths, sparse flags, sink counts, and current split sizes into BaseInfo and SplitParam while forcing supportFD to true for the MLA split planner path.
+    confidence: high
+  - id: SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    artifact_ids:
+      - annotations/functions/deep/0133_op_host_fia_tiling_nonquant_mla_sink.cpp__FiaTilingNonQuantMla_SetSplitOutput.yaml
+      - dsl/split_core_range_contract.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    symbol: FiaTilingNonQuantMla::SetSplitOutput
+    line_range:
+      start: 353
+      end: 383
+    observed_fact: MLA SetSplitOutput copies SplitResult outer ranges and fdRes arrays into tilingData outerSplitParams and fdParams, including the usedCoreNum * 2 GS1 end-array bridge used by kernel FD metadata reconstruction.
+    confidence: high
+  - id: SE-TEST-INFER-SHAPE-LAYOUTS
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+      - dsl/shape_layout_contract.yaml
+      - constraints/constraints.yaml
+    file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_infershape.cpp
+    symbol: AiInfraFusedInferAttentionSinkProto infer-shape layout tests
+    line_range:
+      start: 31
+      end: 345
+    observed_fact: Infer-shape UTs cover TND, BNSD, BSND_BNSD, BSH, and NTD output-shape contracts, including the {0} softmax_lse shape when softmax_lse_flag is false.
+    confidence: high
+  - id: SE-TEST-TILING-SINK-CONSTRAINTS
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+      - dsl/sparse_policy.yaml
+      - constraints/constraints.yaml
+    file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+    symbol: AiInfraFusedInferAttentionSinkTiling sink-number tests
+    line_range:
+      start: 52
+      end: 398
+    observed_fact: Tiling UTs reject negative, over-boundary, and odd sinkNumber values, and validate the supported TND sparse sink path with an expected tiling key and workspace.
+    confidence: high
+  - id: SE-TEST-TILING-FD-WORKSPACE
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+      - auxiliary/workspace_layout.yaml
+      - dsl/split_core_range_contract.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+    file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+    symbol: AiInfraFusedInferAttentionSinkTiling FD/GQA/MLA workspace tests
+    line_range:
+      start: 468
+      end: 1372
+    observed_fact: Tiling UTs exercise FD, GQA max-workspace, MLA max-workspace, and MLA FD cases with expected workspace vectors and tiling keys.
+    confidence: high
+  - id: SE-TEST-API-WORKSPACE-SMOKE
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+      - annotations/functions/deep/0129_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__aclnnAiInfraFusedInferAttentionSink.yaml
+    file: tests/ut/op_api/test_aclnn_ai_infra_fused_infer_attention_sink.cpp
+    symbol: Ascend910B2_fused_inferAttention_sink_0
+    line_range:
+      start: 39
+      end: 147
+    observed_fact: The op_api UT builds a TND sink case with KV tensor lists, metadata, block table, softmax_lse enabled, and expects TestGetWorkspaceSize to return ACLNN_SUCCESS.
+    confidence: high
+  - id: SE-TEST-ST-EAGER-REFERENCE
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+      - dsl/sparse_policy.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+    file: tests/st/test_npu_fused_infer_attention_sink.py
+    symbol: TestFusedInferAttentionSink::test_npu_fused_infer_attention_sink_eager
+    line_range:
+      start: 61
+      end: 92
+    observed_fact: The NPU eager ST builds metadata for a TND sparse sink case, runs npu_fused_infer_attention_sink, and compares output to a Python softmax/matmul reference with 0.004 tolerances.
+    confidence: high
+  - id: SE-TEST-ST-GRAPH-CAPTURE
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+    file: tests/st/test_npu_fused_infer_attention_sink.py
+    symbol: TestFusedInferAttentionSink graph-capture generic/MLA/GQA tests
+    line_range:
+      start: 94
+      end: 347
+    observed_fact: Graph-capture STs build metadata on an auxiliary stream, wait from the AICore stream, replay the NPU graph, and compare generic and MLA outputs against torch_npu reference attention while also exercising sink-tensor MLA/GQA routing.
+    confidence: high
+  - id: SE-TEST-BENCHMARK-CACHED-REFERENCE
+    artifact_ids:
+      - reports/test_behavior_contracts.yaml
+    file: tests/benchmark/benchmark_fused_infer_attention_sink.py
+    symbol: main
+    line_range:
+      start: 58
+      end: 116
+    observed_fact: Benchmark uses the TND sparse sink scenario, reuses a cached CPU reference output when present, and asserts np.allclose with 0.004 tolerances before optional repeated NPU execution.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-INFO-CPP
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - evidence/source_evidence.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp
+    evidence_kind: linked_common_host_source
+    relevant_symbols:
+      - FiaTilingInfo
+      - layout serialization helpers
+    semantic_summary: Linked host common source contributes shared tiling-info layout metadata used with fia_tiling_info.h by sink tiling targets.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-SHAPE-CPP
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - dsl/shape_layout_contract.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp
+    evidence_kind: linked_common_host_source
+    relevant_symbols:
+      - FIA_LAYOUT_AXIS_MAP
+      - CompareShape
+      - CheckHasAxis
+      - CompareTypeToSerialString
+    semantic_summary: Defines common layout axis maps, expected-shape families, derived H=N*D validation, NZ expected shape, and per-axis compare behavior.
+    confidence: high
+  - id: SE-COMMON-SPLIT-CORE-CPP
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/split_core_extraction.yaml
+      - dsl/split_core_range_contract.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - cards/optimization_cards.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp
+    evidence_kind: linked_common_host_source
+    relevant_symbols:
+      - CalcCost
+      - CalcS2Range
+      - SplitCore
+      - AssignByBatch
+      - AssignByRow
+      - AssignByBlock
+      - ForceAssign
+      - RecordFDInfo
+      - SplitFD
+    semantic_summary: Implements common split-core cost model, sparse/sink-aware S2 shaping, assignment phases, core-count search, and FD metadata generation.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-BASE-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - evidence/source_evidence.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_base.h
+    evidence_kind: direct_common_host_include
+    relevant_symbols:
+      - common tiling base types
+      - sink tiling base dependency
+    semantic_summary: Direct host include supplies the common tiling base layer inherited by nonquant and MLA sink tiling classes.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-INFO-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - dsl/shape_layout_contract.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h
+    evidence_kind: direct_common_host_include
+    relevant_symbols:
+      - FiaLayout
+      - FiaShapeParam
+      - D0
+    semantic_summary: Direct host include carries shared layout enums and shape parameters, including the NZ D0 default used by common shape validation.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-SHAPE-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - dsl/shape_layout_contract.yaml
+      - constraints/constraints.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h
+    evidence_kind: direct_common_host_include
+    relevant_symbols:
+      - FiaCompareType
+      - GetD
+      - CheckHasAxis
+    semantic_summary: Direct host include defines compare modes and derived-D access rules used by shared shape/layout checks.
+    confidence: high
+  - id: SE-COMMON-SPLIT-CORE-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/split_core_extraction.yaml
+      - dsl/split_core_range_contract.yaml
+      - constraints/constraints.yaml
+      - cards/optimization_cards.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h
+    evidence_kind: direct_common_host_include
+    relevant_symbols:
+      - FA_TOLERANCE_RATIO
+      - FD_TOLERANCE_RATIO
+      - BaseInfo
+      - SplitParam
+      - FlashDecodeResult
+      - SplitResult
+    semantic_summary: Direct host include defines split-core input/output structs, sparse modes, sink/key-sink fields, tolerance ratios, and FD result arrays.
+    confidence: high
+  - id: SE-COMMON-FIA-PUBLIC-DEFINE-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - evidence/source_evidence.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/fia_public_define.h
+    evidence_kind: direct_common_kernel_include
+    relevant_symbols:
+      - shared kernel constants
+      - shared kernel type aliases
+    semantic_summary: Direct kernel include supplies public common constants and types consumed by sink cube/vector/kernel blocks.
+    confidence: high
+  - id: SE-COMMON-VECTOR-COMMON-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/vector_common_extraction.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - cards/optimization_cards.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+    evidence_kind: direct_common_kernel_include
+    relevant_symbols:
+      - IsExistInvalidRows
+      - GetSafeActToken
+      - InvalidRows
+      - InvalidMaskRows
+      - REPEATE_STRIDE_UP_BOUND
+      - MAX_VALID_LENGTH
+    semantic_summary: Direct kernel include defines invalid-row detection, safe active-token clamping, vector repeat-stride thresholds, and split reduction limits.
+    confidence: high
+  - id: SE-COMMON-MEMORY-COPY-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/memory_copy_extraction.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/memory_lifetime.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+    evidence_kind: direct_common_kernel_include
+    relevant_symbols:
+      - GmFormat
+      - FormatCategory
+      - OffsetCalculator
+      - CopyQueryGmToL1
+      - CopyKvGmToL1
+      - CopySingleMatrixNDToNZ
+      - GetQueryGmFormat
+      - GetKVFormat
+    semantic_summary: Direct kernel include defines GM format categories, offset calculators, query/KV copy helpers, and ND-to-NZ lowering behavior.
+    confidence: high
+  - id: SE-COMMON-ARRAY-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - evidence/source_evidence.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/array.h
+    evidence_kind: direct_common_kernel_include
+    relevant_symbols:
+      - array helper templates
+    semantic_summary: Direct GQA kernel include supplies common array helper semantics used by shared cube-side helper code.
+    confidence: high
+  - id: SE-COMMON-AXIS-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - evidence/source_evidence.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/axis.h
+    evidence_kind: direct_common_kernel_include
+    relevant_symbols:
+      - axis helper templates
+    semantic_summary: Direct GQA kernel include supplies common axis helper semantics used by shared cube-side helper code.
+    confidence: high
+  - id: SE-COMMON-BUFFER-H
+    artifact_ids:
+      - common_supplement/buffer_matmul_extraction.yaml
+      - constraints/constraints.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/memory_lifetime.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h
+    evidence_kind: common_kernel_helper_header
+    relevant_symbols:
+      - BufferType
+      - BufferInfo
+      - HardEvent
+      - SyncType
+      - AIV0_AIV1_OFFSET
+      - INVALID_CROSS_CORE_EVENT_ID
+      - CROSS_CORE_SYNC_MODE
+      - Buffer
+    semantic_summary: Common buffer helper defines logical buffer spaces, hardware positions, hard-event pairs, sync modes, cross-core event ID rules, and producer/consumer wait-set behavior.
+    confidence: high
+  - id: SE-COMMON-BUFFER-MANAGER-H
+    artifact_ids:
+      - common_supplement/buffer_matmul_extraction.yaml
+      - constraints/constraints.yaml
+      - auxiliary/memory_lifetime.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer_manager.h
+    evidence_kind: common_kernel_helper_header
+    relevant_symbols:
+      - BufferManager
+      - Init
+      - AllocBuffer
+      - FreeBuffer
+    semantic_summary: Common BufferManager initializes local or GM buffers and allocates policy-scoped buffers monotonically by offset while leaving FreeBuffer empty.
+    confidence: high
+  - id: SE-COMMON-BUFFERS-POLICY-H
+    artifact_ids:
+      - common_supplement/buffer_matmul_extraction.yaml
+      - constraints/constraints.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/memory_lifetime.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h
+    evidence_kind: common_kernel_helper_header
+    relevant_symbols:
+      - BuffersPolicySingleBuffer
+      - BuffersPolicyDB
+      - BuffersPolicy3buff
+      - BuffersPolicy4buff
+      - Matrix2x2BufferPolicy
+    semantic_summary: Common buffer policy helper defines single, double, triple, four-buffer, and matrix-2x2 policy allocation, Init/Uninit, traversal, reuse, and free-cursor behavior.
+    confidence: high
+  - id: SE-COMMON-MATMUL-H
+    artifact_ids:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+      - constraints/constraints.yaml
+      - cards/optimization_cards.yaml
+      - auxiliary/pipeline_graphs.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+    evidence_kind: direct_common_kernel_include
+    relevant_symbols:
+      - MatmulBase
+      - MatmulKPP
+      - UNITFLAG_DISABLE
+      - UNITFLAG_ENABLE
+      - UNITFLAG_EN_OUTER_LAST
+    semantic_summary: Direct MLA cube include brings common matmul scheduling, L0A/L0B double-buffer policy usage, and unitFlag lowering behavior.
+    confidence: high

@@ -2,9 +2,33 @@ checklist_updates:
 - section: Pipeline
   item: Verify each variant's owner-qualified MM2 and vector output stage.
   evidence: reports/critical_path_annotations.yaml
+- section: Pipeline
+  item: Emit alias-aware GQA Vec1 and Vec2 critical-path nodes instead of requiring downstream tools to infer them from prose.
+  evidence: dsl/shared_stage_aliases.yaml
 - section: MLA
   item: Record nUpdate compute and atomic-apply paths separately.
   evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-717
+- section: Workspace
+  item: Distinguish explicit GM workspace regions from host-budget-only MLA tail stubs and document any local-UB bridge.
+  evidence: auxiliary/workspace_cross_reference.yaml
 - section: FlashDecode
   item: Record FD service FlashDecode body and wrapper metadata preparation.
   evidence: op_kernel/fia_block_vec_flashdecode_sink.h:437-556
+- section: Graphs
+  item: Emit standalone pipeline, dataflow, and memory lifetime artifacts whenever deep annotations already expose a stable stage DAG or residency contract.
+  evidence: auxiliary/pipeline_graphs.yaml
+- section: Knobs
+  item: Mark whether each top-level knob is searchable, fixed, or derived and attach source-evidence identifiers.
+  evidence: knobs/tunable_knobs.yaml
+- section: ShapeLayout
+  item: Emit a dedicated contract for query layout families, attentionOut layouts, softmaxLse ranks, and varlen prefix offsets.
+  evidence: dsl/shape_layout_contract.yaml
+- section: Sparse
+  item: Capture host maskParams packing, invalid-row detection, and kernel sparse branches as one policy artifact rather than scattered helpers.
+  evidence: dsl/sparse_policy.yaml
+- section: FlashDecode
+  item: Bridge split_core input params, host SetSplitOutput, and both kernel FD consumers in an explicit metadata contract artifact.
+  evidence: dsl/flash_decode_metadata_bridge.yaml
+- section: Scalar
+  item: Promote prefix-sum task offsets, preload-slot addressing, and padded-stride formulas into first-class offset rules.
+  evidence: dsl/scalar_offset_contract.yaml

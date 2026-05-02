@@ -5,106 +5,119 @@ function_annotation:
   owner: FiaBlockVecNonQuant
   owner_qualified: FiaBlockVecNonQuant<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: nonquant
   stage: vec1
   file: op_kernel/fia_block_vec_nonquant_sink.h
   line_range:
-    start: 911
+    start: 916
     end: 938
-  role: nonquant vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
-  confidence: medium
+  role: Learnable sink correction step for the shared Vec1 path. Converts sink logits into softmax-space contributions and folds them into the current online sum state.
+  confidence: high
+  source_evidence_ids:
+    - SE-VEC1-SINK-SOFTMAX
+    - SE-SHARED-VEC1-CONTRACT
   code_behavior:
-    summary: nonquant vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Subtracts the current softmax max, exponentiates the sink logits, optionally zeroes invalid split-KV rows, and accumulates the result into softmaxSumUb.
     key_steps:
-    - 'Calls: Sub, Exp, Add.'
-    - Touches online softmax state or LSE outputs.
+      - Inserts PIPE_V barriers between Sub, Exp, AdjustSoftMaxRes, and Add.
+      - Uses softmaxMaxUb[offset] as the max state for the current preload slot and M base offset.
+      - Runs invalid-row adjustment only when info.tndIsS2SplitCore is true.
+      - Chooses the SOFTMAX_WITH_BRC or non-BRC AdjustSoftMaxRes specialization based on the template flag.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - tmpSinkResUbBrcb as sink logits already broadcast to the row shape expected by the current Vec1 mode
+      - softmaxMaxUb[offset] and softmaxSumUb[offset] for the active preload slot
+      - negativeIntScalar and brcbNum for invalid-row masking behavior
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - updated softmaxSumUb[offset]
+      - in-place transformed tmpSinkResUbBrcb containing exp-adjusted sink contributions
     gm:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     ub:
       reads:
-      - LocalTensor/UB operands
+        - tmpSinkResUbBrcb input logits
+        - softmaxMaxUb[offset]
+        - softmaxSumUb[offset]
       writes:
-      - LocalTensor/UB temporaries
+        - tmpSinkResUbBrcb after subtract, exp, and optional invalid-row adjustment
+        - softmaxSumUb[offset] after the final Add
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - if
-    - else
+      - info.tndIsS2SplitCore gates invalid-row adjustment
+      - SOFTMAX_WITH_BRC selects the AdjustSoftMaxRes specialization
   pipeline:
     stages:
-    - vec1
-    - nonquant
-    - calls:Sub,Exp,Add
+      - vec1
+      - shared_generic_nonquant
+      - calls Sub, Exp, AdjustSoftMaxRes, and Add
     sync:
-    - unknown
+      - PIPE_V barrier before each stateful vector math phase
   memory_behavior:
     buffers:
-    - LocalTensor
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - tmpSinkResUbBrcb
+      - softmaxMaxUb
+      - softmaxSumUb
+    l1_residency: []
+    l1_partition: []
+  online_softmax_state:
+    max_state_interaction: Reads softmaxMaxUb[offset] and subtracts it before exponentiation.
+    sum_state_interaction: Adds the exp-adjusted sink contribution into softmaxSumUb[offset] in place.
+    invalid_row_adjustment_condition: Only applies AdjustSoftMaxRes when tndIsS2SplitCore is true.
+    sparse_or_tail_behavior: Invalid split-KV tail rows are converted into zero contribution by passing 0.0 as the replacement value during AdjustSoftMaxRes.
   tiling_and_shape:
     fields:
-    - unknown
+      - offset
+      - dealRowCountBrcb
+      - brcbNum
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_sink.h:911-938'
+      - offset already includes both preload-slot selection and mSplitInfo.nBufferStartM / 2
+      - dealRowCountBrcb is the scalar row count for the current storage mode after optional BRC expansion
   workspace:
     layout:
-    - unknown
+      - normal.vec1 softmax state ring
     offsets:
-    - uint32_t offset, uint32_t dealRowCountBrcb)
-    - Sub(tmpSinkResUbBrcb, tmpSinkResUbBrcb, softmaxMaxUb[offset], dealRowCountBrcb);
-    - AdjustSoftMaxRes<COMPUTE_T, COMPUTE_T>(tmpSinkResUbBrcb, softmaxMaxUb[offset], negativeIntScalar,
-    - AdjustSoftMaxRes<COMPUTE_T, COMPUTE_T, false, 1>(tmpSinkResUbBrcb, softmaxMaxUb[offset], negativeIntScalar,
-    - Add(softmaxSumUb[offset], softmaxSumUb[offset], tmpSinkResUbBrcb, dealRowCountBrcb);
+      - softmaxMaxUb[offset]
+      - softmaxSumUb[offset]
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse the already computed max state so sink correction does not rerun the full row softmax.
+    - Keep correction local to UB and only mutate the online sum state needed by later Vec2 normalization.
   tunable_or_structural_fields: []
   constraints:
-  - unknown
+    - Preserve the exact order subtract max -> exp -> optional invalid-row adjust -> add to softmaxSum.
+    - Keep the split-core invalid-row replacement value at 0.0 so sink rows do not contribute to FD merge weights.
+    - Keep offset semantics aligned with the Vec1 preload slot and M base offset chosen by Vec1SinkCompute.
   risks_if_changed:
-  - unknown
+    - Reordering the operations changes the softmax normalization and double-counts sink mass.
+    - Removing invalid-row adjustment on split-KV tails leaks sink contribution into rows that should be zeroed.
+    - Writing to a different offset corrupts online softmax state for unrelated M tiles or preload slots.
   possible_dsl_sections:
-  - pipeline.vector_stages
-  - softmax.online_state
+    - sink_rows.learnable
+    - softmax.online_state
+    - flash_decode.partial_export
   suggested_dsl_fields:
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:911-938
-    confidence: medium
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:911-938
-    confidence: medium
+    - path: sink_rows.learnable.softmax_correction
+      meaning: Sink rows are lowered as a correction against the current max/sum state, not as a separate full softmax.
+      source_evidence_ids:
+        - SE-VEC1-SINK-SOFTMAX
+      confidence: high
+    - path: softmax.online_state.invalid_tail_policy
+      meaning: Split-core FD tails zero the sink contribution after exponentiation and before sum accumulation.
+      source_evidence_ids:
+        - SE-VEC1-SINK-SOFTMAX
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this function as a sink-specific online softmax adjustment attached to shared Vec1, not as an independent vector stage.
+    - Preserve the preload-slot offset as an explicit DSL field because multiple Vec1 tiles share the same state ring.
+  open_questions: []

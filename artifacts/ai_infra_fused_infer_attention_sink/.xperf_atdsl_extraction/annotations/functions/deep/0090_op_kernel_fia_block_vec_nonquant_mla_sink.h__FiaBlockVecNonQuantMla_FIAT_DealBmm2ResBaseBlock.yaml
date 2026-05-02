@@ -5,119 +5,142 @@ function_annotation:
   owner: FiaBlockVecNonQuantMla
   owner_qualified: FiaBlockVecNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
   stage: vec2
   file: op_kernel/fia_block_vec_nonquant_mla_sink.h
   line_range:
-    start: 1116
-    end: 1149
-  role: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
-  confidence: medium
+    start: 1120
+    end: 1163
+  role: MLA Vec2 base-block body that rereads corrected MM2 output, applies aMlaSum normalization, and dispatches either FD partial export or final layout-aware copy-out.
+  confidence: high
+  source_evidence_ids:
+    - SE-MLA-VEC2-NORMALIZE-COPY
+    - SE-MLA-SOFTMAX-SUM-CONSUME
+    - SE-KNOB-HEADDIM-ALIGN
   code_behavior:
-    summary: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Reloads one Vec2 tile from the normal mm2 ring, zeroes numerically invalid large values, divides rows by aMlaSum, and then copies the result either into FD accumOut scratch or the final attention output layout.
     key_steps:
-    - 'Calls: DataCopy, SetSize, Abs, CompareScalar, Select.'
-    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
-    - Coordinates pipeline state with event or cross-core flags.
+      - Computes srcGmOffset from the preload slot, current M position, and padded columnCount, then reloads mm2ResGm into UB.
+      - Masks out values whose absolute magnitude exceeds 1e10 before normalization.
+      - Broadcasts aMlaSumUb for the current preload slot and divides each row of MM2 output by that normalization term.
+      - Releases the input buffer flag and delegates copy-out to either Bmm2FDDataCopyOut or Bmm2CastAndCopyOut through Bmm2ResCopyOut.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - mm2ResGm preload-slot ring
+      - aMlaSumUb normalization state
+      - info and mSplitInfo offsets
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - normalized Vec2 tile sent to FD accumOut scratch or attentionOutGm through the copy-out helpers
     gm:
       reads:
-      - GM tensors referenced in function body
+        - mm2ResGm[srcGmOffset]
       writes:
-      - DataCopy/Fixpipe destinations visible in body
+        - accumOutGm through the FD partial-output path
+        - attentionOutGm through the final layout-aware output path
     ub:
       reads:
-      - LocalTensor/UB operands
+        - aMlaSumUb broadcast source
+        - tmpBmm2ResUb tile from inputBuff1
       writes:
-      - LocalTensor/UB temporaries
+        - bmm2ResUb normalized fp32 tile in tmpBuff1
+        - outputBuff1 copy-out staging buffer through downstream helpers
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - unknown
+      - copy-out path branches between FD partial export and final layout-aware output in the downstream helper
   pipeline:
     stages:
-    - vec2
-    - mla
-    - calls:DataCopy,SetSize,Abs,CompareScalar,Select
+      - mla.vec2
+      - normalization
+      - copy_out
     sync:
-    - WaitFlag
-    - SetFlag
+      - WaitFlag<HardEvent::V_MTE2> / SetFlag<HardEvent::V_MTE2> around inputBuff1 ping-pong ownership
   memory_behavior:
     buffers:
-    - LocalTensor
-    - mm2ResGm
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - mm2ResGm
+      - inputBuff1 ping-pong tile
+      - tmpBuff1 normalized fp32 tile
+      - attenMaskTmpBuff for aMlaSum broadcast
+      - outputBuff1 downstream copy-out staging
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - preLoadNum
+      - preLoadNum
+      - headDimAlign
+      - headDim
+      - nBufferMBaseSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1116-1149'
+      - columnCount equals headDimAlign while actualColumnCount tracks the unpadded headDim.
+      - aMlaSumUb is indexed by the current preload slot and half-row baseOffset.
   workspace:
     layout:
-    - workspace region or GM temporary referenced
+      - normal.mm2 preload-slot ring for MM2 output reload
+      - FD accumOut scratch for split-KV partial export
     offsets:
-    - uint64_t srcGmOffset = (info.bn2IdxInCurCore % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + mStart * columnCount;
-    - DataCopy(tmpBmm2ResUb, mm2ResGm[srcGmOffset], vec2ComputeSize);
-    - uint32_t baseOffset = mSplitInfo.nBufferStartM / 2 + startRow;
+      - srcGmOffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + mStart * columnCount
+      - baseOffset = nBufferStartM / 2 + startRow for aMlaSumUb broadcast
+      - downstream FD copy-out adds accumTmpOutNum and tndCoreStartKVSplitPos based offsets before writing accumOutGm
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse the normal.mm2 ring as the only MM2 reload source while keeping MLA normalization and FD export in the Vec2 stage.
+    - Preserve aMlaSum as a local-UB bridge instead of fabricating a standalone GM tail buffer.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1116-1149
+    - name: preLoadNum
+      role: Selects the current normal.mm2 ring slot and aMlaSum preload slot.
+      source_evidence_ids:
+        - SE-KNOB-PRELOAD-NUM
+        - SE-MLA-VEC2-NORMALIZE-COPY
+    - name: headDimAlign
+      role: Padded Vec2 stride for reload and row normalization.
+      source_evidence_ids:
+        - SE-KNOB-HEADDIM-ALIGN
+        - SE-MLA-VEC2-NORMALIZE-COPY
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - Vec2 must reload from the correct preload slot before any normalization or copy-out.
+    - Values above 1e10 in magnitude must be zeroed before RowDivs.
+    - aMlaSumUb normalization must happen before FD partial export or final output copy-out.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Ring-slot drift will make Vec2 normalize or export the wrong MM2 tile.
+    - Dropping the aMlaSum division breaks MLA final output semantics and FD partial consistency.
+    - Forgetting the invalid-value zeroing leaks garbage into output or split-KV partial scratch.
   possible_dsl_sections:
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.vector_stages
-  - softmax.online_state
+    - mla.workspace_tail
+    - scalar.offset_rules
+    - shape_layout.contract
+    - pipeline.vector_stages
   suggested_dsl_fields:
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1116-1149
-    confidence: medium
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1116-1149
-    confidence: medium
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1116-1149
-    confidence: medium
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1116-1149
-    confidence: medium
+    - path: scalar.offset_rules.mla_mm2_reload_slot
+      meaning: Vec2 reloads MM2 output from a preload-slot ring addressed by bn2IdxInCurCore % preLoadNum and padded headDimAlign stride.
+      source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+        - SE-KNOB-PRELOAD-NUM
+      confidence: high
+    - path: workspace.mla.tail_regions[].local_buffer_bridge
+      meaning: aMlaSum is consumed as a local-UB normalization bridge rather than a dedicated GM tail buffer.
+      source_evidence_ids:
+        - SE-MLA-SOFTMAX-SUM-CONSUME
+        - SE-MLA-AMLASUM-UB-ONLY
+      confidence: high
+    - path: flash_decode.partial_output.offset_formula
+      meaning: The downstream FD copy-out appends accumTmpOutNum and tndCoreStartKVSplitPos terms after the normal.mm2 reload and normalization step.
+      source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+      confidence: high
+    - path: shape_layout.output_layouts.family
+      meaning: The non-FD copy-out path preserves layout-specific GM wrappers after MLA normalization.
+      source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Keep reload, numeric sanitization, aMlaSum division, and copy-out in one lowering rule because all four share the same offset contract.
+  open_questions: []

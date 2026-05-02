@@ -185,7 +185,7 @@ function_index:
     importance_reasons:
     - structure_signal:blockTable
     - branch_signal
-    extraction_level: index
+    extraction_level: deep
     calls:
     - Contiguous
     - CHECK_RET
@@ -238,7 +238,7 @@ function_index:
     importance_score: 14
     importance_reasons:
     - structure_signal:workspace
-    extraction_level: index
+    extraction_level: deep
     calls:
     - L2_DFX_PHASE_2
     - CommonOpExecutorRun
@@ -8367,7 +8367,7 @@ function_index:
     importance_score: 26
     importance_reasons:
     - structure_signal:sparse,split,s1,s2
-    extraction_level: index
+    extraction_level: deep
     calls: []
     called_by:
     - Split
@@ -8391,7 +8391,7 @@ function_index:
     - compute_sync_api:vector,cube
     - structure_signal:tiling,s2
     - branch_signal
-    extraction_level: index
+    extraction_level: deep
     calls:
     - get_bN2End
     - get_gS1End
@@ -9219,7 +9219,7 @@ function_index:
     importance_score: 26
     importance_reasons:
     - structure_signal:sparse,split,s1,s2
-    extraction_level: index
+    extraction_level: deep
     calls: []
     called_by:
     - Split
@@ -9243,7 +9243,7 @@ function_index:
     - compute_sync_api:vector,cube
     - structure_signal:tiling,s2
     - branch_signal
-    extraction_level: index
+    extraction_level: deep
     calls:
     - get_bN2End
     - get_gS1End
@@ -14125,11 +14125,13 @@ function_index:
     line_range:
       start: 973
       end: 981
-    rough_role: unknown
-    importance_score: 35
+    rough_role: shared_vec_alias_wrapper
+    importance_score: 70
     importance_reasons:
     - attention_stage:vec1
-    extraction_level: index
+    - critical_path_alias_stage
+    - synchronization_wrapper
+    extraction_level: deep
     calls:
     - SetMSplitInfo
     - CrossCoreWaitFlag
@@ -14152,11 +14154,13 @@ function_index:
     line_range:
       start: 982
       end: 990
-    rough_role: unknown
-    importance_score: 35
+    rough_role: shared_vec_alias_wrapper
+    importance_score: 70
     importance_reasons:
     - attention_stage:vec2
-    extraction_level: index
+    - critical_path_alias_stage
+    - synchronization_wrapper
+    extraction_level: deep
     calls:
     - SetMSplitInfo
     - CrossCoreWaitFlag

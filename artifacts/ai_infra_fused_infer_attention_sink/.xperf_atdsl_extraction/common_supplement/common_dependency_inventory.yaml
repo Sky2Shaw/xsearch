@@ -1,0 +1,185 @@
+operator: ai_infra_fused_infer_attention_sink
+extraction_scope: current_operator_common_dependencies_only
+source_inputs:
+  cmake:
+    path: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt
+    linked_common_sources:
+      - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp
+        evidence_locations:
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:34
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:52
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:71
+        relevance: linked_into_optiling_and_opmaster_ct_targets_for_sink_tiling
+        extraction_target: host_tiling_common_semantics
+      - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp
+        evidence_locations:
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:35
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:53
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:72
+        relevance: linked_into_optiling_and_opmaster_ct_targets_for_sink_tiling
+        extraction_target: host_shape_common_semantics
+      - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp
+        evidence_locations:
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:36
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:54
+          - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:73
+        relevance: linked_into_optiling_and_opmaster_ct_targets_for_sink_tiling
+        extraction_target: host_core_split_common_semantics
+  direct_includes:
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_base.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:20
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_mla_sink.h:20
+      relevance: direct_host_tiling_base_dependency
+      extraction_target: host_tiling_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_mla_sink.h:21
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.h:16
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:21
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/ai_infra_fused_infer_attention_sink_tiling_check.h:18
+      relevance: direct_host_tiling_info_dependency
+      extraction_target: host_tiling_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.h:17
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/ai_infra_fused_infer_attention_sink_tiling_check.h:19
+      relevance: direct_host_shape_dependency
+      extraction_target: host_shape_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_mla_sink.h:24
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:22
+      relevance: direct_host_core_split_dependency
+      extraction_target: host_core_split_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/fia_public_define.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_flashdecode_sink.h:23
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_sink.h:24
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:20
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_nonquant_sink.h:23
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_nonquant_mla_sink.h:23
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_sink.h:23
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_mla_sink.h:23
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_mla_sink.h:24
+      relevance: direct_kernel_public_constants_and_types_dependency
+      extraction_target: kernel_public_define_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_flashdecode_sink.h:24
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_sink.h:25
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:21
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_nonquant_mla_sink.h:24
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_mla_sink.h:25
+      relevance: direct_kernel_vector_helper_dependency
+      extraction_target: kernel_vector_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_flashdecode_sink.h:25
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_sink.h:27
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:22
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_nonquant_sink.h:24
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_vec_nonquant_mla_sink.h:25
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_sink.h:24
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_mla_sink.h:25
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_mla_sink.h:26
+      relevance: direct_kernel_copy_helper_dependency
+      extraction_target: kernel_memory_copy_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/array.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:18
+      relevance: direct_kernel_array_helper_dependency
+      extraction_target: kernel_gqa_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/axis.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:19
+      relevance: direct_kernel_axis_helper_dependency
+      extraction_target: kernel_gqa_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_mla_sink.h:24
+      relevance: direct_kernel_matmul_helper_dependency
+      extraction_target: kernel_mla_matmul_common_semantics
+  indirect_includes:
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:83
+      relevance: resolved_from_common_op_host_include_directory_and_companion_to_linked_source
+      extraction_target: host_tiling_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:83
+      relevance: resolved_from_common_op_host_include_directory_and_companion_to_linked_source
+      extraction_target: host_shape_common_semantics
+    - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h
+      evidence_locations:
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:83
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:22
+        - inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_mla_sink.h:24
+      relevance: resolved_from_common_op_host_include_directory_and_companion_to_linked_source
+      extraction_target: host_core_split_common_semantics
+filtered_common_inputs:
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:34
+    relevance: linked_common_host_source
+    extraction_target: host_tiling_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:35
+    relevance: linked_common_host_source
+    extraction_target: host_shape_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/CMakeLists.txt:36
+    relevance: linked_common_host_source
+    extraction_target: host_core_split_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_base.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:20
+    relevance: directly_included_common_host_header
+    extraction_target: host_tiling_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:21
+    relevance: directly_included_common_host_header
+    extraction_target: host_tiling_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/ai_infra_fused_infer_attention_sink_tiling_info_parser.h:17
+    relevance: directly_included_common_host_header
+    extraction_target: host_shape_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_host/fia_tiling_nonquant_sink.h:22
+    relevance: directly_included_common_host_header
+    extraction_target: host_core_split_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/fia_public_define.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_sink.h:24
+    relevance: directly_included_common_kernel_header
+    extraction_target: kernel_public_define_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_sink.h:25
+    relevance: directly_included_common_kernel_header
+    extraction_target: kernel_vector_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_kernel_nonquant_sink.h:27
+    relevance: directly_included_common_kernel_header
+    extraction_target: kernel_memory_copy_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/array.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:18
+    relevance: directly_included_common_kernel_header
+    extraction_target: kernel_gqa_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/axis.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_gqa_sink.h:19
+    relevance: directly_included_common_kernel_header
+    extraction_target: kernel_gqa_common_semantics
+  - source_path: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+    evidence_location: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink/op_kernel/fia_block_cube_nonquant_mla_sink.h:24
+    relevance: directly_included_common_kernel_header
+    extraction_target: kernel_mla_matmul_common_semantics
+coverage:
+  extracted:
+    - linked_common_sources_from_cmake
+    - direct_common_host_includes_from_assigned_op_host_and_op_kernel_scan
+    - direct_common_kernel_includes_from_assigned_op_host_and_op_kernel_scan
+  supplement_only:
+    - common_dependency_inventory
+  excluded:
+    - unrelated_attention_common_files_without_current_operator_link_or_include_evidence
+    - .xperf_atdsl_extraction_candidate/stage1_review_directories
+stage1_review_directories:
+  policy: do_not_read_or_modify

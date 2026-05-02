@@ -6,92 +6,101 @@ function_annotation:
   owner_qualified: null
   owner_template_args: []
   template_params: []
-  variant: unknown
-  stage: unknown
+  variant: host_api
+  stage: host_preprocess
   file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
   line_range:
     start: 86
     end: 119
-  role: unknown
-  confidence: medium
+  role: Host-side prefix-KV metadata rewrite that retags packed int32 prefix tensors as int4 views before operator setup continues.
+  confidence: high
+  source_evidence_ids:
+    - SE-HOST-PREFIX-TENSOR-PREPROCESS
   code_behavior:
-    summary: unknown
+    summary: Returns early unless both prefix tensors are present and still report DT_INT32, then rewrites each tensor in place by multiplying the last view-shape dimension by 8 and changing the dtype to DT_INT4.
     key_steps:
-    - 'Calls: OP_LOGD, GetDataType, GetViewShape, GetDimNum, SetViewShape, SetDataType.'
+      - Exits immediately when either prefix tensor pointer is null.
+      - Uses tensorKey->GetDataType() and tensorValue->GetDataType() as the gate for whether the metadata conversion still needs to run.
+      - Rewrites the key tensor view metadata in place by reading GetViewShape(), scaling the last dimension by INT4_NUMS_IN_INT32, and setting DT_INT4.
+      - Applies the same in-place view-shape and dtype rewrite to the value prefix tensor.
   dataflow:
     inputs:
-    - PrefixTensorPreProcess
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - tensorKey and tensorValue as caller-owned aclTensor handles
+      - per-tensor view shape metadata and current dtype
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - in-place rewritten prefix key/value metadata with DT_INT4 dtype and expanded last-dimension view shape
     gm:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - if
+      - null key early return
+      - null value early return
+      - key dtype gate
+      - value dtype gate
   pipeline:
     stages:
-    - unknown
-    - unknown
-    - calls:OP_LOGD,GetDataType,GetViewShape,GetDimNum,SetViewShape,SetDataType
-    sync:
-    - unknown
+      - host_api_boundary
+      - input_metadata_preprocess
+      - calls GetDataType, GetViewShape, SetViewShape, and SetDataType
+    sync: []
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - aclTensor descriptors for prefix key and value
+      - temporary op::Shape copies for the key and value views
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - unknown
+      - INT4_NUMS_IN_INT32
     shape_assumptions:
-    - 'source line evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:86-119'
+      - The helper rewrites only the last view dimension and leaves the remaining dimensions unchanged.
+      - The rewrite path assumes each prefix tensor has at least one view dimension because it indexes viewShape[viewShapeDim - 1] without an explicit rank guard.
   workspace:
-    layout:
-    - unknown
-    offsets:
-    - unknown
+    layout: []
+    offsets: []
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
-  tunable_or_structural_fields: []
+    - Normalize packed prefix-KV metadata at the host/API boundary without allocating replacement tensors.
+    - Keep prefix inputs on the same DT_INT4 metadata contract as the non-prefix KV rewrite path.
+  tunable_or_structural_fields:
+    - name: INT4_NUMS_IN_INT32
+      role: Fixed packing expansion factor used to convert the last view dimension from int32 packing units to logical int4 element count.
+      source_evidence_ids:
+        - SE-HOST-PREFIX-TENSOR-PREPROCESS
   constraints:
-  - unknown
+    - Keep the rewrite gated on both tensors being non-null and both dtypes still reporting DT_INT32.
+    - Preserve the coupled update of last-dimension view shape and dtype retagging on both prefix tensors.
+    - The rewrite path requires at least one view dimension on both tensors because the code directly addresses the last dimension.
   risks_if_changed:
-  - unknown
+    - Re-running the multiply after a tensor is already retagged would overstate the logical prefix sequence width.
+    - Converting only one side of the prefix KV pair would leave the host metadata inconsistent for downstream consumers.
+    - Relaxing the implicit rank requirement without matching source changes could hide out-of-bounds view-shape accesses.
   possible_dsl_sections:
-  - operator.helpers
+    - operator.helpers
+    - operator.input_tensor_views
   suggested_dsl_fields:
-  - path: operator.helpers.source_function
-    meaning: Lowering evidence from PrefixTensorPreProcess
-    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:86-119
-    confidence: medium
+    - path: operator.helpers.prefix_tensor_preprocess.kv_int4_view_rewrite
+      meaning: Prefix KV tensors are conditionally retagged from DT_INT32 to DT_INT4 and have their last view dimension expanded by a fixed factor of 8.
+      source_evidence_ids:
+        - SE-HOST-PREFIX-TENSOR-PREPROCESS
+      confidence: high
+    - path: operator.input_tensor_views.prefix_rewrite_gate
+      meaning: The prefix rewrite is skipped once either tensor no longer advertises DT_INT32 metadata.
+      source_evidence_ids:
+        - SE-HOST-PREFIX-TENSOR-PREPROCESS
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this as a host-side prefix metadata adapter, not as part of device execution.
+    - Keep it separate from the tensor-list rewrite because this helper operates on single prefix tensors with a stricter rank assumption.
+  open_questions: []

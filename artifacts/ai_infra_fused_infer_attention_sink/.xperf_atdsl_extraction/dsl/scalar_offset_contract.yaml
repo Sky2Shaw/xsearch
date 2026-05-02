@@ -1,0 +1,35 @@
+scalar_offset_contract:
+  patterns:
+    - id: fd_task_offset
+      formula: taskOffset = sum_{i < fdTaskId}(s2SplitNumOfFdHead[i]) * mBaseSize
+      lowering_hint: Hoist the prefix sum outside the per-gS1 partition loop and reuse it for both LSE and accumOut addressing.
+      source_evidence_ids:
+        - SE-FD-TASK-OFFSET-SCALARS
+    - id: fd_partial_output_offset
+      formula: combineAccumOutOffset = startRow * headDim + splitKVIndex * mBaseSize * headDim
+      lowering_hint: Preserve the split-KV-major ordering used by CopyAccumOutIn.
+      source_evidence_ids:
+        - SE-FD-WORKSPACE-OFFSETS
+        - SE-FD-TASK-OFFSET-SCALARS
+    - id: mla_nupdate_atomic_base
+      formula: baseoffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + (nBufferStartM + vecStartM + loop * mSplitSize) * headDim
+      lowering_hint: Keep the preload-slot modulus and headDim stride coupled to the atomic add target.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - id: mla_mm2_reload_slot
+      formula: srcGmOffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + mStart * headDimAlign
+      lowering_hint: Preserve the preload-slot ring and padded stride when Vec2 rereads normal.mm2.
+      source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+        - SE-KNOB-HEADDIM-ALIGN
+    - id: mla_fd_partial_offset
+      formula: offset = accumTmpOutNum * kvHeadNum * mBaseSize * headDim + tndCoreStartKVSplitPos * kvHeadNum * mBaseSize * headDim + wsMStart * actualColumnCount
+      lowering_hint: Do not collapse the task-prefix, split-index, and row-offset terms; each reflects a different stage boundary.
+      source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+  validation_rules:
+    constraints:
+      - C-SCALAR-OFFSET-CONSISTENCY
+    risks:
+      - R-WORKSPACE-ABI-DRIFT
+      - R-FD-LSE-MERGE

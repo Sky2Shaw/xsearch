@@ -5,109 +5,166 @@ function_annotation:
   owner: FiaBlockVecNonQuant
   owner_qualified: FiaBlockVecNonQuant<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: nonquant
   stage: vec1
   file: op_kernel/fia_block_vec_nonquant_sink.h
   line_range:
-    start: 302
-    end: 349
-  role: nonquant vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
-  confidence: medium
+    start: 305
+    end: 401
+  role: Shared generic Vec1 contract used by the nonquant/GQA dispatcher to consume MM1 ring output, update online softmax state, inject optional sink rows, and emit either Vec1 partials or LSE side outputs.
+  confidence: high
+  source_evidence_ids:
+    - SE-GQA-VEC1-DISPATCH
+    - SE-SHARED-VEC1-CONTRACT
+    - SE-SHARED-VEC1-SYNC
   code_behavior:
-    summary: nonquant vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Slices the current M partition, materializes softmax/vec1 results tile by tile, and only on the last S2 loop emits sink correction plus either FD LSE scratch or layout-aware softmaxLse output.
     key_steps:
-    - 'Calls: DealBmm1ResBaseBlock, Vec1SinkCompute, ComputeLogSumExpAndCopyToGm.'
-    - Touches online softmax state or LSE outputs.
+      - Returns immediately when vecDealM is zero.
+      - Computes mSplitSize from actualSingleProcessSInnerSizeAlign and rounds down for 32B-safe UB access when SOFTMAX_WITH_BRC is disabled.
+      - Calls DealBmm1ResBaseBlock for each M tile to read mm1ResGm, run ElewiseCompute plus SoftmaxFlashV2Compute, and write vec1ResGm.
+      - On the last S2 loop optionally runs Vec1SinkCompute to inject learnable sink logits into the current softmax state.
+      - Exports FD lseSum/lseMax scratch through ComputeLogSumExpAndCopyToGm when tndIsS2SplitCore and FLASH_DECODE are both true.
+      - Otherwise computes total LSE, applies invalid-row correction if required, and writes softmaxLseGm through layout-specific DataCopySoftmaxLse helpers.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - mm1ResGm ring slot selected by info.loop % constInfo.preLoadNum
+      - prior online softmax state from softmaxSumUb and softmaxMaxUb when info.isFirstSInnerLoop is false
+      - sinkGm values when learnableSinkFlag is enabled
+      - actualSeqLengthsGmQ and qActSeqLensParser when exporting softmaxLse by layout
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - vec1ResGm ring slot for downstream MM2 consumers
+      - softmaxSumUb and softmaxMaxUb state for the current preload slot
+      - softmaxExpUb state reused by Vec2 during split-KV accumulation
+      - lseSumFdGm and lseMaxFdGm for FD split-core export, or softmaxLseGm for normal last-loop export
     gm:
       reads:
-      - GM tensors referenced in function body
+        - mm1ResGm[inOutGmOffset] inside DealBmm1ResBaseBlock
+        - sinkGm via Vec1GetSinkValue when learnableSinkFlag is true
+        - actualSeqLengthsGmQ for TND and NTD softmaxLse output addressing
       writes:
-      - unknown
+        - vec1ResGm[inOutGmOffset]
+        - lseSumFdGm[offset] and lseMaxFdGm[offset] on FD split-core export
+        - softmaxLseGm through DataCopySoftmaxLseTND, DataCopySoftmaxLseNTD, DataCopySoftmaxLseBSND, or DataCopySoftmaxLseBNSD
     ub:
       reads:
-      - LocalTensor/UB operands
+        - mmResUb tiles produced from mm1ResGm
+        - softmaxSumDefaultUb and softmaxMaxDefaultUb on the first S-inner loop
+        - tmpBuff1 scratch for sink, LSE, and broadcast temporaries
       writes:
-      - LocalTensor/UB temporaries
+        - softmaxSumUb, softmaxMaxUb, and softmaxExpUb for the current preload slot
+        - tmpSinkResUb or tmpSinkResUbBrcb during learnable sink injection
+        - totalLseUb and tmpLseResCastTensor during non-FD last-loop export
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each M sub-tile in the current vecDealM range
     branches:
-    - if
-    - else
+      - last-S2-loop only sink/LSE export path
+      - FLASH_DECODE plus tndIsS2SplitCore FD export branch
+      - softmaxLseFlag-controlled normal export branch
+      - invalid-row correction branch
   pipeline:
     stages:
-    - vec1
-    - nonquant
-    - calls:DealBmm1ResBaseBlock,Vec1SinkCompute,ComputeLogSumExpAndCopyToGm
+      - vec1
+      - shared_generic_nonquant
+      - calls DealBmm1ResBaseBlock, Vec1SinkCompute, and ComputeLogSumExpAndCopyToGm
     sync:
-    - unknown
+      - ComputeVec1 waits syncC1V1 before entering this function
+      - Softmax and LSE substeps are separated by PIPE_V barriers
+      - ComputeVec1 signals syncV1C2 after this function finishes
   memory_behavior:
     buffers:
-    - LocalTensor
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - inputQue1 mmResUb tiles
+      - outputQue1 vec1ResUb tiles
+      - outputQue2 tmpLseResCastTensor for softmaxLse export
+      - tmpBuff1 sink scratch, BRC scratch, and LSE scratch
+    l1_residency: []
+    l1_partition: []
+  online_softmax_state:
+    max_tensor: softmaxMaxUb[outIdx * SOFTMAX_TMP_BUFFER_SIZE / sizeof(COMPUTE_T)]
+    sum_tensor: softmaxSumUb[outIdx * SOFTMAX_TMP_BUFFER_SIZE / sizeof(COMPUTE_T)]
+    exp_tensor: softmaxExpUb[outIdx * SOFTMAX_TMP_BUFFER_SIZE / sizeof(COMPUTE_T)]
+    first_s_inner_behavior: Uses softmaxMaxDefaultUb and softmaxSumDefaultUb as the initial max and sum state.
+    final_export_behavior: FD split-core exports lseSum/lseMax scratch directly; non-FD last-loop export computes total LSE and stores it in softmaxLseGm.
+  sink_specific_branches:
+    - learnableSinkFlag gates Vec1SinkCompute and therefore whether sink rows perturb the current online softmax state
+    - invalid rows are clamped through AdjustSoftMaxRes before softmaxLse export when sparse or mask rules mark rows invalid
   tiling_and_shape:
     fields:
-    - actualSingleProcessSInnerSize
-    - preLoadNum
+      - actualSingleProcessSInnerSizeAlign
+      - actualSingleProcessSInnerSize
+      - preLoadNum
+      - vecDealM
+      - brcbNum
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_sink.h:302-349'
+      - mSplitSize is derived from BASE_BLOCK_MAX_ELEMENT_NUM divided by actualSingleProcessSInnerSizeAlign
+      - when SOFTMAX_WITH_BRC is disabled, mSplitSize is rounded down to a 32B-safe multiple
+      - LSE export addresses M rows through gS1Idx + nBufferStartM + vecStartM
   workspace:
     layout:
-    - unknown
+      - normal.mm1 as the upstream MM1 ring input
+      - normal.vec1 as the downstream Vec1 ring output
+      - flash_decode.lse_sum and flash_decode.lse_max on FD split-core export
     offsets:
-    - LocalTensor<COMPUTE_T> tmpSinkResUb = tmpBuff1.GetWithOffset<COMPUTE_T>(SOFTMAX_TMP_BUFFER_SIZE, 0);
-    - LocalTensor<COMPUTE_T> tmpSinkResUbBrcb = tmpBuff1.GetWithOffset<COMPUTE_T>(SOFTMAX_TMP_BUFFER_SIZE, SOFTMAX_TMP_BUFFER_SIZE);
-    - LocalTensor<COMPUTE_T> lseSumUb = tmpBuff1.GetWithOffset<COMPUTE_T>(LSE_TMP_BUFFER_SIZE, LSE_TMP_BUFFER_SIZE);
-    - LocalTensor<COMPUTE_T> lseMaxUb = tmpBuff1.GetWithOffset<COMPUTE_T>(
+      - inOutGmOffset = (info.loop % constInfo.preLoadNum) * constInfo.mmResUbSize + (mSplitInfo.nBufferStartM + mSplitInfo.vecStartM + startRow) * columnCount
+      - FD LSE offset = (info.accumTmpOutNum * constInfo.mBaseSize + info.tndCoreStartKVSplitPos * constInfo.mBaseSize + mSplitInfo.nBufferStartM + mSplitInfo.vecStartM) * fa_base_vector::FP32_BLOCK_ELEMENT_NUM
+      - softmaxLse export uses mOffset = info.gS1Idx + mSplitInfo.nBufferStartM + mSplitInfo.vecStartM
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Keep MM1 to Vec1 handoff in GM ring form while reusing preload slots across S2 loops.
+    - Preserve online softmax state in UB so Vec2 can merge split-KV partials without rereading all prior logits.
+    - Delay LSE export until the last S2 loop to avoid redundant GM traffic.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:302-349
+    - name: preLoadNum
+      role: Ring depth for MM1, Vec1, MM2, and Vec2 workspace slots.
+      source_evidence_ids:
+        - SE-SHARED-VEC1-CONTRACT
+        - SE-WORKSPACE-NORMAL-SIZE
+    - name: actualSingleProcessSInnerSizeAlign
+      role: Vec1 M tiling divisor and softmax column width.
+      source_evidence_ids:
+        - SE-SHARED-VEC1-CONTRACT
   constraints:
-  - unknown
+    - Preserve the final-loop-only sink and LSE export behavior; intermediate S2 loops must only update online softmax state and vec1ResGm partials.
+    - Keep the subtract and accumulate semantics in SoftmaxFlashV2Compute aligned with the current preload slot and previous slot handoff.
+    - Maintain the ComputeVec1 syncC1V1 wait and syncV1C2 signal around this function.
   risks_if_changed:
-  - unknown
+    - Breaking the mSplitSize alignment rule can make UB accesses lose their required 32B alignment.
+    - Moving sink injection after LSE export changes both final softmax sums and downstream Vec2 normalization.
+    - Removing the sync edges lets MM2 or FD consumers observe stale vec1ResGm or softmax state.
   possible_dsl_sections:
-  - pipeline.vector_stages
-  - softmax.online_state
+    - pipeline.vector_stages.shared_vec1
+    - softmax.online_state
+    - sink_rows.learnable
+    - flash_decode.partial_export
   suggested_dsl_fields:
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:302-349
-    confidence: medium
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
-    evidence: op_kernel/fia_block_vec_nonquant_sink.h:302-349
-    confidence: medium
+    - path: pipeline.vector_stages.shared_vec1.producer_consumer
+      meaning: Shared Vec1 is the synchronized producer between MM1 and MM2/FD consumers.
+      source_evidence_ids:
+        - SE-GQA-VEC1-DISPATCH
+        - SE-SHARED-VEC1-SYNC
+      confidence: high
+    - path: softmax.online_state.ring_slot_contract
+      meaning: Softmax max, sum, and exp are kept per preload slot and reused across S2 loops.
+      source_evidence_ids:
+        - SE-SHARED-VEC1-CONTRACT
+      confidence: high
+    - path: flash_decode.partial_export.lse_buffers
+      meaning: FD split-core export writes lseSum and lseMax into dedicated workspace regions rather than softmaxLseGm.
+      source_evidence_ids:
+        - SE-SHARED-VEC1-CONTRACT
+        - SE-FD-WORKSPACE-OFFSETS
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this function as a shared Vec1 contract rather than a GQA-only stage to preserve aliasing with the dispatcher.
+    - Treat online softmax state, sink injection, and last-loop export as one contract so Stage-2 does not split them into incompatible fragments.
+  open_questions: []

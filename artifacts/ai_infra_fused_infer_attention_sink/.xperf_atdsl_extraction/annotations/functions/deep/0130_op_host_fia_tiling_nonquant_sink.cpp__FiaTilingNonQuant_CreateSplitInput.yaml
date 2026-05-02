@@ -1,0 +1,119 @@
+function_annotation:
+  function_name: CreateSplitInput
+  qualified_name: FiaTilingNonQuant::CreateSplitInput
+  canonical_name: FiaTilingNonQuant::CreateSplitInput
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 307
+    end: 329
+  role: Nonquant host tiling helper that packages split_core planner inputs from fiaInfo_ and current tile sizes into BaseInfo and SplitParam.
+  confidence: high
+  source_evidence_ids:
+    - SE-SPLIT-CORE-INPUT-PARAMS
+  code_behavior:
+    summary: Copies batch/head/group/sequence sizes, actual-length metadata, sparse-mode flags, sink counts, and layout-derived isS1G into BaseInfo, then writes mBaseSize_, sInnerSize_, and mFdBaseSize_ into SplitParam before external split planning runs.
+    key_steps:
+      - Transfers bSize, n2Size, gSize, s2Size, s1Size, actualLenQDims, and actualLenKvDims from fiaInfo_ into BaseInfo.
+      - Copies preToken, nextToken, sparseMode, attenMaskFlag, sinkNumber, and keySinkNumber into BaseInfo.
+      - Derives BaseInfo.isS1G from whether inputLayout is TND or BSH_BSND.
+      - Sets BaseInfo.supportFD to false when keySinkNumber is non-zero and true otherwise.
+      - Writes splitParam.mBaseSize, splitParam.s2BaseSize, and splitParam.gS1BaseSizeOfFd from the current host tiling members.
+  dataflow:
+    inputs:
+      - fiaInfo_ fields describing shapes, lengths, sparse policy, and sink configuration
+      - mBaseSize_, sInnerSize_, and mFdBaseSize_ as current host-selected split granularities
+    outputs:
+      - BaseInfo populated for the external split_core planner
+      - SplitParam populated with host-selected split sizes
+    gm:
+      reads: []
+      writes: []
+    ub:
+      reads: []
+      writes: []
+    l1:
+      reads: []
+      writes: []
+    l0:
+      l0a: []
+      l0b: []
+      l0c: []
+  control_flow:
+    loops: []
+    branches:
+      - inputLayout test for BaseInfo.isS1G
+      - keySinkNumber test for BaseInfo.supportFD
+  pipeline:
+    stages:
+      - host_tiling
+      - split_core_input_pack
+    sync: []
+  memory_behavior:
+    buffers:
+      - BaseInfo staging structure
+      - SplitParam staging structure
+    l1_residency: []
+    l1_partition: []
+  tiling_and_shape:
+    fields:
+      - mBaseSize_
+      - sInnerSize_
+      - mFdBaseSize_
+      - sparseMode
+      - sinkNumber
+      - keySinkNumber
+    shape_assumptions:
+      - isS1G is true only for TND and BSH_BSND layout families.
+      - keySinkNumber disables flash-decode support for this nonquant path because sink is being provided as an independent tensor.
+  workspace:
+    layout: []
+    offsets: []
+  optimization_intent:
+    - Expose the minimum host metadata the external split_core planner needs to partition BN2, GS1, and S2 work.
+    - Keep split granularities derived from current tiling choices rather than recomputing them inside the planner.
+  tunable_or_structural_fields:
+    - name: splitParam.mBaseSize
+      role: Host-selected M-tile granularity passed into split_core planning.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+    - name: splitParam.s2BaseSize
+      role: Host-selected S2 tile granularity passed into split_core planning.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+    - name: splitParam.gS1BaseSizeOfFd
+      role: Host-selected GS1 granularity for flash-decode partitioning.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+  constraints:
+    - Preserve the isS1G layout mapping for TND and BSH_BSND inputs.
+    - Preserve the supportFD gate that disables flash decode when keySinkNumber is non-zero on the nonquant path.
+    - Keep BaseInfo and SplitParam packing aligned with the split_core producer contract expected by downstream SetSplitOutput and kernel fdParams consumers.
+  risks_if_changed:
+    - Changing the field order or semantics in BaseInfo/SplitParam would desynchronize the external split planner from the host bridge and kernel consumer.
+    - Miscomputing supportFD would route sink-tensor cases into an FD plan the downstream path is not expecting.
+    - Diverging mBaseSize_, sInnerSize_, or mFdBaseSize_ from the live tiling state would make split assignments inconsistent with workspace sizing and kernel loops.
+  possible_dsl_sections:
+    - split_core.range_assignments
+    - flash_decode.metadata_bridge
+    - sparse_policy
+  suggested_dsl_fields:
+    - path: split_core.input.base_info
+      meaning: The nonquant host tiler packages shape, actual-length, sparse-mode, and sink metadata into BaseInfo before external split planning.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+      confidence: high
+    - path: split_core.input.split_param
+      meaning: The planner receives mBaseSize, s2BaseSize, and gS1BaseSizeOfFd from the current nonquant tiling state.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+      confidence: high
+  lowering_hints:
+    - Lower this as a host-side planner-input contract, not as a kernel compute stage.
+    - Keep supportFD and isS1G explicit because they change the planner-visible semantics rather than only documenting them.
+  open_questions: []

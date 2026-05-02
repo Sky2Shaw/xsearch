@@ -1,0 +1,109 @@
+function_annotation:
+  function_name: CreateSplitInput
+  qualified_name: FiaTilingNonQuantMla::CreateSplitInput
+  canonical_name: FiaTilingNonQuantMla::CreateSplitInput
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 329
+    end: 351
+  role: MLA host tiling helper that packages split_core planner inputs from fiaInfo_ and current MLA tile sizes into BaseInfo and SplitParam.
+  confidence: high
+  source_evidence_ids:
+    - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+  code_behavior:
+    summary: Copies MLA shape, actual-length, sparse-mode, and sink metadata into BaseInfo, then writes mBaseSize_, sInnerSize_, and mFdBaseSize_ into SplitParam while hard-coding supportFD to true for this path.
+    key_steps:
+      - Transfers bSize, n2Size, gSize, s2Size, s1Size, actualLenQDims, and actualLenKvDims from fiaInfo_ into BaseInfo.
+      - Copies preToken, nextToken, sparseMode, attenMaskFlag, sinkNumber, and keySinkNumber into BaseInfo.
+      - Derives BaseInfo.isS1G from whether inputLayout is TND or BSH_BSND.
+      - Sets BaseInfo.supportFD to true unconditionally for the MLA path.
+      - Writes splitParam.mBaseSize, splitParam.s2BaseSize, and splitParam.gS1BaseSizeOfFd from the current host tiling members.
+  dataflow:
+    inputs:
+      - fiaInfo_ fields describing MLA shapes, lengths, sparse policy, and sink configuration
+      - mBaseSize_, sInnerSize_, and mFdBaseSize_ as current MLA split granularities
+    outputs:
+      - BaseInfo populated for the external split_core planner
+      - SplitParam populated with MLA host-selected split sizes
+    gm:
+      reads: []
+      writes: []
+    ub:
+      reads: []
+      writes: []
+    l1:
+      reads: []
+      writes: []
+    l0:
+      l0a: []
+      l0b: []
+      l0c: []
+  control_flow:
+    loops: []
+    branches:
+      - inputLayout test for BaseInfo.isS1G
+  pipeline:
+    stages:
+      - host_tiling
+      - split_core_input_pack
+    sync: []
+  memory_behavior:
+    buffers:
+      - BaseInfo staging structure
+      - SplitParam staging structure
+    l1_residency: []
+    l1_partition: []
+  tiling_and_shape:
+    fields:
+      - mBaseSize_
+      - sInnerSize_
+      - mFdBaseSize_
+      - sparseMode
+      - sinkNumber
+      - keySinkNumber
+    shape_assumptions:
+      - s2Size is cast to uint32_t when exported into BaseInfo on the MLA path.
+      - supportFD is always true here, so MLA split planning keeps flash-decode support enabled even when sink tensors are passed independently.
+  workspace:
+    layout: []
+    offsets: []
+  optimization_intent:
+    - Expose MLA split-planning metadata through the same BaseInfo/SplitParam contract used by the generic nonquant path.
+    - Keep MLA-specific FD enablement explicit at the host bridge instead of inferring it later.
+  tunable_or_structural_fields:
+    - name: splitParam.mBaseSize
+      role: MLA host-selected M-tile granularity passed into split_core planning.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+    - name: splitParam.gS1BaseSizeOfFd
+      role: MLA GS1 base size exported to the external split planner.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+  constraints:
+    - Preserve the isS1G layout mapping for TND and BSH_BSND inputs.
+    - Preserve the unconditional supportFD = true contract on the MLA path.
+    - Keep BaseInfo and SplitParam packing aligned with downstream MLA SetSplitOutput and kernel fdParams consumers.
+  risks_if_changed:
+    - Changing the supportFD rule would desynchronize MLA split planning from the current decode execution path.
+    - Mispacking s2Size or the splitParam sizes would skew MLA split assignments relative to workspace sizing and kernel metadata reconstruction.
+    - Diverging this packing contract from the generic split_core bridge would make shared Stage-2 schema fields harder to validate.
+  possible_dsl_sections:
+    - split_core.range_assignments
+    - flash_decode.metadata_bridge
+    - sparse_policy
+  suggested_dsl_fields:
+    - path: split_core.input.base_info_mla
+      meaning: The MLA host tiler exports shape, actual-length, sparse-mode, and sink metadata plus an always-enabled supportFD flag to the external split planner.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      confidence: high
+  lowering_hints:
+    - Lower this as a host-side MLA planner-input contract rather than a kernel optimization.
+    - Keep the unconditional supportFD flag explicit because it distinguishes the MLA bridge from the nonquant bridge.
+  open_questions: []

@@ -5,115 +5,108 @@ function_annotation:
   owner: FiaBlockCubeNonQuantMla
   owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
   stage: mm1
   file: op_kernel/fia_block_cube_nonquant_mla_sink.h
   line_range:
     start: 485
     end: 501
-  role: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+  role: MLA MM1 wrapper that partitions the active M range into n-buffer chunks, delegates each chunk to ProcessMm1, and releases Vec1 after every chunk.
   confidence: high
+  source_evidence_ids:
+    - SE-MLA-MM1-NBUFFER-WRAPPER
   code_behavior:
-    summary: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    summary: Updates key bindings on batch changes, computes n-buffer chunk count from nBufferMBaseSize, and runs ProcessMm1 for each chunk before signaling syncC1V1.
     key_steps:
-    - 'Calls: InitKeyGm, UpdateKey, ProcessMm1.'
-    - Coordinates pipeline state with event or cross-core flags.
+      - Initializes key GM bindings and updates keyGm on batch transitions.
+      - Computes nBufferLoopTimes and nBufferTail from actMBaseSize and nBufferMBaseSize.
+      - Materializes MSplitInfo with nBufferStartM and nBufferDealM for each chunk.
+      - Calls ProcessMm1(info, mSplitInfo) and immediately sets syncC1V1 for the corresponding chunk.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - keyGm bindings prepared by InitKeyGm / UpdateKey
+      - actMBaseSize and nBufferMBaseSize from run-time tiling state
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - delegated mm1ResGm writes through ProcessMm1
+      - per-chunk syncC1V1 release for MLA Vec1
     gm:
       reads:
-      - GM tensors referenced in function body
-      writes:
-      - unknown
+        - keyGm rebinding inputs on batch changes
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - L1 tiles or buffers
-      writes:
-      - L1 copies from GM or prior stage
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each n-buffer M chunk
     branches:
-    - if
+      - batch-change key update branch
+      - tail-chunk size branch
   pipeline:
     stages:
-    - mm1
-    - mla
-    - calls:InitKeyGm,UpdateKey,ProcessMm1
+      - mm1
+      - mla
+      - nbuffer_wrapper
     sync:
-    - SetFlag
-    - CrossCoreSetFlag
+      - CrossCoreSetFlag<constInfo.syncC1V1> after each delegated ProcessMm1 chunk
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - MSplitInfo chunk descriptors
+      - downstream normal.mm1 ring delegated to ProcessMm1
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - nBufferMBaseSize
+      - actMBaseSize
+      - nBufferMBaseSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:485-501'
+      - Each chunk covers a contiguous M subrange of size nBufferMBaseSize except the tail chunk.
+      - The wrapper does not change the inner 512+64 MLA cube packing; it only partitions the outer M axis.
   workspace:
     layout:
-    - unknown
+      - normal.mm1 delegated through ProcessMm1
     offsets:
-    - unknown
+      - mSplitInfo.nBufferStartM = i * constInfo.nBufferMBaseSize
+      - mSplitInfo.nBufferDealM = tail-aware chunk size
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve MLA's n-buffer partitioning so cube and vector stages can overlap on smaller M windows.
+    - Keep the syncC1V1 release at chunk granularity instead of only after the full outer task.
   tunable_or_structural_fields:
-  - name: nBufferMBaseSize
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:485-501
+    - name: nBufferMBaseSize
+      role: Outer M chunk size for MLA cube/vector overlap.
+      source_evidence_ids:
+        - SE-MLA-MM1-NBUFFER-WRAPPER
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - Preserve n-buffer partitioning and per-chunk syncC1V1 release; collapsing to one large chunk changes the MLA pipeline overlap contract.
+    - Keep this wrapper distinct from ProcessMm1 because it owns the chunked synchronization boundary.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Moving syncC1V1 outside the loop delays MLA Vec1 and changes chunk-level overlap behavior.
+    - Replacing the tail-aware chunking formula can shift the final M range or double-process rows.
   possible_dsl_sections:
-  - memory.l1_residency
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.cube_stages
+    - pipeline.cube_stages
+    - mla.shape_contract
   suggested_dsl_fields:
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:485-501
-    confidence: high
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:485-501
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:485-501
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:485-501
-    confidence: high
+    - path: mla.shape_contract.nbuffer_chunks[].m_range
+      meaning: MLA MM1 is executed as a sequence of contiguous M chunks derived from nBufferMBaseSize.
+      source_evidence_ids:
+        - SE-MLA-MM1-NBUFFER-WRAPPER
+      confidence: high
+    - path: pipeline.stage_graph.edges[].sync_signal
+      meaning: Each MLA MM1 chunk releases the corresponding Vec1 chunk through syncC1V1.
+      source_evidence_ids:
+        - SE-MLA-MM1-NBUFFER-WRAPPER
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this as the chunking wrapper around ProcessMm1, not as a duplicate of the inner cube body.
+    - Keep chunk partitioning and synchronization in one stage node so Stage-2 does not lose MLA overlap structure.
+  open_questions: []

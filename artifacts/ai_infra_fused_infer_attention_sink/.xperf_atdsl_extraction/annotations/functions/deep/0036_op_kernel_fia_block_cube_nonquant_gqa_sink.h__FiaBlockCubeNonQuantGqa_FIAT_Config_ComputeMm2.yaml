@@ -5,128 +5,150 @@ function_annotation:
   owner: FiaBlockCubeNonQuantGqa
   owner_qualified: FiaBlockCubeNonQuantGqa<FIAT,Config>
   owner_template_args:
-  - FIAT
-  - Config
+    - FIAT
+    - Config
   template_params:
-  - template<typename FIAT,typename Config>
-  - template<CubeFormat OutFormat,CubeFormat AFormat>
+    - template<typename FIAT,typename Config>
+    - template<CubeFormat OutFormat,CubeFormat AFormat>
   variant: gqa
   stage: mm2
   file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
   line_range:
     start: 1113
     end: 1240
-  role: GQA cube MM2/PV stage. Consumes vector softmax P from GM/L1, loads V into L1/L0B, performs P*V MMAD, and fixpipes
-    to mm2ResGm.
+  role: GQA cube MM2 stage that consumes shared Vec1 P tiles, reuses V_L1 across M slices, and fixpipes PV output into the normal mm2 ring.
   confidence: high
+  source_evidence_ids:
+    - SE-GQA-V-L1-RELEASE
   code_behavior:
-    summary: GQA cube MM2/PV stage. Consumes vector softmax P from GM/L1, loads V into L1/L0B, performs P*V MMAD, and fixpipes
-      to mm2ResGm.
+    summary: Waits the Vec1 handoff, streams P from vec1ResGm into L1, reuses or refills V_L1 according to the current S2 signature, and writes PV results to mm2ResGm after the first-fixpipe guard.
     key_steps:
-    - Waits on syncV1C2 before consuming Vec1 softmax output.
-    - Splits M by 128, K by actualSingleProcessSInnerSize, and N by headDim.
-    - Copies P from mm1/vector output to L1 with CopyPToL1 and loads V to reusable L1 buffers with CopyVToL1.
-    - Loads A/B to L0, accumulates with Mmad, and uses PipeBarrier for non-final K chunks.
-    - Waits syncV2C2 before first fixpipe and writes mm2ResGm with FixpipeCToGM before signaling syncC2V2.
+      - Calls CrossCoreWaitFlag(syncV1C2) before any P or V movement.
+      - Uses M_SPLIT_SIZE 128, K_SPLIT_SIZE 128, and n = headDim for the PV tile shape.
+      - Loads P through CopyPToL1 into kpL1Tensor and refills or reuses V_L1 according to vCoord = (bIdx, n2Idx, s2Idx).
+      - Uses Mmad over L0A/L0B slices and releases KP_EVENT after each K_L1 chunk.
+      - Releases V_EVENT only when canFullLoadV is false or the current mL1 tile is the tail, preserving the reusable V_L1 lifetime.
+      - Waits syncV2C2 before the first fixpipe, writes mm2ResGm, and finally signals syncC2V2.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - vec1ResGm tiles addressed through CopyPToL1
+      - valueGm tiles addressed through CopyVToL1
+      - V reuse state carried by vL1Snapshot and V_EVENT ownership
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - mm2ResGm[info.loop % CFG::PRELOAD_NUM]
+      - vL1Snapshot signature and buffer lifetime state for V reuse
     gm:
       reads:
-      - mm1/vector softmax result via CopyPToL1
-      - value tensor through CopyVToL1
+        - vec1ResGm through CopyPToL1
+        - valueGm through CopyVToL1
       writes:
-      - mm2ResGm[loop % PRELOAD_NUM] via FixpipeCToGM
+        - mm2ResGm through FixpipeCToGM
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
       reads:
-      - kpL1Tensor for P
-      - vL1Tensor for V with snapshot reuse
+        - kpL1Tensor for P
+        - vL1Tensor for V with snapshot reuse
       writes:
-      - CopyPToL1 output
-      - CopyVToL1 output
+        - P tiles copied by CopyPToL1
+        - V tiles copied by CopyVToL1
     l0:
       l0a:
-      - P tile loaded by LoadAToL0
+        - P tiles loaded by LoadAToL0
       l0b:
-      - V tile loaded by LoadBToL0
+        - V tiles loaded by LoadBToL0
       l0c:
-      - P*V accumulated by Mmad
+        - PV accumulation in cL0Tensor before FixpipeCToGM
   control_flow:
     loops:
-    - for
+      - for each mL1 tile
+      - for each kL1 tile and nested kL0 tile
     branches:
-    - if
-    - else
+      - batch-change value update branch
+      - reuseVBuf versus CopyVToL1 branch
+      - first-fixpipe syncV2C2 guard branch
+      - sink tensor versus regular V buffer rotation branch
   pipeline:
     stages:
-    - mm2
-    - gqa
-    - calls:UpdateValue,CrossCoreWaitFlag,m,n,k,Split
+      - mm2
+      - gqa
+      - pv_cube_with_v_snapshot
     sync:
-    - WaitFlag
-    - SetFlag
-    - CrossCoreWaitFlag
-    - CrossCoreSetFlag
+      - CrossCoreWaitFlag<constInfo.syncV1C2> before consuming Vec1 output
+      - WaitFlag and SetFlag around KP_EVENT, V_EVENT, L0_READY_EVENT, and L0C_EVENT ping-pong
+      - CrossCoreWaitFlag<constInfo.syncV2C2> before the first fixpipe
+      - CrossCoreSetFlag<constInfo.syncC2V2> after the stage completes
   memory_behavior:
     buffers:
-    - mm2ResGm
+      - vL1Snapshot and vL1Tensor
+      - kpL1Tensor
+      - aL0Tensor / bL0Tensor / cL0Tensor ping-pong buffers
+      - mm2ResGm workspace ring
     l1_residency:
-    - L1 reuse/snapshot visible in body
+      - V tiles persist across M slices while canFullLoadV holds and the current mL1 tile is not the tail.
     l1_partition:
-    - L1 buffer iterators or split sizes visible
+      - V snapshot reuse is indexed by kL1Id within the current S2 signature.
+      - KP buffers rotate independently from V snapshot buffers.
   tiling_and_shape:
     fields:
-    - M_SPLIT_SIZE
-    - K_SPLIT_SIZE
-    - headDim
-    - actualSingleProcessSInnerSize
+      - M_SPLIT_SIZE
+      - K_SPLIT_SIZE
+      - K_BASE
+      - headDim
+      - actualSingleProcessSInnerSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240'
+      - The K axis is the current S-inner width produced by the shared Vec1 stage.
+      - ND output rows use constInfo.headDimAlign as the mm2ResGm stride when OutFormat is ND.
   workspace:
     layout:
-    - workspace region or GM temporary referenced
+      - normal.vec1 as the upstream P ring
+      - normal.mm2 as the downstream PV ring
     offsets:
-    - unknown
+      - mm2Res slot = info.loop % CFG::PRELOAD_NUM
+      - vCoord = (uint64_t(info.bIdx) << 48) | (uint64_t(info.n2Idx) << 32) | info.s2Idx
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse V_L1 across M slices to reduce GM reload traffic.
+    - Keep the first-fixpipe wait tied to syncV2C2 so Vec2 and MM2 do not race on the current preload slot.
+    - Preserve owner-qualified GQA semantics instead of flattening this stage into generic MM2.
   tunable_or_structural_fields:
-  - name: headDimAlign
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
+    - name: headDimAlign
+      role: ND output stride for mm2ResGm and final PV fixpipe layout.
+      source_evidence_ids:
+        - SE-GQA-V-L1-RELEASE
+    - name: actualSingleProcessSInnerSize
+      role: Current P width consumed from the shared Vec1 output ring.
+      source_evidence_ids:
+        - SE-GQA-V-L1-RELEASE
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
-  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+    - Preserve syncV1C2 before consuming vec1ResGm and syncV2C2 before the first fixpipe.
+    - Preserve V_EVENT release only on the non-reusable or tail-mL1 path.
+    - Keep vCoord-based V snapshot identity separate from any generic MM2 lowering rule.
   risks_if_changed:
-  - Changing V L1 reuse or event release may overwrite live V tiles or deadlock MTE1/MTE2.
-  - Missing event release can stall producer/consumer queues.
+    - Releasing V_EVENT too early overwrites a reusable V_L1 tile or breaks later M-slice reuse.
+    - Removing the first-fixpipe syncV2C2 wait can make Vec2 and MM2 alias the same preload slot incorrectly.
+    - Flattening this stage with generic MM2 erases the GQA-specific V snapshot semantics.
   possible_dsl_sections:
-  - gqa.grouped_query
-  - memory.l1_residency
-  - pipeline.cube_stages
+    - gqa.grouped_query
+    - memory.l1_residency
+    - pipeline.cube_stages
   suggested_dsl_fields:
-  - path: gqa.grouped_query.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
-    confidence: high
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1113-1240
-    confidence: high
+    - path: memory.l1.gqa.v_snapshot_signature
+      meaning: V_L1 reuse is keyed by batch-head-s2 and only released on the non-reusable or tail-mL1 path.
+      source_evidence_ids:
+        - SE-GQA-V-L1-RELEASE
+      confidence: high
+    - path: pipeline.stage_graph.edges[].sync_signal
+      meaning: GQA MM2 waits syncV1C2, waits syncV2C2 before the first fixpipe, and signals syncC2V2 on completion.
+      source_evidence_ids:
+        - SE-GQA-V-L1-RELEASE
+      confidence: high
+    - path: gqa.grouped_query.mm2_output_stride
+      meaning: mm2ResGm uses headDimAlign as its ND stride while computing logical headDim columns.
+      source_evidence_ids:
+        - SE-GQA-V-L1-RELEASE
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this as an owner-qualified GQA MM2 stage with explicit V snapshot semantics.
+    - Treat the first-fixpipe wait and V reuse lifetime as part of the same rule set; lowering only the arithmetic body is incomplete.
+  open_questions: []

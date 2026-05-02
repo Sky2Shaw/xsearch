@@ -5,9 +5,9 @@ function_annotation:
   owner: FiaBlockCubeNonQuant
   owner_qualified: FiaBlockCubeNonQuant<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: nonquant
   stage: mm2
   file: op_kernel/fia_block_cube_nonquant_sink.h
@@ -16,96 +16,104 @@ function_annotation:
     end: 878
   role: Generic nonquant cube MM2/PV stage with owner identity distinct from GQA and MLA.
   confidence: high
+  source_evidence_ids:
+    - SE-NONQUANT-MM2-TILED-WRAPPER
   code_behavior:
-    summary: Generic nonquant cube MM2/PV stage with owner identity distinct from GQA and MLA.
+    summary: Waits the shared Vec1 handoff, tiles the current PV workload by fixed M/K/N wrapper loops, delegates the inner arithmetic to DealMm2SingleMKN, and signals Vec2 when the whole tile nest completes.
     key_steps:
-    - 'Calls: UpdateValue, CrossCoreWaitFlag, DealMm2SingleMKN.'
-    - Coordinates pipeline state with event or cross-core flags.
+      - Updates value GM bindings on batch changes when the KV layout is BNSD-backed.
+      - Waits syncV1C2 before touching the current Vec1-derived input ring.
+      - Uses fixed wrapper tile sizes of M_SPLIT_SIZE 256, K_SPLIT_SIZE 512, and N_SPLIT_SIZE 128.
+      - Calls DealMm2SingleMKN for every kStart / mStart / nStart tile triple.
+      - Signals syncC2V2 only after the full wrapper loop nest has completed.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuant<FIAT>::ComputeMm2
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - valueGm bindings prepared by UpdateValue
+      - shared Vec1 output made visible by syncV1C2
+      - actMBaseSize, actualSingleProcessSInnerSize, and headDim as the wrapper tile extents
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - delegated mm2ResGm writes through DealMm2SingleMKN
+      - syncC2V2 release for the shared Vec2 stage
     gm:
       reads:
-      - GM tensors referenced in function body
+        - valueGm through the delegated DealMm2SingleMKN body
+        - vec1ResGm through the delegated DealMm2SingleMKN body
       writes:
-      - unknown
+        - mm2ResGm through the delegated DealMm2SingleMKN body
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - L1 tiles or buffers
-      writes:
-      - L1 copies from GM or prior stage
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each 512-wide K wrapper tile
+      - for each 256-wide M wrapper tile
+      - for each 128-wide N wrapper tile
     branches:
-    - if
+      - batch-change value update branch
+      - tail handling for K, M, and N wrapper sizes
   pipeline:
     stages:
-    - mm2
-    - nonquant
-    - calls:UpdateValue,CrossCoreWaitFlag,DealMm2SingleMKN
+      - mm2
+      - nonquant
+      - tiled_wrapper
     sync:
-    - WaitFlag
-    - SetFlag
-    - CrossCoreWaitFlag
-    - CrossCoreSetFlag
+      - CrossCoreWaitFlag<constInfo.syncV1C2> before the wrapper loop nest
+      - CrossCoreSetFlag<constInfo.syncC2V2> after the wrapper loop nest
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - delegated normal.mm2 ring writes
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - M_SPLIT_SIZE
-    - K_SPLIT_SIZE
-    - headDim
-    - actualSingleProcessSInnerSize
+      - M_SPLIT_SIZE
+      - K_SPLIT_SIZE
+      - N_SPLIT_SIZE
+      - headDim
+      - actualSingleProcessSInnerSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_sink.h:835-878'
+      - The generic nonquant MM2 wrapper owns only the outer loop nest; the inner arithmetic stays inside DealMm2SingleMKN.
+      - K comes from actualSingleProcessSInnerSize and N comes from headDim.
   workspace:
     layout:
-    - unknown
+      - normal.mm2 delegated through DealMm2SingleMKN
     offsets:
-    - unknown
+      - Wrapper loops advance kStart by 512, mStart by 256, and nStart by 128 with tail-aware deal sizes.
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
-  tunable_or_structural_fields: []
+    - Keep the generic nonquant owner distinct from GQA and MLA even though the stage name is also ComputeMm2.
+    - Preserve the fixed outer tile sizes that define the entry contract for DealMm2SingleMKN.
+  tunable_or_structural_fields:
+    - name: actualSingleProcessSInnerSize
+      role: Determines the K extent consumed by the wrapper tile nest.
+      source_evidence_ids:
+        - SE-NONQUANT-MM2-TILED-WRAPPER
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - Preserve the syncV1C2 wait and syncC2V2 release around the wrapper loop nest.
+    - Preserve the 256/512/128 wrapper tile sizes unless DealMm2SingleMKN is retuned together with this entry contract.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Collapsing this owner into GQA or MLA MM2 erases a distinct stage node required by the stage graph.
+    - Changing wrapper tile sizes without updating DealMm2SingleMKN can shift tail behavior and output coverage.
   possible_dsl_sections:
-  - memory.l1_residency
-  - pipeline.cube_stages
+    - pipeline.cube_stages
   suggested_dsl_fields:
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuant<FIAT>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_sink.h:835-878
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuant<FIAT>::ComputeMm2
-    evidence: op_kernel/fia_block_cube_nonquant_sink.h:835-878
-    confidence: high
+    - path: pipeline.cube_stages.generic_mm2.wrapper_tiles
+      meaning: Generic nonquant MM2 lowers through fixed 256/512/128 wrapper loops around DealMm2SingleMKN.
+      source_evidence_ids:
+        - SE-NONQUANT-MM2-TILED-WRAPPER
+      confidence: high
+    - path: pipeline.stage_graph.edges[].sync_signal
+      meaning: Generic MM2 begins after syncV1C2 and releases Vec2 through syncC2V2.
+      source_evidence_ids:
+        - SE-NONQUANT-MM2-TILED-WRAPPER
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this as the generic nonquant MM2 wrapper, not as an alias of the GQA or MLA MM2 entry.
+    - Keep the outer wrapper tiles visible in Stage-2 because they define how DealMm2SingleMKN is entered.
+  open_questions: []

@@ -3020,11 +3020,13 @@ function_importance:
     variant: nonquant
     stage: vec1
     file: op_kernel/fia_block_vec_nonquant_sink.h
-    rough_role: unknown
-    importance_score: 35
+    rough_role: shared_vec_alias_wrapper
+    importance_score: 70
     importance_reasons:
     - attention_stage:vec1
-    extraction_level: index
+    - critical_path_alias_stage
+    - synchronization_wrapper
+    extraction_level: deep
   - function_name: ComputeVec2
     qualified_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
     canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
@@ -3037,11 +3039,13 @@ function_importance:
     variant: nonquant
     stage: vec2
     file: op_kernel/fia_block_vec_nonquant_sink.h
-    rough_role: unknown
-    importance_score: 35
+    rough_role: shared_vec_alias_wrapper
+    importance_score: 70
     importance_reasons:
     - attention_stage:vec2
-    extraction_level: index
+    - critical_path_alias_stage
+    - synchronization_wrapper
+    extraction_level: deep
   - function_name: ComputeVec1
     qualified_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ComputeVec1
     canonical_name: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::ComputeVec1

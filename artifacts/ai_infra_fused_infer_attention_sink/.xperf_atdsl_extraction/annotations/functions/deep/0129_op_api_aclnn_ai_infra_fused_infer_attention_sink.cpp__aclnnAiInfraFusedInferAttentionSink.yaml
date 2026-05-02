@@ -1,0 +1,89 @@
+function_annotation:
+  function_name: aclnnAiInfraFusedInferAttentionSink
+  qualified_name: aclnnAiInfraFusedInferAttentionSink
+  canonical_name: aclnnAiInfraFusedInferAttentionSink
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: host_api
+  stage: host_execution
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 458
+    end: 466
+  role: Public ACLNN execution wrapper that emits the phase-2 trace marker and delegates prepared workspace/executor launch to CommonOpExecutorRun.
+  confidence: high
+  source_evidence_ids:
+    - SE-ACLNN-ENTRY-CONTRACT
+  code_behavior:
+    summary: The function has no local branching or tensor rewrites; it records L2_DFX_PHASE_2(aclnnAiInfraFusedInferAttentionSink) and immediately returns CommonOpExecutorRun(workspace, workspaceSize, executor, stream).
+    key_steps:
+      - Emits the phase-2 DFX tracing hook for the operator name.
+      - Forwards workspace, workspaceSize, executor, and stream unchanged to CommonOpExecutorRun.
+      - Returns the status produced by CommonOpExecutorRun directly.
+  dataflow:
+    inputs:
+      - workspace and workspaceSize prepared by the workspace-size/build-executor path
+      - executor as the prepared op executor
+      - stream as the runtime execution stream
+    outputs:
+      - aclnnStatus returned by CommonOpExecutorRun
+    gm:
+      reads: []
+      writes: []
+    ub:
+      reads: []
+      writes: []
+    l1:
+      reads: []
+      writes: []
+    l0:
+      l0a: []
+      l0b: []
+      l0c: []
+  control_flow:
+    loops: []
+    branches: []
+  pipeline:
+    stages:
+      - host_api_boundary
+      - runtime_dispatch
+      - calls L2_DFX_PHASE_2 and CommonOpExecutorRun
+    sync: []
+  memory_behavior:
+    buffers: []
+    l1_residency: []
+    l1_partition: []
+  tiling_and_shape:
+    fields: []
+    shape_assumptions:
+      - All tensor ordering and workspace preparation are assumed to have been finalized before this execution wrapper runs.
+  workspace:
+    layout: []
+    offsets: []
+  optimization_intent:
+    - Keep the public launch ABI minimal by separating executor construction from executor execution.
+    - Preserve a dedicated runtime-entry hook for phase-2 tracing without reimplementing launch logic locally.
+  tunable_or_structural_fields: []
+  constraints:
+    - Preserve argument forwarding order to CommonOpExecutorRun.
+    - Keep the DFX phase-2 marker attached to this execution entrypoint.
+    - Do not add tensor mutation or tiling decisions here; this wrapper is strictly launch-time dispatch.
+  risks_if_changed:
+    - Reordering or mutating forwarded launch arguments would break the workspace/executor ABI established by the workspace-size path.
+    - Removing the phase-2 trace marker would reduce runtime observability for the public ACLNN entry.
+    - Bypassing CommonOpExecutorRun would change launch semantics outside the scope expressed by this wrapper.
+  possible_dsl_sections:
+    - operator.interface
+    - operator.execution
+  suggested_dsl_fields:
+    - path: operator.execution.entrypoint
+      meaning: The public ACLNN execution entrypoint is a thin wrapper that traces phase 2 and dispatches the prebuilt executor via CommonOpExecutorRun.
+      source_evidence_ids:
+        - SE-ACLNN-ENTRY-CONTRACT
+      confidence: high
+  lowering_hints:
+    - Lower this as a runtime launch binding, not as part of tiling or kernel computation structure.
+    - Keep executor construction and executor execution as separate Stage-2 concepts because the source exposes them as separate public functions.
+  open_questions: []

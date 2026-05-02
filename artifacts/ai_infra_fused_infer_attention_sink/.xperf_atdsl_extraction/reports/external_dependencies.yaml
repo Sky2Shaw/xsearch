@@ -1,0 +1,73 @@
+external_dependencies:
+  - id: EXT-FD-METADATA-ARRAYS
+    dependency_type: host_to_kernel_metadata_bridge
+    producer_location:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      symbol: FiaTilingNonQuant::SetSplitOutput
+      line_range:
+        start: 331
+        end: 360
+    consumer_locations:
+      - file: op_kernel/fia_kernel_nonquant_sink.h
+        symbol: FiaKernelNonQuant<FIAT>::FlashDecode
+        line_range:
+          start: 731
+          end: 761
+      - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+        symbol: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+        line_range:
+          start: 650
+          end: 691
+    produced_fields:
+      - usedVecNumOfFd
+      - bN2IdxOfFdHead[]
+      - gS1IdxOfFdHead[]
+      - s2SplitNumOfFdHead[]
+      - gS1SplitNumOfFdHead[]
+      - gS1LastPartSizeOfFdHead[]
+      - gS1IdxEndOfFdHead[]
+      - gS1IdxEndOfFdHeadSplit[]
+    missing_stage2_fields:
+      - flash_decode.fdparams.used_vec_num
+      - flash_decode.fdparams.per_core_ranges
+      - flash_decode.fdparams.per_aiv_gs1_end_ranges
+    source_evidence_ids:
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-FD-METADATA-PARTITION
+    current_stub_status: ready_with_external_producer_note
+  - id: EXT-SPLIT-CORE-RANGE-PRODUCER
+    dependency_type: external_header_contract
+    producer_location:
+      file: split_core.h
+      symbol: external split-core range builder
+      line_range: null
+      note: Included by op_host/fia_tiling_nonquant_sink.cpp, op_host/fia_tiling_nonquant_mla_sink.cpp, and related host tiling headers, but the producer implementation is outside the extracted operator boundary.
+    consumer_locations:
+      - file: op_host/fia_tiling_nonquant_sink.cpp
+        symbol: FiaTilingNonQuant::CreateSplitInput / SetSplitOutput
+        line_range:
+          start: 307
+          end: 360
+      - file: op_host/fia_tiling_nonquant_mla_sink.cpp
+        symbol: FiaTilingNonQuantMla::CreateSplitInput / SetSplitOutput
+        line_range:
+          start: 329
+          end: 381
+    produced_fields:
+      - SplitParam.mBaseSize
+      - SplitParam.s2BaseSize
+      - SplitParam.gS1BaseSizeOfFd
+      - SplitResult.fdRes.*
+    missing_stage2_fields:
+      - split_core.range_assignments[].core_idx
+      - split_core.range_assignments[].bn2_range
+      - split_core.range_assignments[].gs1_range
+      - split_core.range_assignments[].s2_range
+    source_evidence_ids:
+      - SE-KNOB-MBASE-SIZE
+      - SE-SPLIT-CORE-INPUT-PARAMS
+      - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    current_stub_status: staged_import_contract_ready
+    staged_contract_artifact: dsl/split_core_range_contract.yaml

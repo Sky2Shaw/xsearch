@@ -1,0 +1,107 @@
+function_annotation:
+  function_name: SetSplitOutput
+  qualified_name: FiaTilingNonQuantMla::SetSplitOutput
+  canonical_name: FiaTilingNonQuantMla::SetSplitOutput
+  owner: FiaTilingNonQuantMla
+  owner_qualified: FiaTilingNonQuantMla
+  owner_template_args: []
+  template_params: []
+  variant: mla
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  line_range:
+    start: 353
+    end: 383
+  role: MLA host bridge that copies split_core planner output into outerSplitParams and fdParams arrays consumed by MLA FlashDecode metadata reconstruction.
+  confidence: high
+  source_evidence_ids:
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - SE-FD-METADATA-PARTITION-MLA
+  code_behavior:
+    summary: Copies per-core BN2/GS1/S2 end markers plus fdRes arrays into tilingData for the MLA path, with the same usedCoreNum and usedCoreNum * 2 copy shapes as the nonquant bridge, but without the extra scalar innerSplitParams/numOfFdHead/usedCoreNum_ writes present in the nonquant helper body.
+    key_steps:
+      - Binds writable pointers for outerSplitParams and fdParams arrays from tilingData_.
+      - Iterates over usedCoreNum to copy bN2End, gS1End, s2End, bN2IdxOfFdHead, gS1IdxOfFdHead, s2SplitNumOfFdHead, s2SplitStartIdxOfCore, gS1SplitNumOfFdHead, and gS1LastPartSizeOfFdHead.
+      - Iterates over usedCoreNum * 2 to copy gS1IdxEndOfFdHead and gS1IdxEndOfFdHeadSplit.
+      - Leaves scalar host-state updates such as innerSplitParams and numOfFdHead to surrounding MLA host logic rather than writing them in this function body.
+  dataflow:
+    inputs:
+      - SplitResult res from the external split_core planner
+    outputs:
+      - tilingData_.outerSplitParams arrays
+      - tilingData_.fdParams arrays used later by MLA kernel metadata reconstruction
+    gm:
+      reads: []
+      writes: []
+    ub:
+      reads: []
+      writes: []
+    l1:
+      reads: []
+      writes: []
+    l0:
+      l0a: []
+      l0b: []
+      l0c: []
+  control_flow:
+    loops:
+      - for each used core
+      - for each used core times 2
+    branches: []
+  pipeline:
+    stages:
+      - host_tiling
+      - split_core_output_bridge
+      - flash_decode_metadata_commit
+    sync: []
+  memory_behavior:
+    buffers:
+      - tilingData_.outerSplitParams pointer views
+      - tilingData_.fdParams pointer views
+    l1_residency: []
+    l1_partition: []
+  tiling_and_shape:
+    fields:
+      - usedCoreNum
+      - fdRes.gS1IdxEndOfFdHead
+      - fdRes.gS1IdxEndOfFdHeadSplit
+    shape_assumptions:
+      - The MLA bridge preserves the same usedCoreNum * 2 vector-side GS1 end-array shape as the generic nonquant bridge.
+      - MLA kernel FlashDecode later reconstructs fdParams arrays from metadataGm, so this host copy defines the producer-side ordering contract for those arrays.
+  workspace:
+    layout: []
+    offsets: []
+  optimization_intent:
+    - Materialize MLA split_core planning decisions into the fdParams array layout the kernel-side FlashDecode service consumes.
+    - Preserve reuse of the same bridge shape across generic and MLA split planning while allowing surrounding MLA code to manage scalar split metadata separately.
+  tunable_or_structural_fields:
+    - name: fdParams.gS1IdxEndOfFdHead
+      role: MLA vector-side GS1 end metadata copied at usedCoreNum * 2 granularity.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - name: fdParams.s2SplitStartIdxOfCore
+      role: Per-core S2 split start indices forwarded from the planner into the MLA fdParams payload.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+  constraints:
+    - Preserve fdRes array order exactly when copying into tilingData_.fdParams.
+    - Preserve the usedCoreNum * 2 loop bound for the vector-side GS1 end arrays.
+    - Keep this function modeled as the producer-side array bridge, while separate MLA host logic handles scalar split metadata outside this body.
+  risks_if_changed:
+    - Reordering or truncating MLA fdRes copies would silently remap FD tasks before kernel metadata reconstruction.
+    - Dropping the usedCoreNum * 2 expansion would corrupt the vector-side GS1 end metadata contract shared with the kernel.
+    - Collapsing array bridging and external scalar updates into one inferred contract would hide a real source-level separation that Stage-2 needs to preserve.
+  possible_dsl_sections:
+    - split_core.range_assignments
+    - flash_decode.metadata_bridge
+  suggested_dsl_fields:
+    - path: split_core.output.outer_ranges_mla
+      meaning: The MLA host bridge commits per-core BN2, GS1, and S2 boundaries plus fdRes arrays into tilingData for later kernel metadata reconstruction.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+        - SE-FD-METADATA-PARTITION-MLA
+      confidence: high
+  lowering_hints:
+    - Lower this as an MLA-specific host metadata bridge into kernel-visible fdParams arrays.
+    - Preserve the distinction between array copies in this function and scalar split metadata handled elsewhere in MLA host code.
+  open_questions: []

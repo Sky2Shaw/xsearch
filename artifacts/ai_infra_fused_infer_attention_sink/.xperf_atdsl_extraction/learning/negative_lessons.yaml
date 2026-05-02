@@ -10,3 +10,33 @@ negative_lessons:
   lesson: MLA Vec1 is incomplete without AmlaVecCompute and ProcessAmlaNupdate.
   evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-717
   avoid_when: Extracting MLA vector stages.
+- id: NL-FIA-DO-NOT-INVENT-GQA-LOCAL-VEC-OWNERS
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: GQA Vec1 and Vec2 are shared-vector alias stages; inventing fake GQA-local vector owners hides the real producer and consumer contracts.
+  evidence: dsl/shared_stage_aliases.yaml
+  avoid_when: Critical-path aggregation and Stage-2 stage-graph generation.
+- id: NL-FIA-DO-NOT-TREAT-MLA-TAIL-AS-BOUND-GM
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: MLA host-budget tail bytes are not sufficient evidence for standalone GM producer and consumer bindings.
+  evidence: auxiliary/workspace_cross_reference.yaml
+  avoid_when: Workspace-layout lowering and validator authoring.
+- id: NL-FIA-DO-NOT-BURY-STRUCTURE-IN-PROSE
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: When stage DAGs, memory lifetime, or dataflow are already recoverable from deep annotations, emit normalized graph artifacts instead of forcing downstream tooling to parse prose.
+  evidence: auxiliary/pipeline_graphs.yaml
+  avoid_when: Stage-1 artifact finalization for automation-oriented consumers.
+- id: NL-FIA-DO-NOT-TREAT-FD-METADATA-AS-CONSUMER-ONLY
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: FlashDecode metadata is incomplete unless the split-core input package, SetSplitOutput bridge, and kernel consumer reconstruction are all represented together.
+  evidence: dsl/flash_decode_metadata_bridge.yaml
+  avoid_when: FlashDecode bridge extraction and Stage-2 metadata schema design.
+- id: NL-FIA-DO-NOT-SCATTER-LAYOUT-FAMILIES
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: Shape and layout facts should live in one contract artifact; leaving them split across infer-shape, copy helpers, and FD output code forces Stage-2 to reconcile the same enum family repeatedly.
+  evidence: dsl/shape_layout_contract.yaml
+  avoid_when: Stage-1 schema-prep normalization.
+- id: NL-FIA-DO-NOT-HIDE-OFFSET-MATH-IN-PROSE
+  operator_family: AiInfraFusedInferAttentionSink
+  lesson: Prefix sums, preload-slot bases, and padded-stride formulas are correctness-visible address rules and must be emitted as structured fields.
+  evidence: dsl/scalar_offset_contract.yaml
+  avoid_when: FD merge and MLA Vec2/nUpdate extraction.

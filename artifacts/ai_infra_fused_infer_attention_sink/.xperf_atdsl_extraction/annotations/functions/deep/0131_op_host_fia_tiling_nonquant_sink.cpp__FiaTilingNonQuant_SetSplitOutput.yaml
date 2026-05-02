@@ -1,0 +1,115 @@
+function_annotation:
+  function_name: SetSplitOutput
+  qualified_name: FiaTilingNonQuant::SetSplitOutput
+  canonical_name: FiaTilingNonQuant::SetSplitOutput
+  owner: FiaTilingNonQuant
+  owner_qualified: FiaTilingNonQuant
+  owner_template_args: []
+  template_params: []
+  variant: nonquant
+  stage: tiling
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  line_range:
+    start: 331
+    end: 360
+  role: Nonquant host bridge that copies split_core planner output into tilingData outer-split arrays and fdParams metadata consumed by FlashDecode kernels.
+  confidence: high
+  source_evidence_ids:
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE
+  code_behavior:
+    summary: Copies per-core BN2/GS1/S2 end markers plus fdRes arrays into tilingData, then writes the active inner split sizes, flash-decode GS1 base size, FD head count, and usedCoreNum_ back into the host tiling state.
+    key_steps:
+      - Binds writable pointers for outerSplitParams and fdParams arrays from tilingData_.
+      - Iterates over usedCoreNum to copy bN2End, gS1End, s2End, bN2IdxOfFdHead, gS1IdxOfFdHead, s2SplitNumOfFdHead, s2SplitStartIdxOfCore, gS1SplitNumOfFdHead, and gS1LastPartSizeOfFdHead.
+      - Iterates over usedCoreNum * 2 to copy gS1IdxEndOfFdHead and gS1IdxEndOfFdHeadSplit, reflecting the cube-to-vector 1:2 relationship.
+      - Writes mBaseSize_ and sInnerSize_ into innerSplitParams and writes mFdBaseSize_ plus res.numOfFdHead into fdParams.
+      - Updates usedCoreNum_ from res.usedCoreNum.
+  dataflow:
+    inputs:
+      - SplitResult res from the external split_core planner
+      - mBaseSize_, sInnerSize_, and mFdBaseSize_ from the current host tiler state
+    outputs:
+      - tilingData_.outerSplitParams arrays
+      - tilingData_.fdParams arrays and scalar metadata
+      - usedCoreNum_ recorded on the host tiler
+    gm:
+      reads: []
+      writes: []
+    ub:
+      reads: []
+      writes: []
+    l1:
+      reads: []
+      writes: []
+    l0:
+      l0a: []
+      l0b: []
+      l0c: []
+  control_flow:
+    loops:
+      - for each used core
+      - for each used core times 2
+    branches: []
+  pipeline:
+    stages:
+      - host_tiling
+      - split_core_output_bridge
+      - flash_decode_metadata_commit
+    sync: []
+  memory_behavior:
+    buffers:
+      - tilingData_.outerSplitParams pointer views
+      - tilingData_.fdParams pointer views
+    l1_residency: []
+    l1_partition: []
+  tiling_and_shape:
+    fields:
+      - usedCoreNum
+      - numOfFdHead
+      - mBaseSize_
+      - sInnerSize_
+      - mFdBaseSize_
+    shape_assumptions:
+      - gS1IdxEndOfFdHead and gS1IdxEndOfFdHeadSplit are indexed over usedCoreNum * 2 because the vector-side FD metadata is modeled at twice the cube-core cardinality.
+      - The host bridge preserves SplitResult slot order when copying all fdRes arrays into tilingData.
+  workspace:
+    layout: []
+    offsets: []
+  optimization_intent:
+    - Materialize split_core planning decisions into the exact tilingData layout consumed by kernel FlashDecode metadata readers.
+    - Keep split sizes and FD head counts synchronized between the host tiler state and the committed fdParams payload.
+  tunable_or_structural_fields:
+    - name: fdParams.s2SplitNumOfFdHead
+      role: Per-core S2 split counts consumed by downstream FlashDecode metadata readers.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+    - name: fdParams.gS1IdxEndOfFdHead
+      role: Vector-side GS1 end markers copied with cube-to-vector expansion.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+  constraints:
+    - Preserve fdRes array order exactly when copying into tilingData_.fdParams.
+    - Preserve the usedCoreNum * 2 loop bound for the vector-side GS1 end arrays.
+    - Keep innerSplitParams, gS1BaseSizeOfFd, numOfFdHead, and usedCoreNum_ updates coupled with the array copy so committed metadata matches the current split plan.
+  risks_if_changed:
+    - Reordering or truncating fdRes copies would silently remap FD tasks across cores and heads.
+    - Dropping the usedCoreNum * 2 expansion would corrupt the vector-side GS1 end metadata contract.
+    - Letting tilingData scalar split sizes drift from the copied arrays would desynchronize kernel FD consumers from host planning assumptions.
+  possible_dsl_sections:
+    - split_core.range_assignments
+    - flash_decode.metadata_bridge
+  suggested_dsl_fields:
+    - path: split_core.output.outer_ranges
+      meaning: The host bridge commits per-core BN2, GS1, and S2 boundaries from SplitResult into outerSplitParams.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      confidence: high
+    - path: flash_decode.metadata_bridge.fd_params
+      meaning: The host bridge copies fdRes arrays and scalar split metadata into tilingData.fdParams for kernel FlashDecode consumers.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      confidence: high
+  lowering_hints:
+    - Lower this as a host-side metadata bridge from external planning output into kernel-visible fdParams arrays.
+    - Keep the scalar metadata writes in the same contract as the array copies because downstream kernels observe both together.
+  open_questions: []

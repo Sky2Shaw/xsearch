@@ -15,11 +15,13 @@ function_index_entry:
   line_range:
     start: 982
     end: 990
-  rough_role: unknown
-  importance_score: 35
+  rough_role: shared_vec_alias_wrapper
+  importance_score: 70
   importance_reasons:
   - attention_stage:vec2
-  extraction_level: index
+  - critical_path_alias_stage
+  - synchronization_wrapper
+  extraction_level: deep
   calls:
   - SetMSplitInfo
   - CrossCoreWaitFlag

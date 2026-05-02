@@ -1,12 +1,13 @@
 learned_patterns:
 - id: LP-FIA-STAGE-TEMPLATE-IDENTITY
   operator_family: AiInfraFusedInferAttentionSink
-  pattern: Critical stage functions must retain canonical_name, owner, owner_qualified, owner_template_args, template_params,
-    variant, and stage.
+  pattern: Critical stage functions and alias-aware shared vector stages must retain canonical_name, owner, owner_qualified, owner_template_args, template_params, variant, and stage.
   code_evidence:
   - reports/function_index.yaml
+  - reports/critical_path_annotations.yaml
+  - dsl/shared_stage_aliases.yaml
   dsl_field_path: pipeline.stage_graph.stages[].canonical_name
-  optimization_intent: Prevent GQA/MLA/generic same-name ComputeMm2 paths from being merged.
+  optimization_intent: Prevent GQA/MLA/generic same-name stages from being merged and preserve shared-vector alias identity for GQA Vec1/Vec2.
   confidence: high
 - id: LP-FIA-GQA-MM2-V-REUSE
   operator_family: AiInfraFusedInferAttentionSink
@@ -34,4 +35,78 @@ learned_patterns:
   - op_kernel/fia_block_vec_flashdecode_sink.h:437-556
   dsl_field_path: flash_decode.merge
   optimization_intent: Keep split-KV final output numerically stable.
+  confidence: high
+- id: LP-FIA-GQA-SHARED-VEC-ALIAS
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: GQA Vec1 and Vec2 are explicit alias stages owned by the shared FiaBlockVecNonQuant<FIAT> vector service rather than synthetic GQA-local vector owners.
+  code_evidence:
+  - reports/critical_path_annotations.yaml
+  - dsl/shared_stage_aliases.yaml
+  dsl_field_path: pipeline.stage_graph.stage_aliases
+  optimization_intent: Allow automation to rebuild the GQA vector path without fabricating owners that do not exist in code.
+  confidence: high
+- id: LP-FIA-RUNINFO-THREE-STAGE-RING
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: Scheduler overlap uses a three-slot RunInfo ring where current drives MM1, older drives Vec1/MM2, and previous drives Vec2 before invalidation.
+  code_evidence:
+  - op_kernel/fia_kernel_nonquant_sink.h:882-909
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:836-862
+  dsl_field_path: pipeline.scheduler.runinfo_ring
+  optimization_intent: Preserve AIC/AIV overlap as an explicit Stage-2 scheduler policy.
+  confidence: high
+- id: LP-FIA-MLA-BUDGET-TAIL-STUB
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: MLA host sizing reserves extra nUpdate and softmaxSum bytes, but current kernel evidence exposes MM2 int32 aliasing and local UB aMlaSum rather than standalone GM tail bindings.
+  code_evidence:
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:491-508
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:415-443
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:266-279
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+  dsl_field_path: workspace.mla.tail_regions[].binding_status
+  optimization_intent: Separate budget-only ABI stubs from explicit workspace regions in Stage-2.
+  confidence: medium
+- id: LP-FIA-FD-METADATA-BRIDGE
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: split_core input params, host SetSplitOutput, and kernel FlashDecode wrappers form an explicit producer/consumer bridge for fdParams even though the planner implementation stays external.
+  code_evidence:
+  - dsl/flash_decode_metadata_bridge.yaml
+  - reports/split_core_range_contract.yaml
+  - op_host/fia_tiling_nonquant_sink.cpp:307-360
+  - op_kernel/fia_kernel_nonquant_sink.h:731-761
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:650-691
+  dsl_field_path: flash_decode.metadata_bridge
+  optimization_intent: Preserve cross-boundary FD metadata semantics without pretending the external planner lives inside the kernel extraction.
+  confidence: high
+- id: LP-FIA-SHAPE-LAYOUT-CONTRACT
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: Query, attentionOut, and softmaxLse layouts normalize into a small set of canonical shape families with explicit varlen prefix rules.
+  code_evidence:
+  - dsl/shape_layout_contract.yaml
+  - op_host/ai_infra_fused_infer_attention_sink_infershape.cpp:120-296
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:751-774
+  - op_kernel/fia_block_vec_flashdecode_sink.h:292-349
+  dsl_field_path: shape_layout.contract
+  optimization_intent: Let Stage-2 schema and validators consume shape/layout behavior as fields rather than scattered helper knowledge.
+  confidence: high
+- id: LP-FIA-SPARSE-POLICY
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: sparseMode, token windows, sink adjustments, and invalid-row handling form a host-to-kernel policy surface that must be kept coherent across tiling and vector stages.
+  code_evidence:
+  - dsl/sparse_policy.yaml
+  - op_host/fia_tiling_nonquant_sink.cpp:461-475
+  - op_host/fia_tiling_nonquant_sink.cpp:591-639
+  - op_kernel/fia_block_vec_flashdecode_sink.h:390-438
+  dsl_field_path: sparse.policy
+  optimization_intent: Preserve semantic correctness of masked and sink-aware rows while keeping policy choices searchable and validateable.
+  confidence: high
+- id: LP-FIA-SCALAR-OFFSET-RULES
+  operator_family: AiInfraFusedInferAttentionSink
+  pattern: FD taskOffset, MLA preload-slot bases, and headDimAlign padded strides are reusable scalar formulas rather than incidental helper math.
+  code_evidence:
+  - dsl/scalar_offset_contract.yaml
+  - op_kernel/fia_block_vec_flashdecode_sink.h:438-491
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:1120-1163
+  dsl_field_path: scalar.offset_rules
+  optimization_intent: Preserve correctness-visible address generation while exposing hoist and div/mod structure to Stage-2 lowering.
   confidence: high

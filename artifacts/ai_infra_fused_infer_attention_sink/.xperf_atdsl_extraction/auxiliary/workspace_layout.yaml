@@ -1,0 +1,199 @@
+workspace_layout:
+  schema_version: 2
+  regions:
+  - region_id: normal.mm1
+    family: normal
+    region_name: mm1
+    binding_status: explicit_kernel_gm
+    enabled_when: Always enabled for nonquant, GQA, and MLA kernels once workspace is initialized.
+    element_type: MM1_OUT_T (fp32 in current nonquant and MLA instantiations)
+    size_formula: Host ABI reserves preload_slots * coreNum * mm1ResSize * sizeof(MM1_OUT_T); kernel uses aiCoreIdx * preLoadNum * constInfo.mmResUbSize as the per-core ring stride.
+    base_offset_rule: Starts at workspace byte offset 0.
+    byte_order_rule: Per-core contiguous preload-slot ring with row-major stage-local MM1 output layout.
+    producer_functions:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
+    consumer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec1SingleBuf
+    aliasing_rule: Dedicated MM1 output ring. Do not alias with vec1 even though both reuse mmResUbSize as their slot shape.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-NORMAL-SIZE
+    - SE-WORKSPACE-NORMAL-ABI
+  - region_id: normal.vec1
+    family: normal
+    region_name: vec1
+    binding_status: explicit_kernel_gm
+    enabled_when: Always enabled for nonquant, GQA, and MLA kernels.
+    element_type: KV_T
+    size_formula: Host ABI reserves preload_slots * coreNum * mm1ResSize * sizeof(KV_T); kernel advances by the full normal.mm1 span before binding vec1ResGm.
+    base_offset_rule: Starts immediately after the full normal.mm1 region.
+    byte_order_rule: Per-core contiguous preload-slot ring; shared Vec1 writes vec1ResGm in the same M-partition order later consumed by MM2.
+    producer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec1SingleBuf
+    consumer_functions:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    aliasing_rule: Dedicated Vec1 GM ring for softmax/output partials. Shared Vec1 reads normal.mm1 and writes normal.vec1; these regions must remain distinct.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-NORMAL-SIZE
+    - SE-WORKSPACE-NORMAL-ABI
+    - SE-SHARED-VEC1-CONTRACT
+  - region_id: normal.mm2
+    family: normal
+    region_name: mm2
+    binding_status: explicit_kernel_gm_with_mla_int32_alias
+    enabled_when: Always enabled for nonquant, GQA, and MLA kernels.
+    element_type: MM2_OUT_T (fp32 in current nonquant and MLA instantiations)
+    size_formula: Host ABI reserves preload_slots * coreNum * mm2ResSize * sizeof(MM2_OUT_T); kernel advances by the full normal.vec1 span before binding mm2ResGm.
+    base_offset_rule: Starts immediately after the full normal.vec1 region.
+    byte_order_rule: Per-core contiguous preload-slot ring with headDimAlign-based row stride on the output path.
+    producer_functions:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
+    consumer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    related_buffers:
+    - mm2ResInt32Gm reinterprets this region as int32 in MLA kernels.
+    aliasing_rule: Dedicated MM2 output ring. In MLA the same bytes are also reinterpreted as mm2ResInt32Gm for nUpdate accumulation, so owner-specific alias semantics must be preserved.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-NORMAL-SIZE
+    - SE-WORKSPACE-NORMAL-ABI
+    - SE-MLA-MM2-INT32-ALIAS
+  - region_id: normal.vec2
+    family: normal
+    region_name: vec2
+    binding_status: explicit_kernel_gm
+    enabled_when: Always enabled for nonquant, GQA, and MLA kernels.
+    element_type: UPDATE_T for generic nonquant; T/fp32 for MLA
+    size_formula: Host ABI reserves preload_slots * coreNum * mm2ResSize * sizeof(UPDATE_T or T); kernel advances by the full normal.mm2 span before binding vec2ResGm.
+    base_offset_rule: Starts immediately after the full normal.mm2 region.
+    byte_order_rule: Per-core contiguous preload-slot ring with headDimAlign-based row stride for partial output reuse.
+    producer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    consumer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf on the next S2 loop
+    - FiaBlockVecFlashDecode<FIAT>::FlashDecode after partial export
+    aliasing_rule: Distinct from normal.mm2 even though both are sized by bmm2ResUbSize. Vec2 stores prior split-KV partials that are reread before final normalization or FD merge.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-NORMAL-SIZE
+    - SE-WORKSPACE-NORMAL-ABI
+    - SE-SHARED-VEC2-CONTRACT
+  - region_id: mla.nupdate
+    optimization_card_id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+    family: mla
+    region_name: nupdate_budget
+    binding_status: host_budget_only_stub
+    enabled_when: MLA host sizing path only.
+    element_type: int32 budgeted bytes; no standalone GM binding observed.
+    size_formula: Host ABI adds preload_slots * coreNum * mBaseSize * sizeof(int32_t) on top of the four normal regions.
+    base_offset_rule: If the host budget is materialized literally, these bytes would start after normal.vec2 and before FD scratch; current kernel InitWorkspace exposes no SetGlobalBuffer at that position.
+    byte_order_rule: No dedicated tail byte order is visible in kernel code. Runtime nUpdate correction writes into the normal.mm2 int32 alias instead.
+    producer_functions:
+    - FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    consumer_functions:
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate via the normal.mm2 int32 alias
+    related_buffers:
+    - normal.mm2.mm2ResInt32Gm_alias
+    aliasing_rule: Treat as a host-budget-only ABI stub. Do not lower as an explicit GM tail region without new SetGlobalBuffer evidence.
+    confidence: medium
+    confidence_rationale: Host formula explicitly reserves the bytes, but kernel InitWorkspace binds no dedicated tail tensor and ProcessAmlaNupdate writes into the normal.mm2 alias.
+    source_evidence_ids:
+    - SE-WORKSPACE-MLA-ABI
+    - SE-WORKSPACE-MLA-INIT-ORDER
+    - SE-MLA-MM2-INT32-ALIAS
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+  - region_id: mla.softmax_sum
+    optimization_card_id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+    family: mla
+    region_name: softmax_sum_budget
+    binding_status: host_budget_only_stub
+    enabled_when: MLA host sizing path only.
+    element_type: fp32 budgeted bytes; no standalone GM binding observed.
+    size_formula: Host ABI adds preload_slots * coreNum * mBaseSize * sizeof(float) after the MLA nupdate budget.
+    base_offset_rule: If the host budget is materialized literally, these bytes would start after mla.nupdate and before FD scratch; current kernel InitWorkspace exposes no SetGlobalBuffer at that position.
+    byte_order_rule: No dedicated GM byte order is visible in kernel code. Runtime normalization consumes aMlaSumUb from local UB storage instead.
+    producer_functions:
+    - FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+    - FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute into local UB state
+    consumer_functions:
+    - FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock from local UB state
+    related_buffers:
+    - aMlaSumBuff
+    - aMlaSumUb
+    aliasing_rule: Treat as a host-budget-only ABI stub. The observed normalization state lives in local UB and must not be silently lowered as a GM tail reader.
+    confidence: medium
+    confidence_rationale: Host formula explicitly reserves the bytes, but the observed producer and consumer communicate through aMlaSumUb local storage rather than a dedicated GM binding.
+    source_evidence_ids:
+    - SE-WORKSPACE-MLA-ABI
+    - SE-WORKSPACE-MLA-INIT-ORDER
+    - SE-MLA-AMLASUM-UB-ONLY
+    - SE-MLA-SOFTMAX-SUM-GEN
+    - SE-MLA-SOFTMAX-SUM-CONSUME
+  - region_id: flash_decode.accum_out
+    family: flash_decode
+    region_name: accum_out
+    binding_status: explicit_kernel_gm
+    enabled_when: FLASH_DECODE template path with fdFlag and splitKV enabled.
+    element_type: float
+    size_formula: Non-MLA host uses CalcFlashDecodeParamNums(coreNum) * headDimAlign floats; MLA host uses CalcFlashDecodeParamNums(coreNum) * headDimAlign floats where CalcFlashDecodeParamNums also multiplies n2Size.
+    base_offset_rule: Starts immediately after the normal.vec2 region for generic nonquant, or after the MLA host-budget stubs if those bytes are retained literally by the ABI.
+    byte_order_rule: Split-KV-major contiguous buffer indexed by task prefix and M-partition offset.
+    producer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
+    consumer_functions:
+    - FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    aliasing_rule: Dedicated FD partial-output buffer. CopyAccumOutIn and Bmm2FDDataCopyOut address it by splitKVIndex/task prefix and must see a stable contiguous region.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-FD-WORKSPACE-OFFSETS
+  - region_id: flash_decode.lse_sum
+    family: flash_decode
+    region_name: lse_sum
+    binding_status: explicit_kernel_gm
+    enabled_when: FLASH_DECODE template path with fdFlag and splitKV enabled.
+    element_type: float
+    size_formula: Half of fdLogSumExpSize floats, with the other half reserved for lse_max.
+    base_offset_rule: Starts immediately after flash_decode.accum_out.
+    byte_order_rule: First half of the shared LSE scratch super-region.
+    producer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
+    consumer_functions:
+    - FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    aliasing_rule: Shares a single fdLogSumExp super-region with flash_decode.lse_max; the sum half must remain first because kernel binds lseMaxFdGm at lse_sum_base + fdLogSumExpSize / 2.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-FD-WORKSPACE-OFFSETS
+  - region_id: flash_decode.lse_max
+    family: flash_decode
+    region_name: lse_max
+    binding_status: explicit_kernel_gm
+    enabled_when: FLASH_DECODE template path with fdFlag and splitKV enabled.
+    element_type: float
+    size_formula: Half of fdLogSumExpSize floats, paired with flash_decode.lse_sum.
+    base_offset_rule: Starts at flash_decode.lse_sum base plus fdLogSumExpSize / 2 floats.
+    byte_order_rule: Second half of the shared LSE scratch super-region.
+    producer_functions:
+    - FiaBlockVecNonQuant<FIAT>::ProcessVec1SingleBuf
+    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
+    consumer_functions:
+    - FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    aliasing_rule: Second half of the shared FD log/sum scratch block. Reordering the sum/max halves changes merge offsets and corrupts normalization weights.
+    confidence: high
+    source_evidence_ids:
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-FD-WORKSPACE-OFFSETS

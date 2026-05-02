@@ -1,0 +1,94 @@
+function_annotation:
+  function_name: ComputeVec1
+  qualified_name: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+  canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec1
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 976
+    end: 981
+  role: Shared Vec1 critical-stage wrapper used directly by the generic nonquant path and indirectly by the GQA alias path.
+  confidence: high
+  source_evidence_ids:
+  - SE-SHARED-VEC1-SYNC
+  - SE-GQA-SHARED-VECTOR-OWNER
+  - SE-GQA-VEC1-DISPATCH
+  code_behavior:
+    summary: Sets the M split, waits the cube-to-vector handoff, delegates substantive Vec1 work to ProcessVec1SingleBuf, and signals Vec1-to-MM2 completion.
+    key_steps:
+    - Calls SetMSplitInfo(info.actMBaseSize) to materialize the per-loop M partition.
+    - Waits syncC1V1 before consuming normal.mm1 ring output.
+    - Calls ProcessVec1SingleBuf(info) for online softmax, vec1ResGm, and final-loop LSE export behavior.
+    - Sets syncV1C2 after the shared Vec1 contract finishes.
+  dataflow:
+    inputs:
+    - normal.mm1 workspace ring prepared by MM1
+    - run-info M partition size and S2-loop flags
+    - shared softmax state buffers owned by the vector service
+    outputs:
+    - normal.vec1 workspace ring for MM2 consumers
+    - shared softmax max/sum/exp state and optional FD LSE scratch via ProcessVec1SingleBuf
+  pipeline:
+    stages:
+    - vec1
+    - shared_generic_nonquant
+    - alias_target_for_gqa
+    sync:
+    - waits syncC1V1
+    - sets syncV1C2
+  memory_behavior:
+    buffers:
+    - normal.mm1
+    - normal.vec1
+    - softmaxSumUb
+    - softmaxMaxUb
+    - softmaxExpUb
+    l1_residency: []
+    l1_partition: []
+  workspace:
+    layout:
+    - normal.mm1 as upstream MM1 ring input
+    - normal.vec1 as downstream Vec1 ring output
+    - flash_decode.lse_sum and flash_decode.lse_max on FD split-core export
+    offsets:
+    - Delegates exact GM and UB offsets to ProcessVec1SingleBuf after SetMSplitInfo resolves the M partition.
+  alias_contract:
+    exposed_as_stages:
+    - generic.vec1
+    - gqa.vec1
+    dispatcher_paths:
+    - FiaKernelNonQuant<FIAT>::ComputeVec1 forwards the GQA scheduler slot into this shared owner.
+    inner_contract_annotation: annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+  constraints:
+  - Preserve the syncC1V1 wait and syncV1C2 signal around the shared Vec1 body.
+  - Do not split this wrapper from ProcessVec1SingleBuf when lowering alias-aware stage graphs.
+  risks_if_changed:
+  - Reordering the wait/set edges can let MM2 or FD consumers observe stale vec1ResGm or softmax state.
+  - Hiding this wrapper behind only the inner ProcessVec1SingleBuf annotation loses the alias-aware critical-stage contract for GQA.
+  possible_dsl_sections:
+  - pipeline.stage_graph
+  - pipeline.stage_aliases
+  - softmax.online_state
+  suggested_dsl_fields:
+  - path: pipeline.stage_aliases[].shared_owner
+    meaning: GQA Vec1 is a shared-owner alias stage, not a local owner.
+    source_evidence_ids:
+    - SE-GQA-SHARED-VECTOR-OWNER
+    - SE-GQA-VEC1-DISPATCH
+    confidence: high
+  - path: pipeline.stage_graph.edges[].sync_signal
+    meaning: Shared Vec1 waits syncC1V1 and signals syncV1C2.
+    source_evidence_ids:
+    - SE-SHARED-VEC1-SYNC
+    confidence: high
+  lowering_hints:
+  - Lower this wrapper as the critical-stage entry for owner-qualified stage graphs.
+  - Use ProcessVec1SingleBuf as the inner semantic contract, not as a replacement for the shared-owner stage node.
+  open_questions: []

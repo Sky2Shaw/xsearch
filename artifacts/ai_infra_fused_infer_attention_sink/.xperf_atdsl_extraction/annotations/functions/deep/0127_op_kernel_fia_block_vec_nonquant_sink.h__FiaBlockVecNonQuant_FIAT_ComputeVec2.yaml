@@ -1,0 +1,93 @@
+function_annotation:
+  function_name: ComputeVec2
+  qualified_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+  canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+  owner: FiaBlockVecNonQuant
+  owner_qualified: FiaBlockVecNonQuant<FIAT>
+  owner_template_args:
+  - FIAT
+  template_params:
+  - template<typename FIAT>
+  variant: nonquant
+  stage: vec2
+  file: op_kernel/fia_block_vec_nonquant_sink.h
+  line_range:
+    start: 983
+    end: 988
+  role: Shared Vec2 critical-stage wrapper used directly by the generic nonquant path and indirectly by the GQA alias path.
+  confidence: high
+  source_evidence_ids:
+  - SE-SHARED-VEC2-SYNC
+  - SE-GQA-SHARED-VECTOR-OWNER
+  - SE-GQA-VEC2-DISPATCH
+  code_behavior:
+    summary: Sets the M split, waits the MM2-to-Vec2 handoff, delegates substantive Vec2 work to ProcessVec2SingleBuf, and signals Vec2 completion back to the cube side.
+    key_steps:
+    - Calls SetMSplitInfo(info.actMBaseSize) to materialize the per-loop M partition.
+    - Waits syncC2V2 before consuming normal.mm2 ring output.
+    - Calls ProcessVec2SingleBuf(info) for partial-merge, normalization, final copy-out, or FD partial export behavior.
+    - Sets syncV2C2 after the shared Vec2 contract finishes.
+  dataflow:
+    inputs:
+    - normal.mm2 workspace ring prepared by MM2
+    - normal.vec2 partial ring on non-first S2 loops
+    - shared softmax state buffers prepared by Vec1
+    outputs:
+    - attentionOut or FD accumOut on final loops
+    - updated normal.vec2 partial ring on intermediate loops
+  pipeline:
+    stages:
+    - vec2
+    - shared_generic_nonquant
+    - alias_target_for_gqa
+    sync:
+    - waits syncC2V2
+    - sets syncV2C2
+  memory_behavior:
+    buffers:
+    - normal.mm2
+    - normal.vec2
+    - softmaxSumUb
+    - softmaxExpUb
+    l1_residency: []
+    l1_partition: []
+  workspace:
+    layout:
+    - normal.mm2 as upstream MM2 ring input
+    - normal.vec2 as intermediate partial ring
+    - flash_decode.accum_out on FD final partial export
+    offsets:
+    - Delegates exact GM and UB offsets to ProcessVec2SingleBuf after SetMSplitInfo resolves the M partition.
+  alias_contract:
+    exposed_as_stages:
+    - generic.vec2.output
+    - gqa.vec2.output
+    dispatcher_paths:
+    - FiaKernelNonQuant<FIAT>::ComputeVec2 forwards the GQA scheduler slot into this shared owner.
+    inner_contract_annotation: annotations/functions/deep/0099_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec2SingleBuf.yaml
+  constraints:
+  - Preserve the syncC2V2 wait and syncV2C2 signal around the shared Vec2 body.
+  - Keep this wrapper distinct from ProcessVec2SingleBuf so alias-aware critical-path coverage can bind to the real owner method.
+  risks_if_changed:
+  - Reordering the wait/set edges can let cube producers or FD consumers observe stale partials.
+  - Hiding this wrapper behind only the inner ProcessVec2SingleBuf annotation loses the alias-aware critical-stage contract for GQA.
+  possible_dsl_sections:
+  - pipeline.stage_graph
+  - pipeline.stage_aliases
+  - flash_decode.partial_export
+  suggested_dsl_fields:
+  - path: pipeline.stage_aliases[].shared_owner
+    meaning: GQA Vec2/output is a shared-owner alias stage, not a local owner.
+    source_evidence_ids:
+    - SE-GQA-SHARED-VECTOR-OWNER
+    - SE-GQA-VEC2-DISPATCH
+    confidence: high
+  - path: pipeline.stage_graph.edges[].sync_signal
+    meaning: Shared Vec2 waits syncC2V2 and signals syncV2C2.
+    source_evidence_ids:
+    - SE-SHARED-VEC2-SYNC
+    confidence: high
+  lowering_hints:
+  - Lower this wrapper as the critical-stage entry for owner-qualified stage graphs.
+  - Use ProcessVec2SingleBuf as the inner semantic contract, not as a replacement for the shared-owner stage node.
+  open_questions: []

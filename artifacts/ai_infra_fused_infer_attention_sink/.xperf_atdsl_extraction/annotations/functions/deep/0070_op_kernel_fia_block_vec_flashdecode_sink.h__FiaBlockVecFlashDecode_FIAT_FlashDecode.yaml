@@ -5,120 +5,192 @@ function_annotation:
   owner: FiaBlockVecFlashDecode
   owner_qualified: FiaBlockVecFlashDecode<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: flash_decode
-  stage: flash_decode
+  stage: flash_decode.merge
   file: op_kernel/fia_block_vec_flashdecode_sink.h
   line_range:
     start: 433
     end: 556
-  role: FlashDecode split-KV merge post-pass. Merges partial accumOut and LSE sum/max into final attention output and optional
-    softmax LSE.
+  role: FlashDecode split-KV merge post-pass that maps metadata-defined FD tasks to partial accumOut and LSE scratch, computes stable weights, and emits final attention output plus optional softmaxLse.
   confidence: high
+  source_evidence_ids:
+    - SE-FD-METADATA-PARTITION
+    - SE-FD-WORKSPACE-OFFSETS
+    - SE-FD-MERGE-WEIGHT-FORMULA
+    - SE-FD-SPARSE-POLICY
+    - SE-FD-OUTPUT-LAYOUTS
+    - SE-FD-TASK-OFFSET-SCALARS
   code_behavior:
-    summary: FlashDecode split-KV merge post-pass. Merges partial accumOut and LSE sum/max into final attention output and
-      optional softmax LSE.
+    summary: Uses fdParams to walk per-core split-KV reduction tasks, reloads LSE sum/max and partial O slices, computes stable normalized weights, optionally exports merged softmaxLse, then reduces all partial outputs into the final attention rows.
     key_steps:
-    - Maps each AIV block to FD tasks using gS1IdxEndOfFdHead metadata.
-    - Loads LSE sum/max for all split-KV partials and preloads accumOut partial O.
-    - Computes stable merge weights from column max and normalized exp(sum) terms.
-    - Optionally writes final softmax LSE by output layout after invalid-row adjustment.
-    - Reduces weighted partial O into reduceOut and copies final result to attentionOutGm.
+      - Gates entry on blockIdx < fd.usedVecNumOfFd and decodes the current AIV core's task range from gS1IdxEndOfFdHead and gS1IdxEndOfFdHeadSplit.
+      - Reconstructs taskInfo fields from fd metadata arrays, including bIdx, n2Idx, gS1Idx, actualCombineLoopSize, and gS1-part tail size.
+      - Prefix-sums prior s2SplitNumOfFdHead entries into combineTaskPrefixSum and multiplies by mBaseSize to form taskOffset.
+      - Preloads LSE scratch and up to preLoadNum partial accumOut slices, then computes stable merge weights from lseMax/lseSum.
+      - On softmaxLseFlag, rebuilds final LSE, applies invalid-row correction when sparse rules demand it, and writes layout-specific softmaxLse output.
+      - Iteratively multiplies each partial output by its weight, accumulates into reduceOut, and copies the final result through the layout-aware output helper.
   dataflow:
     inputs:
-    - FiaBlockVecFlashDecode<FIAT>::FlashDecode
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - fdParams arrays describing per-task bN2, gS1, split counts, and per-core task-end markers
+      - accumOutGm split partial outputs
+      - lseSumFdGm and lseMaxFdGm FD scratch
+      - actualSeqLengthsGmQ and sparse-related runtime state for LSE/output layout handling
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - attentionOutGm final attention output
+      - softmaxLseGm final LSE when softmaxLseFlag is enabled
     gm:
       reads:
-      - accumOutGm split partial outputs
-      - lseSumFdGm
-      - lseMaxFdGm
+        - accumOutGm partial O slices
+        - lseSumFdGm
+        - lseMaxFdGm
+        - actualSeqLengthsGmQ through layout-specific exporters
       writes:
-      - attentionOutGm final output
-      - optional softmaxLseGm
+        - attentionOutGm through CopyFinalResOut and Bmm2DataCopyOutTrans
+        - softmaxLseGm through DataCopySoftmaxLseTND, DataCopySoftmaxLseNTD, DataCopySoftmaxLseBSND, or DataCopySoftmaxLseBNSD
     ub:
       reads:
-      - fdSumBuf/fdMaxBuf/fdMm2ResBuf ping-pong buffers
+        - fdSumBuf1/fdSumBuf2
+        - fdMaxBuf1/fdMaxBuf2
+        - fdMm2ResBuf1/fdMm2ResBuf2
       writes:
-      - fdReduceBuf and fdOutputBuf final merge buffers
+        - fdLseExpBuf
+        - fdReduceBuf
+        - fdOutputBuf
+        - fdLseMaxUbBuf
+        - fdLseSumUbBuf
+        - fdLseUbBuf
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each fdTaskId in the current core's metadata-defined task range
+      - for each gS1-part row block inside the task
+      - preload loop over preLoadNum partial O slices
+      - reduction loop over actualCombineLoopSize split-KV partials
     branches:
-    - if
-    - else
+      - blockIdx gate on usedVecNumOfFd
+      - gS1-part tail branch for actualGSplitSize
+      - softmaxLseFlag branch
+      - invalid-row adjustment branch
+      - output layout branch across TND, NTD, BSH/BSND, and BNSD
   pipeline:
     stages:
-    - flash_decode
-    - flash_decode
-    - calls:CopyLseIn,CopyAccumOutIn,ComputeScaleValue,CalaPreNextTokens,ComputeSoftMaxLse,IsExistInvalidRows
+      - flash_decode.metadata_decode
+      - flash_decode.lse_preload
+      - flash_decode.partial_o_preload
+      - flash_decode.weight_compute
+      - flash_decode.optional_lse_export
+      - flash_decode.weighted_reduce
+      - flash_decode.final_copy_out
     sync:
-    - WaitFlag
-    - SetFlag
+      - WaitFlag / SetFlag around fdSumBuf ping-pong ownership
+      - WaitFlag / SetFlag around fdMaxBuf ping-pong ownership
+      - WaitFlag / SetFlag around fdMm2ResBuf ping-pong ownership
+      - WaitFlag / SetFlag around fdOutputBuf and fdLseUbBuf ownership
   memory_behavior:
     buffers:
-    - LocalTensor
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - fdSumBuf1 and fdSumBuf2
+      - fdMaxBuf1 and fdMaxBuf2
+      - fdMm2ResBuf1 and fdMm2ResBuf2
+      - fdReduceBuf
+      - fdOutputBuf
+      - fdLseExpBuf
+      - fdLseMaxUbBuf
+      - fdLseSumUbBuf
+      - fdLseUbBuf
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - preLoadNum
+      - usedVecNumOfFd
+      - gS1BaseSizeOfFd
+      - mBaseSize
+      - preLoadNum
+      - headDimAlign
+      - qHeadNum
+      - gSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556'
+      - Each FD task owns actualCombineLoopSize split-KV partials and a gS1-partitioned M range whose tail is given by gS1LastPartSizeOfFdHead.
+      - LSE export and final output copy-out switch across TND, NTD, BSH, BSND, and BNSD layout families.
   workspace:
     layout:
-    - unknown
+      - FD accumOut scratch is split-KV-major contiguous memory
+      - FD LSE scratch stores matched sum and max regions indexed by taskOffset and gS1-part offset
     offsets:
-    - uint64_t taskOffset = combineTaskPrefixSum * constInfo.mBaseSize;
-    - CopyLseIn(startRow, actualGSplitSize, taskOffset, reduceMLoop);
-    - CopyAccumOutIn(mm2Res, preLoadIdx, taskOffset + startRow, actualGSplitSize);
-    - uint32_t mOffset = taskInfo.gS1Idx + startRow;
-    - uint64_t bN2Offset = prefixBS1 * constInfo.qHeadNum + taskInfo.n2Idx * constInfo.gSize;
-    - DataCopySoftmaxLseTND(softmaxLseGm, lseftMaxLseUb, bN2Offset, mOffset, actualGSplitSize, constInfo);
+      - taskOffset = combineTaskPrefixSum * mBaseSize
+      - accumOut read offset = taskOffset + startRow plus splitKVIndex * mBaseSize * headDim inside CopyAccumOutIn
+      - LSE read offset = taskOffset + startRow plus splitKVIndex * mBaseSize inside CopyLseIn
+      - final LSE export offset = gS1Idx + startRow with layout-specific bN2Offset
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve the stable max/sub/exp/mul/sum/div merge order so split-KV outputs remain numerically correct.
+    - Make the metadata partition and taskOffset formulas explicit so Stage-2 can rebuild FD merge addressing without reverse-engineering prose.
   tunable_or_structural_fields:
-  - name: mBaseSize
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556
+    - name: usedVecNumOfFd
+      role: Active AIV core bound for FD merge work.
+      source_evidence_ids:
+        - SE-FD-METADATA-PARTITION
+    - name: gS1BaseSizeOfFd
+      role: M-axis base tile size used to derive startRow and actualGSplitSize.
+      source_evidence_ids:
+        - SE-FD-METADATA-PARTITION
+        - SE-SPLIT-CORE-INPUT-PARAMS
+    - name: mBaseSize
+      role: Multiplies prefix-summed split counts into accumOut and LSE workspace offsets.
+      source_evidence_ids:
+        - SE-FD-TASK-OFFSET-SCALARS
+        - SE-KNOB-MBASE-SIZE
+    - name: preLoadNum
+      role: Number of partial O slices preloaded before the main reduction loop.
+      source_evidence_ids:
+        - SE-KNOB-PRELOAD-NUM
   constraints:
-  - FD metadata arrays must describe split prefix ranges consistently across AIC/AIV metadata planes.
-  - LSE sum/max and partial output workspace must be sized for actualCombineLoopSize.
-  - Event wait/set ordering is part of correctness, not only performance.
+    - fd metadata arrays must preserve AIC/AIV ordering and usedVecNumOfFd bounds.
+    - taskOffset must remain the prefix sum of prior s2SplitNumOfFdHead values multiplied by mBaseSize.
+    - invalid-row adjustment must happen before final softmaxLse export when sparse policy marks rows invalid.
+    - Event wait/set ordering on FD scratch buffers is correctness-critical, not optional overlap sugar.
   risks_if_changed:
-  - Incorrect split prefix or LSE weight computation can silently mix wrong KV split partials.
-  - Missing event release can stall producer/consumer queues.
+    - Incorrect taskOffset or fd array ordering silently mixes split-KV partials from different tasks.
+    - Altering the stable merge weight formula corrupts final output numerics even if shapes still match.
+    - Reordering invalid-row adjustment after LSE export changes the semantic meaning of masked rows.
   possible_dsl_sections:
-  - flash_decode.merge
+    - flash_decode.merge
+    - flash_decode.metadata_bridge
+    - sparse.policy
+    - scalar.offset_rules
   suggested_dsl_fields:
-  - path: flash_decode.merge.source_function
-    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::FlashDecode
-    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:433-556
-    confidence: high
+    - path: flash_decode.fdparams.per_task_ranges
+      meaning: fdParams arrays define the per-task bN2, gS1, split count, and core-end markers consumed by the FD merge loop.
+      source_evidence_ids:
+        - SE-FD-METADATA-PARTITION
+      confidence: high
+    - path: flash_decode.merge.weight_formula
+      meaning: The merge formula is ordered as colmax, subtract, exp, mul by lseSum, coladd, then divide normalization.
+      source_evidence_ids:
+        - SE-FD-MERGE-WEIGHT-FORMULA
+      confidence: high
+    - path: flash_decode.merge.output_layouts
+      meaning: Final output and optional LSE export use layout-specific GM wrappers and offsets across TND, NTD, BSH, BSND, and BNSD.
+      source_evidence_ids:
+        - SE-FD-OUTPUT-LAYOUTS
+      confidence: high
+    - path: sparse.policy.pre_next_token_rule
+      meaning: FlashDecode rebuilds preTokensPerBatch and nextTokensPerBatch from sparseMode, attenMaskFlag, sinkNumber, and actual sequence lengths before invalid-row checks.
+      source_evidence_ids:
+        - SE-FD-SPARSE-POLICY
+      confidence: high
+    - path: scalar.offset_rules.fd_task_offset
+      meaning: FD task addressing hoists a prefix sum over s2SplitNumOfFdHead into taskOffset and then adds row-level offsets.
+      source_evidence_ids:
+        - SE-FD-TASK-OFFSET-SCALARS
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower the metadata partition, weight formula, sparse-policy rebuild, and offset formulas as one FD merge contract; separating them loses correctness context.
+  open_questions: []

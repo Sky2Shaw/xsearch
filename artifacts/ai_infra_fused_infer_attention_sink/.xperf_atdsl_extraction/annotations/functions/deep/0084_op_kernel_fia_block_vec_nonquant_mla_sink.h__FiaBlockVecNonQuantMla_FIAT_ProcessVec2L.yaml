@@ -5,116 +5,116 @@ function_annotation:
   owner: FiaBlockVecNonQuantMla
   owner_qualified: FiaBlockVecNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
-  stage: vec2
+  stage: mla.vec2.output
   file: op_kernel/fia_block_vec_nonquant_mla_sink.h
   line_range:
     start: 921
     end: 943
-  role: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+  role: MLA Vec2 wrapper that mirrors the Vec1 n-buffer M partitioning, waits for MM2 completion, and only dispatches the Vec2 body on the last S2 loop.
   confidence: high
+  source_evidence_ids:
+    - SE-KNOB-NBUFFER-MBASE-SIZE
+    - SE-MLA-VEC2-LAST-LOOP-WRAPPER
   code_behavior:
-    summary: mla vector stage for vec2, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Rebuilds the same vecStartM and vecDealM partitioning used by MLA Vec1, serializes on syncC2V2, and hands each chunk to ProcessVec2SingleBuf, which itself suppresses work unless the current S2 loop is the last one.
     key_steps:
-    - 'Calls: GetBlockIdx, CrossCoreWaitFlag, ProcessVec2SingleBuf.'
-    - Coordinates pipeline state with event or cross-core flags.
+      - Computes nBufferLoopTimes and nBufferTail from actMBaseSize and nBufferMBaseSize.
+      - Derives vecDealM and vecStartM for each chunk, including the odd-core split when subBlockNum != 1.
+      - Waits syncC2V2 before every ProcessVec2SingleBuf call.
+      - Relies on ProcessVec2SingleBuf to no-op non-last-S2 loops and empty vecDealM chunks.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - info.actMBaseSize and info.isLastS2Loop
+      - nBufferMBaseSize, subBlockNum, and syncC2V2 from constInfo
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - delegated Vec2 output or FD partial export through ProcessVec2SingleBuf
     gm:
       reads:
-      - unknown
+        - delegated mm2ResGm reloads through ProcessVec2SingleBuf and DealBmm2ResBaseBlock
       writes:
-      - unknown
+        - delegated attentionOutGm or accumOutGm through ProcessVec2SingleBuf and DealBmm2ResBaseBlock
     ub:
       reads:
-      - unknown
+        - delegated Vec2 UB buffers through ProcessVec2SingleBuf
       writes:
-      - unknown
+        - delegated Vec2 UB buffers through ProcessVec2SingleBuf
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each n-buffer M chunk
     branches:
-    - if
-    - else
+      - subBlockNum == 1 special case
+      - odd-core split branch via GetBlockIdx() % 2
+      - ProcessVec2SingleBuf internally gates non-last-S2 loops and empty chunks
   pipeline:
     stages:
-    - vec2
-    - mla
-    - calls:GetBlockIdx,CrossCoreWaitFlag,ProcessVec2SingleBuf
+      - mla.vec2.output
+      - last_s2_dispatch
     sync:
-    - WaitFlag
-    - CrossCoreWaitFlag
+      - CrossCoreWaitFlag(syncC2V2)
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - delegated Vec2 ping-pong buffers in ProcessVec2SingleBuf
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - nBufferMBaseSize
+      - nBufferMBaseSize
+      - subBlockNum
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943'
+      - vecDealM uses the same half-chunk or whole-chunk partition rule as MLA Vec1.
+      - Only the last S2 loop is allowed to emit final Vec2 output or FD partial export.
   workspace:
     layout:
-    - unknown
+      - Delegated Vec2 body reads the normal.mm2 ring and writes either final output or FD partial scratch
     offsets:
-    - unknown
+      - vecStartM and vecDealM are the wrapper-level M partition parameters passed into ProcessVec2SingleBuf
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve the wrapper-level last-S2 gating so earlier S2 loops do not overwrite final output or FD partial buffers.
   tunable_or_structural_fields:
-  - name: nBufferMBaseSize
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
+    - name: nBufferMBaseSize
+      role: Shared MLA M partition width for Vec1 and Vec2 wrappers.
+      source_evidence_ids:
+        - SE-KNOB-NBUFFER-MBASE-SIZE
+        - SE-MLA-VEC2-LAST-LOOP-WRAPPER
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - syncC2V2 must be observed before ProcessVec2SingleBuf runs.
+    - Non-last-S2 loops must not emit Vec2 output or FD partial export.
+    - The odd-core vecStartM split must match the Vec1-side partition so both wrappers cover the same rows.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Dispatching Vec2 on earlier S2 loops can overwrite final output or split-KV partial scratch prematurely.
+    - Partition drift between Vec1 and Vec2 can duplicate or drop MLA rows.
   possible_dsl_sections:
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.vector_stages
-  - softmax.online_state
+    - pipeline.vector_stages
+    - scalar.offset_rules
+    - mla.nupdate
   suggested_dsl_fields:
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
-    confidence: high
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
-    confidence: high
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:921-943
-    confidence: high
+    - path: pipeline.vector_stages.mla_vec2_last_s2_only
+      meaning: MLA Vec2 wrapper only dispatches the body on the last S2 loop; earlier loops are intentionally suppressed.
+      source_evidence_ids:
+        - SE-MLA-VEC2-LAST-LOOP-WRAPPER
+      confidence: high
+    - path: pipeline.vector_stages.mla_vec2_nbuffer_partition
+      meaning: Vec2 reuses the same nBufferMBaseSize-driven vecStartM and vecDealM partitioning contract as Vec1.
+      source_evidence_ids:
+        - SE-KNOB-NBUFFER-MBASE-SIZE
+        - SE-MLA-VEC2-LAST-LOOP-WRAPPER
+      confidence: high
+    - path: scalar.offset_rules.mla_vec_partition_rule
+      meaning: The wrapper-level partition parameters are passed unchanged to the Vec2 body and therefore define every downstream reload and copy-out offset.
+      source_evidence_ids:
+        - SE-MLA-VEC2-LAST-LOOP-WRAPPER
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Keep the last-S2 gate at the wrapper level when lowering MLA Vec2; moving it into unrelated helpers obscures when output is legally emitted.
+  open_questions: []

@@ -1,0 +1,35 @@
+mla_workspace_tail_contract:
+  tail_regions:
+    - region_id: mla.nupdate
+      optimization_card_id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+      binding_status: host_budget_only_stub_with_normal_mm2_alias
+      kernel_binding_evidence:
+        source_evidence_ids:
+          - SE-WORKSPACE-MLA-ABI
+          - SE-WORKSPACE-MLA-INIT-ORDER
+          - SE-MLA-MM2-INT32-ALIAS
+      local_buffer_bridge:
+        producer: AmlaVecCompute writes the row-wise int32 vector into outputBuff2
+        consumer: ProcessAmlaNupdate broadcasts the vector and atomically adds it into mm2ResInt32Gm
+      validation_note: Do not lower this region as a standalone GM tensor until direct SetGlobalBuffer evidence appears.
+    - region_id: mla.softmax_sum
+      optimization_card_id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+      binding_status: host_budget_only_stub_with_local_ub_bridge
+      kernel_binding_evidence:
+        source_evidence_ids:
+          - SE-WORKSPACE-MLA-ABI
+          - SE-WORKSPACE-MLA-INIT-ORDER
+          - SE-MLA-AMLASUM-UB-ONLY
+      local_buffer_bridge:
+        producer: AmlaVecCompute materializes aMlaSumUb on the last S2 loop
+        consumer: DealBmm2ResBaseBlock broadcasts aMlaSumUb and divides the reloaded MM2 rows before copy-out
+      validation_note: Preserve this as a budget-only ABI field with explicit UB bridge metadata.
+  validation_rules:
+    constraints:
+      - C-WORKSPACE-MLA-FD
+      - C-WORKSPACE-MLA-NUPDATE-STUB
+      - C-WORKSPACE-MLA-SOFTMAX-SUM-UB
+    risks:
+      - R-MLA-TAIL-BUDGET-MISMODELED
+      - R-MLA-NUPDATE-TAIL-MISLOWERED
+      - R-MLA-SOFTMAX-SUM-GM-INVENTED

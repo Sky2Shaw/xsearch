@@ -1,0 +1,172 @@
+split_core_range_contract:
+  producer_status: external_producer_with_verified_host_bridge
+  contract_status: ready_for_stage2_import
+  producer_boundary:
+    external_symbol: split_core range builder
+    external_header: split_core.h
+    verified_host_bridge:
+      input_functions:
+        - FiaTilingNonQuant::CreateSplitInput
+        - FiaTilingNonQuantMla::CreateSplitInput
+      output_functions:
+        - FiaTilingNonQuant::SetSplitOutput
+        - FiaTilingNonQuantMla::SetSplitOutput
+  range_assignment_fields:
+    - path: split_core.range_assignments[].core_idx
+      type: uint32
+      meaning: Logical core slot whose outer ranges and FD task metadata are being assigned.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - path: split_core.range_assignments[].bn2_range
+      type: half_open_range
+      meaning: Batch/head range represented by bN2End and bN2IdxOfFdHead bridge arrays.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - path: split_core.range_assignments[].gs1_range
+      type: half_open_range
+      meaning: GS1 range represented by gS1End and FD GS1 index/end arrays.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - path: split_core.range_assignments[].s2_range
+      type: half_open_range
+      meaning: S2 range represented by s2End, s2SplitNumOfFdHead, and s2SplitStartIdxOfCore.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - path: split_core.range_assignments[].fd_task_count
+      type: uint32
+      meaning: Number of FD partial tasks attached to the core assignment through fdRes metadata.
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-FD-METADATA-PARTITION
+        - SE-FD-METADATA-PARTITION-MLA
+  input_contract:
+    base_info_fields:
+      - bSize
+      - n2Size
+      - gSize
+      - s1Size
+      - s2Size
+      - actualLenQDims
+      - actualLenKvDims
+      - preToken
+      - nextToken
+      - isS1G
+      - sparseMode
+      - attenMaskFlag
+      - sinkNumber
+      - keySinkNumber
+      - supportFD
+    split_param_fields:
+      - mBaseSize
+      - s2BaseSize
+      - gS1BaseSizeOfFd
+    source_evidence_ids:
+      - SE-SPLIT-CORE-INPUT-PARAMS
+      - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+  output_contract:
+    outer_split_params:
+      - bN2End[]
+      - gS1End[]
+      - s2End[]
+    fd_params:
+      - bN2IdxOfFdHead[]
+      - gS1IdxOfFdHead[]
+      - s2SplitNumOfFdHead[]
+      - s2SplitStartIdxOfCore[]
+      - gS1SplitNumOfFdHead[]
+      - gS1LastPartSizeOfFdHead[]
+      - gS1IdxEndOfFdHead[]
+      - gS1IdxEndOfFdHeadSplit[]
+    source_evidence_ids:
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+  validators:
+    - id: C-SPLIT-CORE-RANGE-ORDER
+      rule: split_core producer output, host bridge copies, and kernel FD consumers must preserve the same per-core array order and BN2/GS1/S2 range semantics.
+    - id: C-SPLIT-CORE-FD-BRIDGE
+      rule: FD metadata arrays derived from split_core output must stay synchronized with usedVecNumOfFd and gS1BaseSizeOfFd.
+  risks:
+    - id: R-SPLIT-CORE-RANGE-DESYNC
+      description: Divergence in split_core range packing silently reassigns bn2, gs1, or s2 work across FD tasks.
+  stage2_ingestion:
+    status: ready_for_ingestion
+    import_as:
+      - split_core.range_assignments
+      - split_core.input_contract
+      - split_core.output_bridge
+      - flash_decode.metadata_bridge
+    known_external_unknowns:
+      - The internal split planner heuristic remains outside the extracted operator boundary.
+      - Stage-1 verifies the host bridge field contract and kernel metadata consumption, not the planner's internal search algorithm.
+  source_evidence_ids:
+    - SE-SPLIT-CORE-INPUT-PARAMS
+    - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    - SE-FD-METADATA-PARTITION
+    - SE-FD-METADATA-PARTITION-MLA
+common_backed_split_core_semantics:
+  supplement_sources:
+    - common_supplement/split_core_extraction.yaml
+    - common_supplement/common_dependency_inventory.yaml
+  source_evidence_ids:
+    - SE-COMMON-SPLIT-CORE-CPP
+    - SE-COMMON-SPLIT-CORE-H
+  cost_model:
+    block_cost_formula: 6 * ceil(M / 16) + 10 * ceil(S2 / 64)
+    block_type_table: normal_normal, tail_normal, normal_tail, and tail_tail costs are materialized, with zero tail cost when a tail extent is absent.
+    tolerance_ratios:
+      fa_tolerance_ratio: 2
+      fd_tolerance_ratio: 2
+      predicate: limit + tolerance >= value
+  core_search_bounds:
+    max_core: min(requested coreNum, totalBlockNum)
+    min_core: min(sqrt(totalBlockNum + 0.25) + 0.5 rounding expression, maxCore)
+    selection_rule: evaluate candidates from minCore through maxCore, select the lower maxCost candidate, and clamp usedCoreNum to at least one.
+  sparse_sink_and_key_sink:
+    sparse_modes:
+      DEFAULT_MASK: 0
+      ALL_MASK: 1
+      LEFT_UP_CAUSAL: 2
+      RIGHT_DOWN_CAUSAL: 3
+      BAND: 4
+      SPARSE_BUTT: sentinel_not_runtime_mode
+    s2_range_rule: derive valid S2 token bounds from S1G range plus pre/next tokens, clip to valid S2 tokens, and convert to a right-open block range; no valid tokens produce an empty S2 range.
+    band_sink_adjustment: BAND mode shifts preToken by s1Size - s2Size and nextToken by s2Size - s1Size before range shaping.
+    key_sink_rule: when keySinkNumber and supportFD are set, keySinkNumber extends effective S2 and is preferred over sinkNumber for sink-aware accounting.
+    sink_gap_cursor: AssignByBlock and ForceAssign skip masked sink gaps only when the selected sink number is positive under BAND sparse mode.
+  assignment_phases:
+    order:
+      - AssignByBatch
+      - AssignByRow
+      - AssignByBlock when supportFD is true
+      - ForceAssign when supportFD is true and the current core has no assigned block
+    cost_limit_rule: unassignedCost divided by remaining cores, with FA tolerance added from the last or current block cost.
+    per_core_outputs:
+      - bN2End
+      - gS1End
+      - s2End
+      - maxCost
+  fd_metadata_generation:
+    supportFD_gates:
+      - block-level assignment
+      - force assignment
+      - FD metadata recording
+      - post-FA FD vector balancing
+    record_conditions:
+      - skip core 0
+      - skip rows with curKvSplitPart <= 1
+      - delay recording until the reduction row has passed the previous core endpoint
+    record_payload:
+      - previous-core bN2 and gS1 endpoints
+      - S2 split count
+      - G/S1 split count
+      - G/S1 last part size
+      - maxS2SplitNum update
+      - numOfFdHead increment
+    vector_balancing: total FD load is s2SplitNumOfFdHead * gS1SplitNumOfFdHead; vector boundaries use FD_TOLERANCE_RATIO against remaining vector space.
+  stage2_import_note: Stage-2 split-core DSL should model the common planner as an explicit discrete cost/search/assignment contract, not only as opaque fdParams arrays.

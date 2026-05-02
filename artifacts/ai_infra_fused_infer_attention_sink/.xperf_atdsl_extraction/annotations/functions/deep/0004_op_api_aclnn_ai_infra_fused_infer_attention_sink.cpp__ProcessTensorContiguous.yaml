@@ -6,93 +6,89 @@ function_annotation:
   owner_qualified: null
   owner_template_args: []
   template_params: []
-  variant: unknown
-  stage: unknown
+  variant: host_api
+  stage: host_contiguity
   file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
   line_range:
     start: 170
     end: 183
-  role: unknown
-  confidence: medium
+  role: Host-side tensor contiguity adapter that either preserves non-contiguous view metadata through CreateView or materializes a contiguous tensor through l0op::Contiguous.
+  confidence: high
+  source_evidence_ids:
+    - SE-HOST-PROCESS-TENSOR-CONTIGUOUS
   code_behavior:
-    summary: unknown
+    summary: Returns null for null input, routes non-contiguous tensors through CalcNoContiguous to preserve view/storage shape, strides, and view offset, and routes contiguous tensors through l0op::Contiguous.
     key_steps:
-    - 'Calls: IsContiguous, CalcNoContiguous, Contiguous.'
+      - Returns nullptr immediately when the input tensor pointer is null.
+      - Uses IsContiguous(tensor) as the only branch for selecting the non-contiguous or contiguous path.
+      - On the non-contiguous path, delegates to CalcNoContiguous, which calls executor->CreateView with GetViewShape(), GetStorageShape(), GetViewStrides(), and GetViewOffset().
+      - On the contiguous path, calls l0op::Contiguous(tensor, executor) and returns that result.
   dataflow:
     inputs:
-    - ProcessTensorContiguous
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - tensor as a caller-provided aclTensor pointer
+      - executor as the factory for CreateView and l0op::Contiguous results
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - nullptr, a metadata-preserving view, or a contiguous tensor handle depending on the input state
     gm:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - if
-    - else
+      - null-input early return
+      - contiguous versus non-contiguous dispatch
   pipeline:
     stages:
-    - unknown
-    - unknown
-    - calls:IsContiguous,CalcNoContiguous,Contiguous
-    sync:
-    - unknown
+      - host_api_boundary
+      - tensor_contiguity_dispatch
+      - calls IsContiguous, CalcNoContiguous, and l0op::Contiguous
+    sync: []
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - aclTensor descriptor returned by executor->CreateView on the non-contiguous path
+      - aclTensor descriptor returned by l0op::Contiguous on the contiguous path
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
-    fields:
-    - unknown
+    fields: []
     shape_assumptions:
-    - 'source line evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:170-183'
+      - The non-contiguous path preserves the input view shape, storage shape, strides, and view offset exactly through CreateView.
+      - The contiguous path is delegated entirely to l0op::Contiguous and does not rewrite metadata directly in this helper.
   workspace:
-    layout:
-    - unknown
-    offsets:
-    - unknown
+    layout: []
+    offsets: []
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve non-contiguous access metadata when the underlying operator can consume the original storage layout through a view.
+    - Only materialize a contiguous tensor through the standard l0op helper when the input is already considered contiguous by the host API.
   tunable_or_structural_fields: []
   constraints:
-  - unknown
+    - Preserve null passthrough.
+    - Keep the non-contiguous path tied to CreateView so storage shape, strides, and view offset remain intact.
+    - Keep contiguity selection driven solely by IsContiguous(tensor).
   risks_if_changed:
-  - unknown
+    - Replacing the CreateView path with a plain contiguous conversion would discard stride and offset metadata that the helper is explicitly preserving.
+    - Changing the contiguous-path dispatch would alter which tensor handle downstream setup receives for already contiguous inputs.
+    - Removing the null fast path would push null pointers into CreateView or l0op::Contiguous.
   possible_dsl_sections:
-  - operator.helpers
+    - operator.helpers
+    - operator.input_tensor_views
   suggested_dsl_fields:
-  - path: operator.helpers.source_function
-    meaning: Lowering evidence from ProcessTensorContiguous
-    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:170-183
-    confidence: medium
+    - path: operator.input_tensor_views.contiguity_adapter
+      meaning: Non-contiguous tensors are converted into metadata-preserving views, while contiguous tensors are forwarded through the standard contiguous helper path.
+      source_evidence_ids:
+        - SE-HOST-PROCESS-TENSOR-CONTIGUOUS
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this as an input-normalization helper attached to host setup, not as a kernel memory move.
+    - Preserve the distinction between metadata-preserving CreateView and l0op::Contiguous because they encode different API-boundary semantics.
+  open_questions: []

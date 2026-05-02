@@ -1,0 +1,117 @@
+artifact_type: common_kernel_vector_common_extraction
+source_files:
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+
+invalid_row_handling:
+  detection:
+    helper: IsExistInvalidRows
+    behavior:
+      RIGHT_DOWN_CAUSAL: Invalid rows exist when nextTokensPerBatch is negative.
+      BAND: Invalid rows exist when nextTokensPerBatch or preTokensPerBatch is negative.
+      DEFAULT_MASK_OR_ALL_MASK: Negative next/pre tokens imply invalid rows; otherwise attenMaskFlag and isRowInvalid decide.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:57
+  invalid_rows_class:
+    class: InvalidRows
+    behavior:
+      - Calls DealInvalidRowsBelow when preTokensPerBatch is negative.
+      - Inserts a PIPE_V barrier before DealInvalidRowsAbove when nextTokensPerBatch is negative.
+      - Supports both GS1 and S1G UB input formats in above/below row invalidation.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:1201
+  invalid_mask_rows:
+    helper: InvalidMaskRows
+    behavior: Builds SoftMaxShapeInfo, inserts a PIPE_V barrier, and calls AdjustSoftMaxRes with zero output for invalid mask rows.
+    softmax_with_brc_variants: true
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:1307
+
+safe_active_token:
+  helper: GetSafeActToken
+  behavior:
+    DEFAULT_MASK: Clamps safePreToken to [-actSeqLensKv, actSeqLensQ] and safeNextToken to [-actSeqLensQ, actSeqLensKv].
+    BAND: Has separate mode-specific adjustment logic beginning in the same helper.
+  evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:74
+
+vector_helpers:
+  row_or_column_elementwise:
+    - helper: MatDivsVec
+      operation: Div
+      repeat_strategy: Uses FP32_REPEAT_ELEMENT_NUM chunks, dealRowCount repeats, and columnCount / FP32_BLOCK_ELEMENT_NUM repeat stride.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:545
+    - helper: RowSub
+      operation: Sub
+      repeat_strategy: Uses FP32_REPEAT_ELEMENT_NUM chunks, dealRowCount repeats, and columnCount / FP32_BLOCK_ELEMENT_NUM repeat stride.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:571
+    - helper: ColMax
+      operation: Max
+      repeat_strategy: Uses zero destination repeat stride to reduce/update column maxima.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:597
+    - helper: ColAdd
+      operation: Add
+      repeat_strategy: Uses FP32_REPEAT_ELEMENT_NUM chunks with columnCount-derived source repeat stride.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:623
+  other_common_row_helpers:
+    - helper: VecMulMat
+      behavior: Uses repeat mode when columnCount is below REPEATE_STRIDE_UP_BOUND * FP32_BLOCK_ELEMENT_NUM, otherwise loops per row.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:90
+    - helper: MatDivVec
+      behavior: Uses repeat mode under the same columnCount bound and falls back to row-wise scalar vector ops otherwise.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:126
+    - helper: VecAddMat
+      behavior: Uses repeat mode under the same columnCount bound.
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:166
+
+repeat_stride_constraints:
+  constants:
+    REPEATE_STRIDE_UP_BOUND:
+      value: 256
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:33
+    MAX_VALID_LENGTH:
+      value: 1024
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:36
+  column_bound:
+    fp32_bound_expression: REPEATE_STRIDE_UP_BOUND * FP32_BLOCK_ELEMENT_NUM
+    examples:
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:96
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:133
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:172
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:212
+    behavior: Helpers use repeat-vector paths under the bound and explicit per-row or split reductions at or above the bound.
+  reduction_split:
+    behavior: Large-column add/max reductions split actualColumnCount to a power-of-two segment and keep halving while validLen exceeds MAX_VALID_LENGTH, with PIPE_V barriers between stages.
+    evidence:
+      add: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:426
+      max: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:507
+
+fd_merge_helpers:
+  status: not_found_in_allowed_source_by_required_search
+  searched_terms: [FD, Merge]
+  evidence_command: rg -n "IsExistInvalidRows|GetSafeActToken|InvalidRows|InvalidMaskRows|MatDivsVec|RowSub|ColMax|ColAdd|REPEATE_STRIDE_UP_BOUND|MAX_VALID_LENGTH|FD|Merge" inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+  note: The required rg command returned matches for invalid rows, safe token, vector helpers, repeat stride constraints, and MAX_VALID_LENGTH, but no FD or Merge lines in vector_common.h.
+
+dsl_implications:
+  - Sparse mask mode controls invalid-row existence differently for RIGHT_DOWN_CAUSAL, BAND, DEFAULT_MASK, and ALL_MASK; a DSL should carry sparse mode and token-window signs through row-validity lowering.
+  - Safe active token bounds are clamped from actual Q/KV sequence lengths, so DSL legality should model active sequence lengths before deriving safe pre/next token values.
+  - Vector helper lowering depends on columnCount relative to REPEATE_STRIDE_UP_BOUND times element block size; this threshold should be a scheduling constraint.
+  - Large-column reductions require split reduction stages and PIPE_V barriers; DSL pipeline modeling should expose the split-reduction path separately from regular repeat-vector paths.
+  - Invalid row writes zero full output rows and require PIPE_V barriers around above/below or mask-row adjustment paths.
+
+source_evidence:
+  rg_commands:
+    - command: rg -n "IsExistInvalidRows|GetSafeActToken|InvalidRows|InvalidMaskRows|MatDivsVec|RowSub|ColMax|ColAdd|REPEATE_STRIDE_UP_BOUND|MAX_VALID_LENGTH|FD|Merge" inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+      result: matched invalid row helpers, safe active token helper, vector helper functions, repeat stride bound, MAX_VALID_LENGTH, and invalid mask row handling; no FD or Merge matches were returned.
+  key_lines:
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:33
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:36
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:57
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:74
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:96
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:133
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:172
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:314
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:426
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:507
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:545
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:571
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:597
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:623
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:1201
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h:1307

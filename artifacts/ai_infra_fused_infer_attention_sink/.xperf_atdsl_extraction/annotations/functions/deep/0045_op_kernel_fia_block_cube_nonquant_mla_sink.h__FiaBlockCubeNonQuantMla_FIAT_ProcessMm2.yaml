@@ -5,140 +5,155 @@ function_annotation:
   owner: FiaBlockCubeNonQuantMla
   owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
   stage: mm2
   file: op_kernel/fia_block_cube_nonquant_mla_sink.h
   line_range:
     start: 851
     end: 1077
-  role: MLA cube MM2 implementation. Copies vec1ResGm into L1 as A, loads V/value into L1 as B, runs MatmulKPP, and atomically
-    accumulates later S-inner loops.
+  role: MLA cube MM2 body that reloads Vec1 output from the normal vec1 ring, streams value tiles into L1, waits the nUpdate barrier before the first fixpipe, and accumulates later S-inner loops through the mm2 int32 alias.
   confidence: high
+  source_evidence_ids:
+    - SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
+    - SE-MLA-NUPDATE-BARRIER
+    - SE-MLA-MM2-INT32-ALIAS
   code_behavior:
-    summary: MLA cube MM2 implementation. Copies vec1ResGm into L1 as A, loads V/value into L1 as B, runs MatmulKPP, and atomically
-      accumulates later S-inner loops.
+    summary: Tiles the current MLA PV workload by N and K, reloads Vec1 output into L1 as operand A, stages value tiles into L1 as operand B, runs MatmulKPP, and fixpipes into the mm2 ring with atomic accumulation enabled on non-first S-inner loops.
     key_steps:
-    - Derives M, N=headDim, and K=actualSingleProcessSInnerSize loop partitions.
-    - Loads V/value slices from GM or valueSinkGm into L1 in NZ form.
-    - Copies Vec1 output from vec1ResGm into L1 as the MM2 A operand.
-    - Runs MatmulKPP over M/N/K blocks and fixpipes ND output to mm2ResGm.
-    - Uses SetAtomicAdd for non-first S-inner loops and waits syncV1NupdateC2 before first fixpipe.
+      - Splits the chunk by N_L1_SPLIT_SIZE over headDim, by 256-wide K_L1 tiles over actualSingleProcessSInnerSize, and by 128-wide K_L0 subtiles.
+      - Loads value tiles into KV L1 buffers through copyKvGmToL1 or CopySingleMatrixNDToNZ when sink value tensors are active.
+      - Reloads Vec1 output from vec1ResGm into the QP L1 buffer with CopyInMm2AToL1, using actualSingleProcessSInnerSizeAlign as the A stride.
+      - Runs MatmulKPP over each mL1 / nL1 / k1 tile and waits syncV1NupdateC2 before the very first Fixpipe.
+      - Enables SetAtomicAdd only when info.isFirstSInnerLoop is false, fixpipes into mm2ResGm / mm2ResInt32Gm, and restores SetAtomicNone immediately afterward.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - vec1ResGm partial output from the MLA Vec1 stage
+      - valueGmTensor or valueSinkGm tiles for the current S2 range
+      - nUpdate readiness signaled through syncV1NupdateC2
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - mm2ResGm or mm2ResInt32Gm for the current preload slot and n-buffer M chunk
     gm:
       reads:
-      - vec1ResGm partial softmax output
-      - valueGmTensor or valueSinkGm
+        - vec1ResGm through CopyInMm2AToL1
+        - valueGmTensor through copyKvGmToL1
+        - valueSinkGm through CopySingleMatrixNDToNZ on sink rows
       writes:
-      - mm2ResGm / mm2ResInt32Gm accumulation region
+        - mm2ResGm through Fixpipe on the first S-inner loop
+        - mm2ResInt32Gm alias through Fixpipe under SetAtomicAdd on later loops
     ub:
       reads:
-      - LocalTensor/UB operands
-      writes:
-      - LocalTensor/UB temporaries
+        - local fixpipe parameter temporaries
+      writes: []
     l1:
       reads:
-      - l1QPTensor as A
-      - l1KVTensor as B
+        - l1QPTensor as the Vec1-derived A operand
+        - l1KVTensor as the value-derived B operand
       writes:
-      - CopyInMm2AToL1 A tiles
-      - value GM to L1 B tiles
+        - Vec1 output tiles copied by CopyInMm2AToL1
+        - value tiles copied by copyKvGmToL1 or CopySingleMatrixNDToNZ
     l0:
       l0a:
-      - Vec1 output tiles
+        - Vec1-derived A tiles for MatmulKPP
       l0b:
-      - V tiles
+        - value-derived B tiles for MatmulKPP
       l0c:
-      - MatmulKPP output before Fixpipe
+        - PV accumulation before the ND Fixpipe
   control_flow:
     loops:
-    - for
+      - for each nL1 tile over headDim
+      - for each k1 tile over actualSingleProcessSInnerSize
+      - for each mL1 tile in the current n-buffer chunk
     branches:
-    - if
-    - else
+      - sink-value versus regular value branch
+      - tail handling for nL1, k1, and mL1
+      - first S-inner loop versus later-loop atomic accumulation branch
   pipeline:
     stages:
-    - mm2
-    - mla
-    - calls:Align,SetMExtent,Get,copyKvGmToL1,CopySingleMatrixNDToNZ,GetQPL1RealIdx
+      - mm2
+      - mla
+      - pv_cube_with_nupdate_barrier
     sync:
-    - WaitFlag
-    - SetFlag
-    - CrossCoreWaitFlag
-    - SetAtomicAdd
+      - WaitFlag / SetFlag around QP and KV L1 buffer ownership
+      - CrossCoreWaitFlag<constInfo.syncV1NupdateC2> before the first Fixpipe
+      - SetAtomicAdd / SetAtomicNone bracketing later-loop accumulation
   memory_behavior:
     buffers:
-    - LocalTensor
-    - mm2ResGm
+      - l1QP4Buffers or l1QPTensor
+      - l1KV3Buffers or l1KVTensor
+      - cL0TensorPingPong
+      - mm2ResGm / mm2ResInt32Gm workspace ring
     l1_residency:
-    - L1 reuse/snapshot visible in body
+      - Vec1-derived A tiles stay resident across nL1 iterations of the same mL1 tile.
     l1_partition:
-    - L1 buffer iterators or split sizes visible
+      - Value tiles are staged as 256-wide K_L1 blocks and further split into 128-wide K_L0 blocks.
+      - QP buffers track the same mL1 order as MM1 through GetQPL1RealIdx.
   tiling_and_shape:
     fields:
-    - N_L1_SPLIT_SIZE
-    - headDim
-    - actualSingleProcessSInnerSize
-    - preLoadNum
+      - M_L1_SPLIT_SIZE
+      - N_L1_SPLIT_SIZE
+      - headDim
+      - actualSingleProcessSInnerSize
+      - preLoadNum
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077'
+      - N is block-aligned headDim and drives the mm2Res output stride.
+      - K is actualSingleProcessSInnerSize and is lowered through 256-wide L1 tiles plus 128-wide L0 tiles.
+      - Later-loop accumulation reuses the same mm2 ring offset as the first loop and therefore depends on the int32 alias contract.
   workspace:
     layout:
-    - workspace region or GM temporary referenced
+      - normal.vec1 as the upstream A ring
+      - normal.mm2 as the downstream PV ring
+      - mm2 int32 alias over normal.mm2 for later-loop atomic accumulation
     offsets:
-    - uint32_t kOffset = k1 * kL0Loops;
-    - "for (uint32_t kL1 = kOffset; kL1 < kL0Loops + kOffset; kL1++) { // 128 \u5FAA\u73AF\u642Cpa"
-    - if (kL1 == kOffset + kL0Loops - 1U) {
-    - .tensor = bL1Tensor[(kL1 - kOffset) * 128U * N_L1_SPLIT_SIZE],
-    - .s2Idx = info.s2BatchOffset + (kL1 - kOffset) * 128U + k1 * 256U,
-    - uint64_t offset = info.n2Idx * constInfo.headDim + nL1 * N_L1_SPLIT_SIZE;
+      - value S2 coordinate = info.s2BatchOffset + (kL1 - kOffset) * 128 + k1 * 256
+      - vec1Res offset = (info.loop % constInfo.preLoadNum) * constInfo.mmResUbSize + mSeqIdx * info.actualSingleProcessSInnerSizeAlign + nOffset
+      - mm2 offset = (info.bn2IdxInCurCore % constInfo.preLoadNum) * constInfo.bmm2ResUbSize + (mSplitInfo.nBufferStartM + mL1 * M_L1_SPLIT_SIZE) * nSize + nL1 * N_L1_SPLIT_SIZE
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse Vec1 output as a cube operand without materializing a separate MLA-only GM buffer.
+    - Keep the nUpdate barrier attached to the very first Fixpipe so later-loop atomic accumulation is source-faithful.
+    - Preserve the int32 alias contract instead of inventing a standalone MLA tail region.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
+    - name: preLoadNum
+      role: Selects the active mm2 ring slot and the corresponding vec1 input slot.
+      source_evidence_ids:
+        - SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
+    - name: headDim
+      role: Determines the logical N extent and the width of the int32 alias accumulation.
+      source_evidence_ids:
+        - SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
   constraints:
-  - MLA MM2 assumes headDim-derived N blocks and K from actualSingleProcessSInnerSize.
-  - syncV1NupdateC2 must be observed before first MM2 fixpipe so MLA nUpdate has been applied.
-  - Atomic add scope must be restored with SetAtomicNone after accumulation.
-  - Event wait/set ordering is part of correctness, not only performance.
-  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+    - syncV1NupdateC2 must be observed before the first MM2 fixpipe so MLA nUpdate has been applied.
+    - Later-loop accumulation must enter and exit SetAtomicAdd / SetAtomicNone exactly around the Fixpipe.
+    - The mm2 int32 alias must remain a reinterpretation of normal.mm2, not a detached workspace tail.
   risks_if_changed:
-  - Changing kL1/kL0 loops or nUpdate synchronization can corrupt later S-inner accumulation.
-  - Missing event release can stall producer/consumer queues.
+    - Changing the first-fixpipe barrier or atomic scope corrupts later S-inner accumulation.
+    - Rebinding the alias away from normal.mm2 breaks the observed MLA correction path.
+    - Altering K_L1 / K_L0 traversal changes which V rows align with a given Vec1 tile.
   possible_dsl_sections:
-  - memory.l1_residency
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.cube_stages
+    - mla.nupdate
+    - mla.shape_contract
+    - pipeline.cube_stages
   suggested_dsl_fields:
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
-    confidence: high
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:851-1077
-    confidence: high
+    - path: mla.nupdate.mm2_sync
+      meaning: ProcessMm2 waits syncV1NupdateC2 before the first Fixpipe of the chunk.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-BARRIER
+        - SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
+      confidence: high
+    - path: workspace.mla.tail_regions[].binding_status
+      meaning: Later-loop accumulation targets the mm2 int32 alias rather than a dedicated MLA tail region.
+      source_evidence_ids:
+        - SE-MLA-MM2-INT32-ALIAS
+        - SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
+      confidence: high
+    - path: mla.shape_contract.mm2_k_partition
+      meaning: MLA MM2 lowers K through 256-wide L1 tiles plus 128-wide L0 subtiles.
+      source_evidence_ids:
+        - SE-MLA-MM2-VALUE-ALIAS-FIXPIPE
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this as the MLA-specific PV cube body rather than a generic MM2 helper.
+    - Keep the first-fixpipe barrier, int32 alias, and later-loop atomic accumulation in one rule set because the three behaviors form one correctness contract.
+  open_questions: []

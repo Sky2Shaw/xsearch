@@ -180,6 +180,8 @@ artifact_manifest:
   - annotations/functions/deep/0123_op_kernel_fia_kernel_nonquant_sink.h__FiaKernelNonQuant_FIAT_ComputeMm1.yaml
   - annotations/functions/deep/0124_op_kernel_fia_kernel_nonquant_sink.h__FiaKernelNonQuant_FIAT_ComputeMm2.yaml
   - annotations/functions/deep/0125_op_kernel_fia_kernel_nonquant_sink.h__FiaKernelNonQuant_FIAT_FlashDecode.yaml
+  - annotations/functions/deep/0126_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec1.yaml
+  - annotations/functions/deep/0127_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec2.yaml
   - annotations/functions/deep/0126_op_kernel_fia_kernel_nonquant_sink.h__FiaKernelNonQuant_FIAT_Process.yaml
   - annotations/functions/index/0001_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__TensorPreProcess.yaml
   - annotations/functions/index/0002_op_api_aclnn_ai_infra_fused_infer_attention_sink.cpp__PrefixTensorPreProcess.yaml
@@ -797,10 +799,30 @@ artifact_manifest:
   - annotations/functions/index/0614_op_kernel_kernel_common_sink.h__SeqLenFromTensorList.yaml
   - annotations/functions/index/0615_op_kernel_kernel_common_sink.h__GetActualKVSeqLength.yaml
   - annotations/functions/index/0616_op_kernel_kernel_common_sink.h__IsSkipCal.yaml
+  - auxiliary/dataflow_graphs.yaml
+  - auxiliary/memory_lifetime.yaml
+  - auxiliary/pipeline_graphs.yaml
+  - auxiliary/workspace_layout.yaml
+  - auxiliary/workspace_cross_reference.yaml
   - cards/optimization_cards.yaml
+  - common_supplement/buffer_matmul_extraction.yaml
+  - common_supplement/common_dependency_inventory.yaml
+  - common_supplement/common_merge_manifest.yaml
+  - common_supplement/memory_copy_extraction.yaml
+  - common_supplement/shape_layout_extraction.yaml
+  - common_supplement/split_core_extraction.yaml
+  - common_supplement/vector_common_extraction.yaml
   - constraints/constraints.yaml
+  - constraints/forbidden_transforms.yaml
+  - dsl/flash_decode_metadata_bridge.yaml
+  - dsl/mla_workspace_tail_contract.yaml
+  - dsl/scalar_offset_contract.yaml
+  - dsl/shape_layout_contract.yaml
+  - dsl/sparse_policy.yaml
+  - dsl/shared_stage_aliases.yaml
   - dsl/schema_gaps.yaml
   - dsl/suggested_dsl_sections.yaml
+  - evidence/source_evidence.yaml
   - knobs/tunable_knobs.yaml
   - learning/checklist_updates.yaml
   - learning/evolution_patch.yaml
@@ -808,9 +830,11 @@ artifact_manifest:
   - learning/negative_lessons.yaml
   - reports/critical_path_annotations.yaml
   - reports/file_inventory.yaml
+  - reports/external_dependencies.yaml
   - reports/function_importance.yaml
   - reports/function_index.yaml
   - reports/operator_structure_report.yaml
   - reports/repo_map.yaml
   - reports/skipped_or_shallow_items.yaml
+  - dsl/split_core_range_contract.yaml
   - risks/risks.yaml

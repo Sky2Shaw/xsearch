@@ -5,129 +5,151 @@ function_annotation:
   owner: FiaBlockCubeNonQuantMla
   owner_qualified: FiaBlockCubeNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
   stage: mm1
   file: op_kernel/fia_block_cube_nonquant_mla_sink.h
   line_range:
     start: 522
     end: 850
-  role: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+  role: MLA cube MM1 body that packs 512-dim key/nope data plus 64-dim rope data into L1, reuses QP buffers across mL1 tiles, and fixpipes the QK result into the normal mm1 ring.
   confidence: high
+  source_evidence_ids:
+    - SE-MLA-MM1-ROPE-NOPE-PACKING
   code_behavior:
-    summary: mla cube compute stage for mm1 with source-visible memory, tiling, and synchronization behavior.
+    summary: Uses fixed 576-wide K structure, two K_L1 passes, and QP/KV buffer reuse to build the MLA-specific QK cube stage over the current n-buffer M chunk.
     key_steps:
-    - 'Calls: Align, SetMExtent, Get, copyKKropePAGmToL1, copyKvGmToL1, CopySingleMatrixNDToNZ, GetQPL1RealIdx, AllocNext,
-      PeekNextK, copyQueryGmToL1.'
-    - Uses cube matmul/MMAD operations.
-    - Coordinates pipeline state with event or cross-core flags.
-    - Writes cube results through Fixpipe.
+      - Splits the chunk as mL1 over M_L1_SPLIT_SIZE, nL1 over N_L1_SPLIT_SIZE, and kL1 over two fixed 288-wide passes that together cover K = 576.
+      - Loads key/nope and key-rope slices separately into the same KV L1 block, using 256 dims for nope and 32 dims for rope in each kL1 half.
+      - Reuses QP buffers through GetQPL1RealIdx and the four-buffer QP rotation so Q and qRope tiles survive across kL1 passes.
+      - Handles sink tensors by reading keySinkGm and keyRopeSinkGm directly when the current S2 tile starts at the sink region.
+      - Runs MatmulKPP for each mL1 / nL1 / kL1 combination and fixpipes ND output into mm1ResGm after the final kL1 pass.
   dataflow:
     inputs:
-    - FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - queryGm and qRopeGm tiles addressed by info.gS1Idx + mSplitInfo.nBufferStartM
+      - keyGm and keyRopeGm tiles addressed by info.s2BatchOffset + nL1 * N_L1_SPLIT_SIZE
+      - keySinkGm and keyRopeSinkGm when the current S2 tile overlaps the sink prefix
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - mm1ResGm ring slots for the current preload slot and n-buffer M chunk
     gm:
       reads:
-      - GM tensors referenced in function body
+        - keyGmTensor / keyRopeGmTensor through copyKvGmToL1 or copyKKropePAGmToL1
+        - keySinkGm / keyRopeSinkGm through CopySingleMatrixNDToNZ
+        - queryGmTensor / queryRopeGmTensor through copyQueryGmToL1
       writes:
-      - DataCopy/Fixpipe destinations visible in body
+        - mm1ResGm through Fixpipe
     ub:
       reads:
-      - LocalTensor/UB operands
-      writes:
-      - LocalTensor/UB temporaries
+        - local fixpipe parameter temporaries
+      writes: []
     l1:
       reads:
-      - L1 tiles or buffers
+        - l1QPTensor slices selected by GetQPL1RealIdx
+        - l1KVTensor slices populated with nope and rope halves
       writes:
-      - L1 copies from GM or prior stage
+        - Q / qRope tiles staged into QP buffers
+        - key / keyRope or sink tiles staged into KV buffers
     l0:
       l0a:
-      - unknown
+        - Q / qRope tiles consumed as the left operand of MatmulKPP
       l0b:
-      - unknown
+        - key / keyRope tiles consumed as the right operand of MatmulKPP
       l0c:
-      - MMAD accumulation in L0C
+        - QK accumulation before the final ND Fixpipe
   control_flow:
     loops:
-    - for
+      - for each nL1 tile
+      - for each kL1 half-pass
+      - for each mL1 tile
     branches:
-    - if
-    - else
+      - page-attention versus regular KV copy branch
+      - sink-tensor versus regular KV branch
+      - nL1 tail, mL1 tail, and kL1 tail size branches
   pipeline:
     stages:
-    - mm1
-    - mla
-    - calls:Align,SetMExtent,Get,copyKKropePAGmToL1,copyKvGmToL1,CopySingleMatrixNDToNZ
+      - mm1
+      - mla
+      - qk_cube_with_512_plus_64_packing
     sync:
-    - WaitFlag
-    - SetFlag
+      - WaitFlag / SetFlag around QP and KV L1 buffer ownership
+      - MatmulKPP unitFlag distinguishes first and last kL1 passes before Fixpipe
   memory_behavior:
     buffers:
-    - LocalTensor
-    - mm1ResGm
+      - l1QP4Buffers or l1QPTensor
+      - l1KV3Buffers or l1KVTensor
+      - cL0TensorPingPong
+      - mm1ResGm workspace ring
     l1_residency:
-    - L1 reuse/snapshot visible in body
+      - QP buffers are reused across the two kL1 halves of the same mL1 tile.
+      - KV buffers hold both nope and rope slices inside the same 128 KB L1 block.
     l1_partition:
-    - L1 buffer iterators or split sizes visible
+      - kL1 = 0 stages 256 nope dims plus 32 rope dims.
+      - kL1 = 1 stages the remaining 256 nope dims plus 32 rope dims.
   tiling_and_shape:
     fields:
-    - N_L1_SPLIT_SIZE
-    - headDim
-    - actualSingleProcessSInnerSize
-    - preLoadNum
+      - M_L1_SPLIT_SIZE
+      - N_L1_SPLIT_SIZE
+      - MM1_K_L1_SPLIT_SIZE
+      - nBufferMBaseSize
+      - headDim
+      - headDimRope
+      - actualSingleProcessSInnerSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850'
+      - MLA MM1 assumes a fixed K width of 576 split as 512 nope plus 64 rope.
+      - mm1ResGm stores ND output with stride info.actualSingleProcessSInnerSizeAlign.
+      - Rope and nope halves are packed into the same L1 tensor with distinct offsets.
   workspace:
     layout:
-    - workspace region or GM temporary referenced
+      - normal.mm1 as the QK output ring
     offsets:
-    - .s2Idx = info.s2BatchOffset + nL1 * N_L1_SPLIT_SIZE,
-    - .s2Idx = info.s2BatchOffset + nL1 * N_L1_SPLIT_SIZE,
-    - "uint64_t offset = info.n2Idx * constInfo.headDim; //s2\u65B9\u5411\u7684\u504F\u79FB\u4E3A0"
-    - CopySingleMatrixNDToNZ(dstTensor.tensor, keySinkGm[offset], gmCoord.s2DealSize, gmCoord.dDealSize,
-    - "offset = info.n2Idx * constInfo.headDimRope; //s2\u65B9\u5411\u7684\u504F\u79FB\u4E3A0"
-    - CopySingleMatrixNDToNZ(dstRopeTensor.tensor, keyRopeSinkGm[offset], gmCoordKRope.s2DealSize, gmCoordKRope.dDealSize,
+      - key S2 coordinate = info.s2BatchOffset + nL1 * N_L1_SPLIT_SIZE
+      - sink-key offset = info.n2Idx * constInfo.headDim + kL1 * 256
+      - sink-rope offset = info.n2Idx * constInfo.headDimRope + kL1 * 32
+      - mm1Res offset = (info.loop % constInfo.preLoadNum) * constInfo.mmResUbSize + nL1 * N_L1_SPLIT_SIZE + (mSplitInfo.nBufferStartM + mL1 * M_L1_SPLIT_SIZE) * info.actualSingleProcessSInnerSizeAlign
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve the MLA-specific 512+64 rope/nope packing so query/key bandwidth and cube shapes stay source-faithful.
+    - Reuse QP buffers across kL1 halves to avoid redundant query reloads inside one mL1 tile.
+    - Keep sink-prefix handling in the cube stage instead of fabricating a separate host-side key layout.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
+    - name: nBufferMBaseSize
+      role: Outer M chunk size inherited from the MLA wrapper.
+      source_evidence_ids:
+        - SE-MLA-MM1-NBUFFER-WRAPPER
+    - name: MM1_K_L1_SPLIT_SIZE
+      role: Fixed 288-wide L1 half-pass that realizes the 512+64 MLA key layout.
+      source_evidence_ids:
+        - SE-MLA-MM1-ROPE-NOPE-PACKING
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
-  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+    - Preserve the 512 nope + 64 rope packing and the two-pass kL1 decomposition.
+    - Preserve sink-prefix special handling when gmCoord.s2Idx reaches the sink region.
+    - Keep the final Fixpipe gated on the last kL1 half-pass so partial cube outputs are not committed early.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Altering the QP or KV reuse order can mix rope and nope fragments across kL1 passes.
+    - Collapsing sink handling into the regular KV path corrupts the first sink-prefixed S2 tile.
+    - Changing the fixed 576-wide contract breaks downstream assumptions about MLA MM1 numeric layout.
   possible_dsl_sections:
-  - memory.l1_residency
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.cube_stages
+    - memory.l1_residency
+    - mla.shape_contract
+    - pipeline.cube_stages
   suggested_dsl_fields:
-  - path: memory.l1_residency.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
-    confidence: high
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
-    confidence: high
-  - path: pipeline.cube_stages.source_function
-    meaning: Lowering evidence from FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1
-    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:522-850
-    confidence: high
+    - path: mla.shape_contract.mm1_k_partition
+      meaning: MLA MM1 is lowered as two fixed 288-wide L1 passes that pack 512 nope dims and 64 rope dims.
+      source_evidence_ids:
+        - SE-MLA-MM1-ROPE-NOPE-PACKING
+      confidence: high
+    - path: memory.l1.mla.qp_reuse
+      meaning: QP buffers survive across the two kL1 halves of the same mL1 tile.
+      source_evidence_ids:
+        - SE-MLA-MM1-ROPE-NOPE-PACKING
+      confidence: high
+    - path: pipeline.cube_stages.mm1_output_stride
+      meaning: MLA MM1 writes ND output into the normal mm1 ring with actualSingleProcessSInnerSizeAlign stride.
+      source_evidence_ids:
+        - SE-MLA-MM1-ROPE-NOPE-PACKING
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this as the MLA-specific inner cube body, not as a generic MM1 helper.
+    - Keep rope/nope packing, sink-prefix handling, and QP reuse in one lowering rule because the three behaviors share the same address contract.
+  open_questions: []

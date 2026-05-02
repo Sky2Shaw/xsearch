@@ -1,0 +1,96 @@
+function_annotation:
+  function_name: ContiguousInput
+  qualified_name: ContiguousInput
+  canonical_name: ContiguousInput
+  owner: null
+  owner_qualified: null
+  owner_template_args: []
+  template_params: []
+  variant: host_api
+  stage: host_contiguity
+  file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 184
+    end: 220
+  role: Host-side direct-tensor contiguity normalizer that materializes required query and optional side inputs through l0op::Contiguous before L0 dispatch.
+  confidence: high
+  source_evidence_ids:
+    - SE-HOST-CONTIGUOUS-INPUT
+  code_behavior:
+    summary: Always contiguousizes query, then conditionally contiguousizes attenMaskOptional, blockTableOptional, queryRopeOptional, keySinkOptional, keyRopeSinkOptional, and valueSinkOptional when their pointers are non-null, failing immediately if any l0op::Contiguous call returns null.
+    key_steps:
+      - Rebinds query to l0op::Contiguous(query, executor) with no null guard on the input query pointer.
+      - Uses CHECK_RET after the query conversion, so a failed materialization aborts the helper with ACLNN_ERR_INNER_NULLPTR.
+      - Visits each optional tensor independently and only calls l0op::Contiguous when the current pointer is non-null.
+      - Rebinds each optional reference parameter in place to the contiguous tensor returned by l0op::Contiguous.
+      - Returns ACLNN_SUCCESS only after all required conversions succeed.
+  dataflow:
+    inputs:
+      - query as the mandatory attention input tensor
+      - optional side tensors attenMaskOptional, blockTableOptional, queryRopeOptional, keySinkOptional, keyRopeSinkOptional, and valueSinkOptional
+      - executor as the allocator/runtime used by l0op::Contiguous
+    outputs:
+      - in-place updated host references that now point at contiguous tensor handles for every processed input
+    gm:
+      reads: []
+      writes: []
+    ub:
+      reads: []
+      writes: []
+    l1:
+      reads: []
+      writes: []
+    l0:
+      l0a: []
+      l0b: []
+      l0c: []
+  control_flow:
+    loops: []
+    branches:
+      - mandatory query conversion followed by CHECK_RET
+      - one null guard branch for each optional tensor
+      - one CHECK_RET failure branch for each conversion that runs
+  pipeline:
+    stages:
+      - host_api_boundary
+      - input_contiguity_materialization
+      - calls l0op::Contiguous and CHECK_RET
+    sync: []
+  memory_behavior:
+    buffers:
+      - contiguous tensor descriptors returned by l0op::Contiguous for each processed input
+    l1_residency: []
+    l1_partition: []
+  tiling_and_shape:
+    fields: []
+    shape_assumptions:
+      - This helper does not preserve non-contiguous stride metadata through CreateView; every processed tensor is normalized through l0op::Contiguous.
+      - Query is treated as mandatory while all other tensors are optional and guarded by pointer presence.
+  workspace:
+    layout: []
+    offsets: []
+  optimization_intent:
+    - Normalize direct tensor inputs to contiguous storage before calling the fused L0 operator.
+    - Centralize host-side null checks and failure handling for optional side inputs at one API-boundary helper.
+  tunable_or_structural_fields: []
+  constraints:
+    - Preserve query as an unconditional contiguous conversion step.
+    - Keep optional tensors behind null guards so absent inputs remain absent rather than materialized placeholders.
+    - Keep this helper distinct from ProcessTensorContiguous because it intentionally uses l0op::Contiguous instead of CreateView-based stride preservation.
+  risks_if_changed:
+    - Replacing l0op::Contiguous with a stride-preserving view path would change the ABI seen by the downstream L0 operator for direct tensor inputs.
+    - Removing a CHECK_RET would allow a failed materialization to propagate a null tensor into later host setup.
+    - Treating query as optional would weaken the current contract that execution cannot proceed without a materialized query tensor.
+  possible_dsl_sections:
+    - operator.interface
+    - operator.input_tensor_views
+  suggested_dsl_fields:
+    - path: operator.input_tensor_views.direct_input_contiguity_policy
+      meaning: Query is always materialized through l0op::Contiguous, while optional mask, block-table, rope, and sink tensors are materialized only when present.
+      source_evidence_ids:
+        - SE-HOST-CONTIGUOUS-INPUT
+      confidence: high
+  lowering_hints:
+    - Lower this as a host-side input-materialization policy, not as a device-stage memory transform.
+    - Keep direct-tensor contiguity handling separate from tensor-list handling because the list path uses ProcessTensorContiguous and carries different null/stride semantics.
+  open_questions: []

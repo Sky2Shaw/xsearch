@@ -5,127 +5,132 @@ function_annotation:
   owner: FiaBlockVecNonQuantMla
   owner_qualified: FiaBlockVecNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
-  stage: vec1
+  stage: mla.nupdate.apply
   file: op_kernel/fia_block_vec_nonquant_mla_sink.h
   line_range:
     start: 657
     end: 717
-  role: MLA vector nUpdate side-channel writer. Broadcasts per-row nUpdate across D groups and atomically adds it into mm2ResInt32Gm.
+  role: MLA nUpdate apply path that broadcasts the row-wise int32 correction over 128-wide D groups and atomically injects it into the normal.mm2 int32 alias.
   confidence: high
+  source_evidence_ids:
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-MM2-INT32-ALIAS
   code_behavior:
-    summary: MLA vector nUpdate side-channel writer. Broadcasts per-row nUpdate across D groups and atomically adds it into
-      mm2ResInt32Gm.
+    summary: Consumes the int32 vector emitted by AmlaVecCompute, expands it into 128-lane row tiles, and atomically adds the result into mm2ResInt32Gm for every affected headDim group.
     key_steps:
-    - Skips first S-inner loop and empty M partitions.
-    - Broadcasts row-wise int32 nUpdate into 128-wide D groups with Brcb.
-    - Uses SetAtomicAdd<int32_t> to add the broadcast correction into mm2ResInt32Gm.
-    - Releases output buffers after each M split and the nUpdate buffer at function end.
+      - Returns immediately when vecDealM is zero or the current S-inner loop is the first one.
+      - Waits for outputBuff2 ownership, then keeps the nUpdate vector alive while it walks 64-row sub-M tiles.
+      - Uses Brcb to expand each row-wise int32 correction from outputBuff2 into a 128-lane broadcast matrix in outputBuff1.
+      - Computes baseoffset from the preload slot and current M position, enables SetAtomicAdd<int32_t>(), copies every 128-lane group into mm2ResInt32Gm, then restores SetAtomicNone().
+      - Releases outputBuff1 after each sub-tile and outputBuff2 after the full correction path completes.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - outputBuff2 int32 nUpdate vector
+      - info.bn2IdxInCurCore, info.isFirstSInnerLoop
+      - mSplitInfo.nBufferStartM, vecStartM, vecDealM
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - mm2ResInt32Gm atomic-add updates over the normal.mm2 alias
     gm:
-      reads:
-      - row-wise nUpdate in outputBuff2
+      reads: []
       writes:
-      - mm2ResInt32Gm atomic add target
+        - mm2ResInt32Gm through atomic DataCopy updates
     ub:
       reads:
-      - outputBuff2 nUpdateTensor
-      - outputBuff1 broadcast tmpQue
+        - outputBuff2 nUpdateTensor
       writes:
-      - broadcast int32 nUpdate matrix
+        - outputBuff1 tmpQue broadcast matrix
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - loop over 64-row sub-M tiles
+      - loop over headDim / 128 destination groups
     branches:
-    - if
+      - if vecDealM == 0
+      - if isFirstSInnerLoop
+      - tail branch for the last sub-M tile
   pipeline:
     stages:
-    - vec1
-    - mla
-    - calls:Align
+      - mla.nupdate.apply
+      - row_broadcast
+      - atomic_mm2_injection
     sync:
-    - WaitFlag
-    - SetFlag
-    - SetAtomicAdd
+      - WaitFlag / SetFlag around outputBuff2 ownership
+      - WaitFlag / SetFlag around outputBuff1 ownership
+      - SetAtomicAdd<int32_t> / SetAtomicNone()
   memory_behavior:
     buffers:
-    - LocalTensor
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - outputBuff2 nUpdateTensor
+      - outputBuff1 tmpQue
+      - mm2ResInt32Gm alias over normal.mm2
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - headDim
-    - preLoadNum
+      - headDim
+      - preLoadNum
+      - bmm2ResUbSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717'
+      - dGroupSize is fixed at 128 int32 lanes.
+      - mSplitSize is fixed at 64 rows to fit the temporary broadcast queue.
+      - subMSize is Align(vecDealM, 16).
   workspace:
     layout:
-    - unknown
+      - normal.mm2 int32 alias through mm2ResInt32Gm
     offsets:
-    - uint64_t baseoffset = (info.bn2IdxInCurCore % constInfo.preLoadNum) * constInfo.bmm2ResUbSize +
-    - DataCopy(mm2ResInt32Gm[baseoffset + i * dGroupSize] ,tmpQue, dataCopyParams);
+      - baseoffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + (nBufferStartM + vecStartM + loop * mSplitSize) * headDim
+      - destination group offset = baseoffset + i * dGroupSize
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Reuse the normal.mm2 ring as the only correction target so MLA nUpdate stays coupled to MM2 output without a separate GM reduction pass.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    - name: preLoadNum
+      role: Chooses the current normal.mm2 preload slot for atomic correction.
+      source_evidence_ids:
+        - SE-KNOB-PRELOAD-NUM
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - name: headDim
+      role: Determines the number of 128-lane broadcast groups and the GM destination stride.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
   constraints:
-  - nUpdate is skipped on first S-inner loop.
-  - Broadcast width is 128 int32 lanes and destination stride depends on headDim.
-  - Atomic add scope must be restored with SetAtomicNone after accumulation.
-  - Event wait/set ordering is part of correctness, not only performance.
-  - Tile sizes and copy lengths rely on 16/32B alignment helpers in source.
+    - The correction path must not run on the first S-inner loop.
+    - Broadcast width is fixed at 128 int32 lanes and destination stride depends on headDim.
+    - SetAtomicNone() must be restored after the GM updates.
+    - The target is the mm2ResInt32Gm alias over normal.mm2, not a dedicated MLA-only tail buffer.
   risks_if_changed:
-  - Broadcast/atomic stride mismatch would add correction to wrong D lanes.
-  - Missing event release can stall producer/consumer queues.
+    - Broadcast or stride drift adds correction to the wrong D lanes.
+    - Missing SetAtomicNone() corrupts later GM writes.
+    - Redirecting the writes away from mm2ResInt32Gm breaks the MM2-side wait-and-fixpipe contract.
   possible_dsl_sections:
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.vector_stages
-  - softmax.online_state
+    - mla.nupdate
+    - scalar.offset_rules
+    - workspace.mla_tail
   suggested_dsl_fields:
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
-    confidence: high
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
-    confidence: high
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
-    confidence: high
+    - path: mla.nupdate.atomic_target
+      meaning: MLA correction is atomically added into mm2ResInt32Gm, which aliases the normal.mm2 ring.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
+        - SE-MLA-MM2-INT32-ALIAS
+      confidence: high
+    - path: mla.nupdate.broadcast_group
+      meaning: Each row-wise correction is expanded into 128 int32 lanes before the atomic GM update.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
+      confidence: high
+    - path: scalar.offset_rules.mla_nupdate_atomic_base
+      meaning: The atomic target base offset is derived from preload slot, M partition origin, and headDim stride.
+      source_evidence_ids:
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Keep the broadcast, atomic target, and preload-slot offset formula in the same lowering rule; splitting them loses the real MM2 alias contract.
+  open_questions: []

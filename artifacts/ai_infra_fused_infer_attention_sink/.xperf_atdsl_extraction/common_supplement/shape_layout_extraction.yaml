@@ -1,0 +1,206 @@
+artifact: shape_layout_extraction
+scope: "Host common shape/layout validation semantics used by attention operators."
+allowed_sources:
+  - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp"
+  - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h"
+  - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp"
+  - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h"
+
+layout_axis_map:
+  BSH: ["B", "S", "H"]
+  BSND: ["B", "S", "N", "D"]
+  BNSD: ["B", "N", "S", "D"]
+  NZ: ["Bn", "N", "D1", "Bs", "D0"]
+  TND: ["T", "N", "D"]
+  NBSD: ["N", "B", "S", "D"]
+  NTD: ["N", "T", "D"]
+  BS2: ["B", "S2"]
+  S1S2: ["S1", "S2"]
+  BnBsH: ["Bn", "Bs", "H"]
+  BnNBsD: ["Bn", "N", "Bs", "D"]
+  BnBsND: ["Bn", "Bs", "N", "D"]
+  BNS1S2: ["B", "N", "S1", "S2"]
+  INS1S2: ["CONST", "N", "S1", "S2"]
+  BNS11: ["B", "N", "S1", "CONST"]
+  TN1: ["T", "N", "CONST"]
+  BS1S2: ["B", "S1", "S2"]
+  B1S1S2: ["B", "CONST", "S1", "S2"]
+  IS1S2: ["CONST", "S1", "S2"]
+  I1S1S2: ["CONST", "CONST", "S1", "S2"]
+  entry_evidence:
+    BSH: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:23"
+    BSND: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:24"
+    BNSD: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:25"
+    NZ: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:26"
+    TND: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:27"
+    NBSD: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:28"
+    NTD: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:29"
+    BS2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:30"
+    S1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:31"
+    BnBsH: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:32"
+    BnNBsD: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:33"
+    BnBsND: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:34"
+    BNS1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:35"
+    INS1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:36"
+    BNS11: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:37"
+    TN1: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:38"
+    BS1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:39"
+    B1S1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:40"
+    IS1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:41"
+    I1S1S2: "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:42"
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:22"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:23"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:43"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:89"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:117"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp:21"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp:52"
+
+derived_dimensions:
+  h_relation:
+    formula: "H = N * D"
+    use_site: "CompareShape sets param.H before deriving expected shapes."
+    evidence:
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:321"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:323"
+  d_derivation:
+    - "If layout has D, GetD returns the D axis dimension."
+    - "If layout has H and caller supplied N, GetD can derive H / N when N is nonzero and H is divisible by N."
+    - "If layout has D1 and D0, GetD returns D1 * D0."
+    - "CheckHasAxis(D) fails when H cannot derive D because N is missing, N is zero, or H is not a multiple of N."
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:100"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:103"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:104"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:115"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:117"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:118"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:119"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:170"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:177"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:180"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:183"
+
+nz_contract:
+  axis_order: ["Bn", "N", "D1", "Bs", "D0"]
+  expected_shape: "{Bn, N, D / D0, Bs, D0}"
+  d0_default: 16
+  d_from_storage_axes: "D1 * D0 when both axes are present"
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:26"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:283"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:284"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:42"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:119"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:94"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:124"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:125"
+
+shape_compare_modes:
+  enum_values:
+    EQUAL: 0
+    GREATER: 1
+    GREATER_EQUAL: 2
+    LESS: 3
+    LESS_EQUAL: 4
+    NOT_EQUAL: 5
+    IGNORE_INPUT: 6
+  functions:
+    EQUAL: "a == b"
+    GREATER: "a > b"
+    GREATER_EQUAL: "a >= b"
+    LESS: "a < b"
+    LESS_EQUAL: "a <= b"
+    NOT_EQUAL: "a != b"
+    IGNORE_INPUT: "always true"
+  default_compare_type: "EQUAL when an axis is absent from compareTypeMap"
+  serialization:
+    names: ["EQUAL", "GREATER", "GREATER_EQUAL", "LESS", "LESS_EQUAL", "NOT_EQUAL"]
+    symbols: ["==", ">", ">=", "<", "<=", "!="]
+    note: "IGNORE_INPUT participates in compareFuncMap but is not named in CompareTypeToSerialString; default branch returns UNKNOWN."
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:23"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:30"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:45"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:75"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:95"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:102"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:198"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:218"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:297"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:301"
+
+validator_paths:
+  axis_presence:
+    - "CheckHasAxis first rejects zero-dimensional shapes."
+    - "It resolves layout axes from FIA_LAYOUT_AXIS_MAP and requires shape dim count to equal layout axis count."
+    - "For D requests it accepts direct D, derived D from H/N, or D1/D0; otherwise it requires the axis to exist in the layout."
+  expected_shape_compare:
+    - "CompareShape sets H, builds expected shape for the layout, resolves layout axes, and requires actual shape, expected shape, and layout axes to have the same rank."
+    - "For each dimension, it chooses the axis-specific compare type, resolves the compare function, and fails if the actual dimension does not satisfy the expected dimension."
+  expected_shape_families:
+    standard_layouts:
+      BSH: "{B, S, H}"
+      BSND: "{B, S, N, D}"
+      BNSD: "{B, N, S, D}"
+      BnBsH: "{Bn, Bs, H}"
+      BnNBsD: "{Bn, N, Bs, D}"
+      BnBsND: "{Bn, Bs, N, D}"
+      NZ: "{Bn, N, D / D0, Bs, D0}"
+      TND: "{T, N, D}"
+      NBSD: "{N, B, S, D}"
+      NTD: "{N, T, D}"
+    special_layouts:
+      BNS1S2: "{B, N, S1, S2}"
+      INS1S2: "{CONST, N, S1, S2}"
+      BNS11: "{B, N, S1, CONST}"
+      TN1: "{T, N, CONST}"
+      BS2: "{B, S2}"
+      S1S2: "{S1, S2}"
+      BS1S2: "{B, S1, S2}"
+      B1S1S2: "{B, CONST, S1, S2}"
+      IS1S2: "{CONST, S1, S2}"
+      I1S1S2: "{CONST, CONST, S1, S2}"
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:82"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:151"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:153"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:158"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:162"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:170"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:188"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:238"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:268"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:321"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:329"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:334"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:342"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:344"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:350"
+
+dsl_implications:
+  - "A DSL shape model should represent layout as an ordered axis list and enforce rank equality before axis-level checks."
+  - "H should be modeled as a derived dimension equal to N * D for expected-shape validation."
+  - "NZ requires the packed shape {Bn, N, D / D0, Bs, D0}; D0 defaults to 16 in the compare parameter, and D can also be recovered from D1 * D0."
+  - "Shape validation needs per-axis compare modes, defaulting to EQUAL when no override is supplied."
+  - "IGNORE_INPUT is a valid compare function that always passes, even though its serial string path falls through to UNKNOWN."
+
+source_evidence:
+  evidence_commands:
+    - command: "rg -n \"FIA_LAYOUT_AXIS_MAP|FiaCompareType|GREATER_EQUAL|LESS_EQUAL|IGNORE_INPUT|H =|\\{Bn, N|NZ|D0|shape\" inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h"
+      result: "matched required shape/layout concepts"
+  primary_references:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:22"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:95"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:238"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:268"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp:323"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:23"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:33"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:100"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h:115"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:89"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h:117"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp:21"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp:52"

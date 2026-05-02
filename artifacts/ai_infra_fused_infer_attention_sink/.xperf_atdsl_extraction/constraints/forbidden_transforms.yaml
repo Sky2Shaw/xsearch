@@ -1,0 +1,133 @@
+forbidden_transforms:
+  - id: FT-NO-MM2-OWNER-COLLAPSE
+    scope: stage_dispatch.owner_identity
+    forbidden_change: Do not collapse owner-specific MM2 or alias-aware Vec dispatch paths into a single generic stage without preserving shared-Vec alias metadata and owner identity.
+    why: GQA, MLA, and shared generic Vec stages have different synchronization, cache reuse, and split-KV contracts even when their stage names look similar.
+    affected_artifacts:
+      - dsl/shared_stage_aliases.yaml
+      - reports/critical_path_annotations.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    source_evidence_ids:
+      - SE-GQA-SHARED-VECTOR-OWNER
+      - SE-GQA-VEC1-DISPATCH
+      - SE-GQA-VEC2-DISPATCH
+      - SE-SHARED-VEC2-CONTRACT
+  - id: FT-NO-RUNINFO-STAGE-REORDER
+    scope: pipeline.scheduler.runinfo_ring
+    forbidden_change: Do not swap current, older, and previous RunInfo slot responsibilities and do not invalidate a slot before Vec2 completes.
+    why: The overlap pattern is the scheduler-level contract that keeps MM1, Vec1/MM2, and Vec2 from reading stale or prematurely recycled ring slots.
+    affected_artifacts:
+      - auxiliary/pipeline_graphs.yaml
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    source_evidence_ids:
+      - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+      - SE-RUNINFO-THREE-STAGE-RING-MLA
+  - id: FT-NO-REORDER-MLA-NUPDATE-BARRIER
+    scope: mla.mm2_first_fixpipe
+    forbidden_change: Do not move the syncV1NupdateC2 wait past the first MLA MM2 fixpipe and do not reschedule the ProcessAmlaNupdate correction to occur after MM2 starts consuming corrected data.
+    why: MLA MM2 correctness depends on Vec1 nUpdate correction being visible before the first fixpipe writes or accumulates MM2 results.
+    affected_artifacts:
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - auxiliary/workspace_layout.yaml
+    source_evidence_ids:
+      - SE-MLA-NUPDATE-BARRIER
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+  - id: FT-NO-ELIDE-GQA-V-L1-RELEASE
+    scope: gqa.mm2.v_l1_reuse
+    forbidden_change: Do not remove or weaken the !canFullLoadV || mL1.IsTailOf(m) release condition, and do not reuse V snapshot state across a changed vCoord signature.
+    why: Premature or missing V release can either overwrite live V_L1 tiles or deadlock the MTE1/MTE2 handoff.
+    affected_artifacts:
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    source_evidence_ids:
+      - SE-GQA-V-L1-RELEASE
+  - id: FT-NO-VEC-TILE-ALIGNMENT-DRIFT
+    scope: vector_tiling.alignment
+    forbidden_change: Do not remove the 32B-safe mSplitSize rounding in Vec1 and Vec2, and do not reinterpret headDimAlign as the logical output width.
+    why: The aligned tile width is part of the UB access contract and the final output copy-out strips padding only at the outer boundary.
+    affected_artifacts:
+      - knobs/tunable_knobs.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - auxiliary/dataflow_graphs.yaml
+    source_evidence_ids:
+      - SE-VEC1-UB-ALIGNMENT
+      - SE-VEC2-UB-ALIGNMENT
+      - SE-KNOB-HEADDIM-ALIGN
+  - id: FT-NO-INVALID-ROW-CORRECTION-BYPASS
+    scope: softmax.invalid_row_guard
+    forbidden_change: Do not bypass AdjustSoftMaxRes before final softmaxLse export when sparse or mask rules mark rows invalid.
+    why: Invalid-row correction is part of the semantic contract for LSE output and split-KV masking; skipping it changes output meaning rather than only performance.
+    affected_artifacts:
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    source_evidence_ids:
+      - SE-VEC1-SINK-SOFTMAX
+  - id: FT-NO-VEC2-RING-SLOT-COLLAPSE
+    scope: workspace.vec2_partial_ring
+    forbidden_change: Do not collapse current and previous vec2ResGm slots into one buffer and do not merge non-final partial write-back with the final output path.
+    why: Split-KV accumulation depends on distinct prior-slot reads and current-slot writes before the last-loop normalization or FD export.
+    affected_artifacts:
+      - auxiliary/dataflow_graphs.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+      - SE-KNOB-PRELOAD-NUM
+  - id: FT-NO-REORDER-FD-MERGE-WEIGHT-FORMULA
+    scope: flash_decode.merge.lse_weights
+    forbidden_change: Do not change the merge order colmax -> rowsub -> exp -> mul(lseSum) -> coladd -> matdiv when combining split-KV partial outputs.
+    why: The final FD output depends on these exact max/sum normalization weights; changing the order corrupts both LSE and accumulated attention output.
+    affected_artifacts:
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - auxiliary/workspace_layout.yaml
+    source_evidence_ids:
+      - SE-FD-MERGE-WEIGHT-FORMULA
+      - SE-FD-WORKSPACE-OFFSETS
+  - id: FT-NO-FD-METADATA-PARTITION-LOSS
+    scope: flash_decode.fdparams_bridge
+    forbidden_change: Do not drop, reorder, or resize fdParams metadata arrays without updating both host SetSplitOutput writers and kernel FlashDecode readers.
+    why: FD task reconstruction depends on a precise producer/consumer agreement for per-core split-KV ranges and usedVecNumOfFd bounds.
+    affected_artifacts:
+      - reports/external_dependencies.yaml
+      - dsl/schema_gaps.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+    source_evidence_ids:
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-FD-METADATA-PARTITION
+  - id: FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+    scope: workspace.mla_tail.binding_status
+    forbidden_change: Do not lower MLA host-budget tail bytes as dedicated GM tensors unless new kernel SetGlobalBuffer or explicit tail readers are found.
+    why: Current evidence shows host budget reservation plus normal.mm2 aliasing and local UB state, not a standalone GM producer/consumer tail contract.
+    affected_artifacts:
+      - auxiliary/workspace_layout.yaml
+      - auxiliary/workspace_cross_reference.yaml
+      - dsl/schema_gaps.yaml
+      - cards/optimization_cards.yaml
+    source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+      - SE-MLA-MM2-INT32-ALIAS
+      - SE-MLA-AMLASUM-UB-ONLY
+  - id: FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+    scope: workspace.abi.layout
+    forbidden_change: Do not reorder, resize, or repurpose workspace regions unless both host-side Calc*Workspace* formulas and kernel InitWorkspace offset bindings are updated together.
+    why: Producer and consumer stages address workspace through fixed contiguous offsets; unilateral layout drift redirects ring slots or FD scratch to the wrong bytes.
+    affected_artifacts:
+      - auxiliary/workspace_layout.yaml
+      - constraints/constraints.yaml
+      - risks/risks.yaml
+      - reports/artifact_manifest.yaml
+    source_evidence_ids:
+      - SE-WORKSPACE-NORMAL-SIZE
+      - SE-WORKSPACE-NORMAL-ABI
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+      - SE-WORKSPACE-FD-SIZE-NONQUANT
+      - SE-WORKSPACE-FD-SIZE-MLA

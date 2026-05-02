@@ -1,19 +1,114 @@
 schema_gaps:
 - path: pipeline.stage_graph.owner_identity
-  gap: Final DSL must require canonical_name/owner/owner_template_args to avoid ComputeMm2 collapsing across GQA, MLA, and
-    generic nonquant.
-  evidence: reports/function_index.yaml
+  gap: Final DSL must require canonical_name, owner, owner_template_args, and alias-aware shared-vector fields so GQA Vec1/Vec2 are not collapsed into fake local owners.
+  evidence: reports/critical_path_annotations.yaml
   confidence: high
+  producer_location: op_kernel/fia_kernel_nonquant_sink.h::ComputeVec1 / ComputeVec2
+  consumer_location: dsl/shared_stage_aliases.yaml and shared Vec deep annotations
+  missing_stage2_fields:
+  - pipeline.stage_aliases[].alias_stage
+  - pipeline.stage_aliases[].shared_owner
+  - pipeline.stage_aliases[].producer_stages
+  - pipeline.stage_aliases[].consumer_stages
+  temporary_schema_stub:
+    artifact: dsl/shared_stage_aliases.yaml
+    status: ready_for_ingestion
 - path: mla.nupdate.numeric_contract
   gap: Current schema candidate needs a way to encode ordered vector numeric micro-steps, not only the existence of nUpdate.
   evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
   confidence: high
+  producer_location: op_kernel/fia_block_vec_nonquant_mla_sink.h::AmlaVecCompute
+  consumer_location: op_kernel/fia_block_vec_nonquant_mla_sink.h::ProcessAmlaNupdate and op_kernel/fia_block_cube_nonquant_mla_sink.h::ProcessMm2
+  missing_stage2_fields:
+  - mla.nupdate.compute_formula
+  - mla.nupdate.broadcast_group
+  - mla.nupdate.atomic_target
+  - mla.nupdate.mm2_sync
+  temporary_schema_stub:
+    artifact: cards/optimization_cards.yaml
+    status: ready_for_ingestion
 - path: flash_decode.metadata_partition
-  gap: FD merge relies on metadata arrays whose producer is outside the analyzed kernel body; Stage 2 should bind producer
-    and consumer schemas.
-  evidence: op_kernel/fia_kernel_nonquant_mla_sink.h:650-691
-  confidence: medium
+  gap: FlashDecode relies on fdParams metadata arrays whose producer and consumer contracts must be bound explicitly in Stage-2.
+  evidence: reports/external_dependencies.yaml
+  confidence: high
+  producer_location: op_host/fia_tiling_nonquant_sink.cpp::SetSplitOutput
+  consumer_location: op_kernel/fia_kernel_nonquant_sink.h::FlashDecode and op_kernel/fia_kernel_nonquant_mla_sink.h::FlashDecode
+  missing_stage2_fields:
+  - flash_decode.fdparams.used_vec_num
+  - flash_decode.fdparams.bn2_idx_of_fd_head
+  - flash_decode.fdparams.gs1_idx_of_fd_head
+  - flash_decode.fdparams.s2_split_num_of_fd_head
+  - flash_decode.fdparams.gs1_idx_end_of_fd_head_split
+  temporary_schema_stub:
+    artifact: dsl/flash_decode_metadata_bridge.yaml
+    status: ready_with_external_producer_note
 - path: split_core.range_assignment
-  gap: split_core range construction is referenced by host tiling but outside the current extraction boundary.
-  evidence: op_host/fia_tiling_nonquant_sink.cpp:23
+  gap: split_core range construction is now represented as a staged import contract with a verified host bridge; only the planner's internal heuristic remains outside the extraction boundary.
+  evidence: dsl/split_core_range_contract.yaml
+  confidence: high
+  producer_location: external include split_core.h referenced by host tiling translation units
+  consumer_location: op_host/fia_tiling_nonquant_sink.cpp::CreateSplitInput / SetSplitOutput and the corresponding MLA host tiling functions
+  missing_stage2_fields:
+  - split_core.range_assignments[].core_idx
+  - split_core.range_assignments[].bn2_range
+  - split_core.range_assignments[].gs1_range
+  - split_core.range_assignments[].s2_range
+  temporary_schema_stub:
+    artifact: dsl/split_core_range_contract.yaml
+    status: ready_for_ingestion
+- path: workspace.mla_tail.binding_status
+  gap: Host-budgeted MLA tail bytes do not currently have direct kernel GM bindings; Stage-2 must separate budget-only stubs from explicit workspace regions.
+  evidence: auxiliary/workspace_cross_reference.yaml
   confidence: medium
+  producer_location: op_host/fia_tiling_nonquant_mla_sink.cpp::CalcNormalWorkspaceSize
+  consumer_location: op_kernel/fia_kernel_nonquant_mla_sink.h::InitWorkspace and op_kernel/fia_block_vec_nonquant_mla_sink.h::InitBuffers / AmlaVecCompute / DealBmm2ResBaseBlock
+  missing_stage2_fields:
+  - workspace.mla.tail_regions[].binding_status
+  - workspace.mla.tail_regions[].kernel_binding_evidence
+  - workspace.mla.tail_regions[].local_buffer_bridge
+  - workspace.mla.tail_regions[].validation_note
+  temporary_schema_stub:
+    artifact: dsl/mla_workspace_tail_contract.yaml
+    status: ready_for_ingestion
+- path: shape_layout.contract
+  gap: Stage-2 still needs canonical enum names and validation wiring for layout families, but Stage-1 now materializes the shape/layout facts as a dedicated contract artifact.
+  evidence: dsl/shape_layout_contract.yaml
+  confidence: high
+  producer_location: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp::GetQueryBSND / GetQueryTND / InferAttentionOutShape / InferLseOutShape
+  consumer_location: op_kernel/fia_block_vec_nonquant_mla_sink.h::CopySoftmaxLseToGmByLayout and op_kernel/fia_block_vec_flashdecode_sink.h::Bmm2DataCopyOutTrans
+  missing_stage2_fields:
+  - shape_layout.query_layout_families
+  - shape_layout.attention_out_layouts
+  - shape_layout.softmax_lse_layouts
+  - shape_layout.varlen.q_prefix_offset_rule
+  temporary_schema_stub:
+    artifact: dsl/shape_layout_contract.yaml
+    status: ready_for_ingestion
+- path: sparse.policy
+  gap: Stage-2 still needs canonical enum names and validator composition for sparse and invalid-row behavior, but Stage-1 now exposes the policy family as a dedicated contract artifact.
+  evidence: dsl/sparse_policy.yaml
+  confidence: high
+  producer_location: op_host/fia_tiling_nonquant_sink.cpp::FillTilingMaskParams / IsExistRowInvalid
+  consumer_location: op_kernel/fia_block_vec_flashdecode_sink.h::CalaPreNextTokens and op_kernel/fia_block_vec_nonquant_sink.h::Vec1SinkSoftmaxProc
+  missing_stage2_fields:
+  - sparse.policy.mode
+  - sparse.policy.invalid_row_rule
+  - sparse.policy.fd_pre_next_token_rule
+  - sparse.policy.sink_adjustments
+  temporary_schema_stub:
+    artifact: dsl/sparse_policy.yaml
+    status: ready_for_ingestion
+- path: scalar.offset_rules
+  gap: Stage-2 still needs reusable lowering fields for FD task offsets and MLA preload-slot addressing instead of recovering them from prose or helper bodies.
+  evidence: dsl/scalar_offset_contract.yaml
+  confidence: high
+  producer_location: op_kernel/fia_block_vec_flashdecode_sink.h::FlashDecode and op_kernel/fia_block_vec_nonquant_mla_sink.h::ProcessAmlaNupdate / DealBmm2ResBaseBlock
+  consumer_location: flash_decode.merge, mla.nupdate, mla.vec2.output
+  missing_stage2_fields:
+  - scalar.offset_rules.fd_task_offset
+  - scalar.offset_rules.mla_mm2_reload_slot
+  - scalar.offset_rules.mla_nupdate_atomic_base
+  - scalar.offset_rules.mla_fd_partial_offset
+  temporary_schema_stub:
+    artifact: dsl/scalar_offset_contract.yaml
+    status: ready_for_ingestion

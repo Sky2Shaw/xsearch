@@ -1,0 +1,71 @@
+sparse_policy:
+  host_policy_surface:
+    mask_params_writer:
+      functions:
+        - FiaTilingNonQuant::FillTilingMaskParams
+        - FiaTilingNonQuantMla::FillTilingMaskParams
+      source_evidence_ids:
+        - SE-SPARSE-MASK-PARAMS
+        - SE-TEST-TILING-SINK-CONSTRAINTS
+      fields:
+        - attenMaskFlag
+        - attenMaskSize
+        - attenMaskStride
+        - sparseMode
+        - preToken
+        - nextToken
+        - sinkNumber
+        - keySinkNumber
+        - isRowInvalid
+  policy_modes:
+    - mode: LEFT_UP_CAUSAL
+      host_invalid_row_rule: never marks invalid rows in FiaTilingNonQuant::IsExistRowInvalid
+      fd_pre_next_rule: falls back to the causal default branch in FlashDecode when attenMaskFlag does not force DEFAULT_MASK
+      source_evidence_ids:
+        - SE-SPARSE-LEFTUP-INVALID-ROW
+        - SE-FD-SPARSE-POLICY
+    - mode: ALL_MASK
+      host_invalid_row_rule: always marks rows invalid
+      fd_pre_next_rule: merge output still runs, but invalid-row correction must zero masked rows before export
+      source_evidence_ids:
+        - SE-SPARSE-LEFTUP-INVALID-ROW
+        - SE-VEC1-SINK-SOFTMAX
+    - mode: BAND
+      host_invalid_row_rule: uses preTokenLeftUp = safePreToken and nextTokenLeftUp = s2Size - s1Size + safeNextToken
+      fd_pre_next_rule: uses preTokensPerBatch = preToken and nextTokensPerBatch = actSeqLensKv - actSeqLensQ + nextToken, with sink-aware subtraction when sinkNumber > 0
+      source_evidence_ids:
+        - SE-SPARSE-LEFTUP-INVALID-ROW
+        - SE-FD-SPARSE-POLICY
+    - mode: DEFAULT_MASK
+      host_invalid_row_rule: uses preTokenLeftUp = s2Size - s1Size + safePreToken and nextTokenLeftUp = safeNextToken
+      fd_pre_next_rule: FlashDecode sets nextTokensPerBatch = nextToken and preTokensPerBatch = actSeqLensKv - actSeqLensQ + preToken when attenMaskFlag is enabled
+      source_evidence_ids:
+        - SE-SPARSE-LEFTUP-INVALID-ROW
+        - SE-FD-SPARSE-POLICY
+  sink_adjustments:
+    - applies_when: sinkNumber > 0 and sparseMode == SPARSE_MODE_2 on the generic host path
+      rule: nextToken is overwritten with sinkNumber before maskParams are finalized
+      source_evidence_ids:
+        - SE-SPARSE-MASK-PARAMS
+        - SE-TEST-TILING-SINK-CONSTRAINTS
+    - applies_when: sinkNumber > 0 in FlashDecode BAND or causal handling
+      rule: nextTokensPerBatch is reduced by sinkNumber before invalid-row handling
+      source_evidence_ids:
+        - SE-FD-SPARSE-POLICY
+        - SE-TEST-ST-EAGER-REFERENCE
+  invalid_row_consumers:
+    - site: shared Vec1 sink softmax correction
+      rule: AdjustSoftMaxRes must run before split-KV sink contributions are folded into softmaxSumUb
+      source_evidence_ids:
+        - SE-VEC1-SINK-SOFTMAX
+    - site: FlashDecode final LSE export
+      rule: AdjustSoftMaxRes applies the invalid-row replacement before final softmaxLse writeback
+      source_evidence_ids:
+        - SE-FD-SPARSE-POLICY
+  validation_rules:
+    constraints:
+      - C-SPARSE-POLICY-CONTRACT
+      - C-INVALID-ROW-LSE-CORRECTION
+    risks:
+      - R-INVALID-ROW-SEMANTIC-DRIFT
+      - R-SPARSE-POLICY-DESYNC

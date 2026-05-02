@@ -1,58 +1,144 @@
 evolution_result:
   new_patterns:
+  - id: LP-FIA-GQA-SHARED-VEC-ALIAS
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: GQA Vec1 and Vec2 are explicit alias stages owned by the shared FiaBlockVecNonQuant<FIAT> vector service rather than synthetic GQA-local vector owners.
+    code_evidence:
+    - reports/critical_path_annotations.yaml
+    - dsl/shared_stage_aliases.yaml
+    dsl_field_path: pipeline.stage_graph.stage_aliases
+    optimization_intent: Allow automation to rebuild the GQA vector path without fabricating owners that do not exist in code.
+    confidence: high
+  - id: LP-FIA-RUNINFO-THREE-STAGE-RING
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: Scheduler overlap uses a three-slot RunInfo ring where current drives MM1, older drives Vec1/MM2, and previous drives Vec2 before invalidation.
+    code_evidence:
+    - op_kernel/fia_kernel_nonquant_sink.h:882-909
+    - op_kernel/fia_kernel_nonquant_mla_sink.h:836-862
+    dsl_field_path: pipeline.scheduler.runinfo_ring
+    optimization_intent: Preserve AIC/AIV overlap as an explicit Stage-2 scheduler policy.
+    confidence: high
+  - id: LP-FIA-MLA-BUDGET-TAIL-STUB
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: MLA host sizing reserves extra nUpdate and softmaxSum bytes, but current kernel evidence exposes MM2 int32 aliasing and local UB aMlaSum rather than standalone GM tail bindings.
+    code_evidence:
+    - op_host/fia_tiling_nonquant_mla_sink.cpp:491-508
+    - op_kernel/fia_kernel_nonquant_mla_sink.h:415-443
+    - op_kernel/fia_block_vec_nonquant_mla_sink.h:266-279
+    - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    dsl_field_path: workspace.mla.tail_regions[].binding_status
+    optimization_intent: Separate budget-only ABI stubs from explicit workspace regions in Stage-2.
+    confidence: medium
+  - id: LP-FIA-FD-METADATA-BRIDGE
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: split_core input params, SetSplitOutput, and both kernel FlashDecode wrappers form an explicit metadata bridge contract for fdParams.
+    code_evidence:
+    - dsl/flash_decode_metadata_bridge.yaml
+    - reports/split_core_range_contract.yaml
+    dsl_field_path: flash_decode.metadata_bridge
+    optimization_intent: Preserve cross-boundary FD metadata semantics with an explicit Stage-1 contract.
+    confidence: high
+  - id: LP-FIA-SHAPE-LAYOUT-CONTRACT
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: Query, attentionOut, and softmaxLse layouts collapse into canonical dense and varlen families with explicit prefix-offset rules.
+    code_evidence:
+    - dsl/shape_layout_contract.yaml
+    dsl_field_path: shape_layout.contract
+    optimization_intent: Feed Stage-2 schema and validation with a single layout artifact instead of scattered helper facts.
+    confidence: high
+  - id: LP-FIA-SPARSE-POLICY
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: sparseMode, token windows, sink adjustments, and invalid-row handling form a unified host-to-kernel policy surface.
+    code_evidence:
+    - dsl/sparse_policy.yaml
+    dsl_field_path: sparse.policy
+    optimization_intent: Preserve semantic correctness of masked rows and sink-aware windows as an explicit validator family.
+    confidence: high
+  - id: LP-FIA-SCALAR-OFFSET-RULES
+    operator_family: AiInfraFusedInferAttentionSink
+    pattern: FD prefix-sum offsets and MLA preload-slot bases are reusable scalar rules rather than incidental helper math.
+    code_evidence:
+    - dsl/scalar_offset_contract.yaml
+    dsl_field_path: scalar.offset_rules
+    optimization_intent: Preserve correctness-visible address generation while exposing hoistable structure to Stage-2 lowering.
+    confidence: high
+  updated_patterns:
   - id: LP-FIA-STAGE-TEMPLATE-IDENTITY
     operator_family: AiInfraFusedInferAttentionSink
-    pattern: Critical stage functions must retain canonical_name, owner, owner_qualified, owner_template_args, template_params,
-      variant, and stage.
+    pattern: Critical stage functions and alias-aware shared vector stages must retain canonical_name, owner, owner_qualified, owner_template_args, template_params, variant, and stage.
     code_evidence:
     - reports/function_index.yaml
+    - reports/critical_path_annotations.yaml
+    - dsl/shared_stage_aliases.yaml
     dsl_field_path: pipeline.stage_graph.stages[].canonical_name
-    optimization_intent: Prevent GQA/MLA/generic same-name ComputeMm2 paths from being merged.
+    optimization_intent: Prevent same-name stages from being merged and preserve shared-vector alias identity for GQA Vec1/Vec2.
     confidence: high
-  - id: LP-FIA-GQA-MM2-V-REUSE
-    operator_family: AiInfraFusedInferAttentionSink
-    pattern: GQA MM2 caches V L1 tiles with a coordinate signature while streaming P from Vec1 output.
-    code_evidence:
-    - op_kernel/fia_block_cube_nonquant_gqa_sink.h:1138-1222
-    dsl_field_path: memory.l1_residency.gqa.v_snapshot
-    optimization_intent: Reduce V reload traffic and preserve event lifetime.
-    confidence: high
-  - id: LP-FIA-MLA-NUPDATE
-    operator_family: AiInfraFusedInferAttentionSink
-    pattern: MLA vector softmax emits row-wise nUpdate and applies it through an int32 atomic side channel before MM2 fixpipe.
-    code_evidence:
-    - op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
-    - op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
-    - op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1057
-    dsl_field_path: mla.nupdate
-    optimization_intent: Preserve online softmax correction across split S2 loops.
-    confidence: high
-  - id: LP-FIA-FD-STABLE-MERGE
-    operator_family: AiInfraFusedInferAttentionSink
-    pattern: FlashDecode merges split-KV partial outputs using max/sum-normalized LSE weights.
-    code_evidence:
-    - op_kernel/fia_block_vec_flashdecode_sink.h:258-290
-    - op_kernel/fia_block_vec_flashdecode_sink.h:437-556
-    dsl_field_path: flash_decode.merge
-    optimization_intent: Keep split-KV final output numerically stable.
-    confidence: high
-  updated_patterns: []
   checklist_updates:
   - section: Pipeline
-    item: Require owner-qualified critical-stage coverage for same-name template methods.
-    evidence: reports/function_index.yaml
+    item: Require owner-qualified critical-stage coverage for same-name template methods and alias-aware shared-vector stages.
+    evidence: reports/critical_path_annotations.yaml
+  - section: Graphs
+    item: Emit standalone pipeline, dataflow, and memory lifetime artifacts whenever deep annotations already expose a stable stage DAG or residency contract.
+    evidence: auxiliary/pipeline_graphs.yaml
+  - section: ShapeLayout
+    item: Emit a dedicated shape/layout contract when infer-shape and layout-copy helpers already expose canonical family boundaries.
+    evidence: dsl/shape_layout_contract.yaml
+  - section: Sparse
+    item: Bind host maskParams packing and kernel invalid-row branches into one sparse-policy artifact.
+    evidence: dsl/sparse_policy.yaml
+  - section: FlashDecode
+    item: Record the split_core input package, fdRes bridge, and both kernel FD consumers in one metadata bridge artifact.
+    evidence: dsl/flash_decode_metadata_bridge.yaml
+  - section: Scalar
+    item: Emit prefix-sum and preload-slot address rules as structured fields when they gate correctness.
+    evidence: dsl/scalar_offset_contract.yaml
   negative_lessons:
   - id: NL-FIA-DO-NOT-FLATTEN-COMPUTEMM2
     lesson: Bare-name ComputeMm2 extraction loses variant semantics.
     evidence: reports/function_index.yaml
     avoid_when: Stage indexing and DSL aggregation.
+  - id: NL-FIA-DO-NOT-INVENT-GQA-LOCAL-VEC-OWNERS
+    lesson: GQA Vec1 and Vec2 are shared-vector alias stages; inventing fake local owners hides the real producer and consumer contracts.
+    evidence: dsl/shared_stage_aliases.yaml
+    avoid_when: Critical-path aggregation and Stage-2 stage-graph generation.
+  - id: NL-FIA-DO-NOT-TREAT-MLA-TAIL-AS-BOUND-GM
+    lesson: MLA host-budget tail bytes are not sufficient evidence for standalone GM producer and consumer bindings.
+    evidence: auxiliary/workspace_cross_reference.yaml
+    avoid_when: Workspace-layout lowering and validator authoring.
+  - id: NL-FIA-DO-NOT-TREAT-FD-METADATA-AS-CONSUMER-ONLY
+    lesson: FD metadata is incomplete unless the split-core input package, SetSplitOutput writer, and kernel consumer reconstruction are all represented together.
+    evidence: dsl/flash_decode_metadata_bridge.yaml
+    avoid_when: FlashDecode schema extraction.
+  - id: NL-FIA-DO-NOT-SCATTER-LAYOUT-FAMILIES
+    lesson: Shape/layout behavior should be normalized into one contract artifact instead of duplicated across infer-shape and copy helpers.
+    evidence: dsl/shape_layout_contract.yaml
+    avoid_when: Stage-1 schema-prep normalization.
+  - id: NL-FIA-DO-NOT-HIDE-OFFSET-MATH-IN-PROSE
+    lesson: Prefix sums, preload-slot bases, and padded-stride formulas are correctness-visible rules that deserve explicit fields.
+    evidence: dsl/scalar_offset_contract.yaml
+    avoid_when: FD merge and MLA Vec2/nUpdate extraction.
   schema_gaps:
   - path: pipeline.stage_graph.owner_identity
-    gap: Stage schema must require canonical/template owner identity.
-    evidence: reports/function_index.yaml
+    gap: Stage schema must require canonical/template owner identity and alias-aware shared-vector fields.
+    evidence: reports/critical_path_annotations.yaml
+  - path: workspace.mla_tail.binding_status
+    gap: Stage-2 must distinguish budget-only MLA tail stubs from explicit workspace GM regions.
+    evidence: auxiliary/workspace_cross_reference.yaml
+  - path: flash_decode.metadata_partition
+    gap: Stage-2 still needs final field names, but the host-to-kernel metadata bridge is now materialized as a dedicated Stage-1 contract.
+    evidence: dsl/flash_decode_metadata_bridge.yaml
+  - path: shape_layout.contract
+    gap: Stage-2 still needs canonical enum names and validator assembly for layout families.
+    evidence: dsl/shape_layout_contract.yaml
+  - path: sparse.policy
+    gap: Stage-2 still needs canonical enum names and validator assembly for sparse and invalid-row policy families.
+    evidence: dsl/sparse_policy.yaml
+  - path: scalar.offset_rules
+    gap: Stage-2 still needs final lowering field names for task and preload-slot offsets.
+    evidence: dsl/scalar_offset_contract.yaml
   skill_patch_proposal: []
   conflicts:
   - conflict: false
-    conflict_reason: No conflicting local learning found after backup review.
+    conflict_reason: New schema-normalization patterns extend the existing learning set without contradicting earlier function-level findings.
     related_ids: []
     confidence: high

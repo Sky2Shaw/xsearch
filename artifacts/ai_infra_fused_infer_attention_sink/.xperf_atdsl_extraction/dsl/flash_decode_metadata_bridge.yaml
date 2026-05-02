@@ -1,0 +1,122 @@
+flash_decode_metadata_bridge:
+  bridge_status: ready_with_external_producer_note
+  producer_boundary:
+    split_core_inputs:
+      functions:
+        - FiaTilingNonQuant::CreateSplitInput
+        - FiaTilingNonQuantMla::CreateSplitInput
+      source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+        - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      packaged_fields:
+        - mBaseSize
+        - s2BaseSize
+        - gS1BaseSizeOfFd
+        - preToken
+        - nextToken
+        - isS1G
+        - sparseMode
+        - attenMaskFlag
+        - sinkNumber
+        - keySinkNumber
+        - actualLenQDims
+        - actualLenKvDims
+    split_core_outputs:
+      functions:
+        - FiaTilingNonQuant::SetSplitOutput
+        - FiaTilingNonQuantMla::SetSplitOutput
+      source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+      copied_arrays:
+        - usedVecNumOfFd
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - s2SplitStartIdxOfCore[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+  kernel_consumers:
+    - variant: nonquant_or_gqa
+      function: FiaKernelNonQuant<FIAT>::FlashDecode
+      source_evidence_ids:
+        - SE-FD-METADATA-PARTITION
+      consumed_fields:
+        - usedVecNumOfFd
+        - gS1BaseSizeOfFd
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+    - variant: mla
+      function: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+      source_evidence_ids:
+        - SE-FD-METADATA-PARTITION-MLA
+      consumed_fields:
+        - usedVecNumOfFd
+        - gS1BaseSizeOfFd
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+  field_contracts:
+    - name: usedVecNumOfFd
+      stage2_fields:
+        - flash_decode.fdparams.used_vec_num
+      contract: Bounds the active AIV cores that may enter the FD merge path.
+    - name: bN2IdxOfFdHead[]
+      stage2_fields:
+        - flash_decode.fdparams.bn2_idx_of_fd_head
+      contract: Maps each FD task to a batch-head group for partial-output reload and final copy-out.
+    - name: gS1IdxOfFdHead[]
+      stage2_fields:
+        - flash_decode.fdparams.gs1_idx_of_fd_head
+      contract: Defines the M-axis origin of each FD task in mBaseSize units.
+    - name: s2SplitNumOfFdHead[]
+      stage2_fields:
+        - flash_decode.fdparams.s2_split_num_of_fd_head
+      contract: Provides the per-task number of split-KV partials and therefore the prefix-sum taskOffset source.
+    - name: gS1SplitNumOfFdHead[]
+      stage2_fields:
+        - flash_decode.fdparams.gs1_split_num_of_fd_head
+      contract: Controls how many gS1BaseSizeOfFd partitions each FD task owns.
+    - name: gS1LastPartSizeOfFdHead[]
+      stage2_fields:
+        - flash_decode.fdparams.gs1_last_part_size_of_fd_head
+      contract: Provides the tail size for the final gS1 partition of a task.
+    - name: gS1IdxEndOfFdHead[]
+      stage2_fields:
+        - flash_decode.fdparams.gs1_idx_end_of_fd_head
+      contract: Marks the last FD task index consumed by a given AIV core.
+    - name: gS1IdxEndOfFdHeadSplit[]
+      stage2_fields:
+        - flash_decode.fdparams.gs1_idx_end_of_fd_head_split
+      contract: Marks the final gS1 partition row index consumed by a given AIV core.
+  validation_rules:
+    constraints:
+      - C-SPLIT-CORE-RANGE-ORDER
+      - C-FD-METADATA
+      - C-FD-USED-VEC-BOUNDS
+      - C-SPLIT-CORE-FD-BRIDGE
+    risks:
+      - R-SPLIT-CORE-RANGE-DESYNC
+      - R-FD-METADATA-DESYNC
+      - R-WORKSPACE-ABI-DRIFT
+  evidence:
+    source_evidence_ids:
+      - SE-SPLIT-CORE-INPUT-PARAMS
+      - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+      - SE-FD-METADATA-PARTITION
+      - SE-FD-METADATA-PARTITION-MLA
+    contract_artifacts:
+      - dsl/split_core_range_contract.yaml

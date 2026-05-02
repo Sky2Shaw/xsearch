@@ -5,95 +5,91 @@ function_annotation:
   owner: FiaBlockVecFlashDecode
   owner_qualified: FiaBlockVecFlashDecode<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: flash_decode
-  stage: flash_decode
+  stage: flash_decode.init
   file: op_kernel/fia_block_vec_flashdecode_sink.h
   line_range:
     start: 155
     end: 161
-  role: FlashDecode setup, workspace sizing, or merge helper.
-  confidence: medium
+  role: FlashDecode setup helper that snapshots the executing AIV core id into the FD service state before metadata-gated merge work starts.
+  confidence: high
+  source_evidence_ids:
+    - SE-FD-INIT-BLOCKIDX
   code_behavior:
-    summary: FlashDecode setup, workspace sizing, or merge helper.
+    summary: Captures the current block index once and stores it in the owner so later FD merge code can select the matching per-core metadata range.
     key_steps:
-    - 'Calls: GetBlockIdx.'
+      - Reads the current AIV core id with GetBlockIdx.
+      - Stores the id in the owner member blockIdx.
+      - Leaves fdParams arrays unchanged; it only prepares the core-local selector used by FlashDecode.
   dataflow:
     inputs:
-    - FiaBlockVecFlashDecode<FIAT>::InitDecodeParams
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - current AIV block index from GetBlockIdx
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - FiaBlockVecFlashDecode<FIAT>::blockIdx
     gm:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
-    branches:
-    - unknown
+    loops: []
+    branches: []
   pipeline:
     stages:
-    - flash_decode
-    - flash_decode
-    - calls:GetBlockIdx
-    sync:
-    - unknown
+      - flash_decode.init
+      - core_index_capture
+    sync: []
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - owner-local scalar blockIdx
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - unknown
+      - usedVecNumOfFd
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_flashdecode_sink.h:155-161'
+      - The captured core id is later compared against usedVecNumOfFd to decide whether this AIV core owns an FD merge task.
   workspace:
-    layout:
-    - unknown
-    offsets:
-    - unknown
+    layout: []
+    offsets: []
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
-  tunable_or_structural_fields: []
+    - Capture the core-local selector once so later FD metadata reconstruction and merge loops can reuse it without re-reading hardware state.
+  tunable_or_structural_fields:
+    - name: usedVecNumOfFd
+      role: Upper bound on active FD vector cores that will consume metadata ranges.
+      source_evidence_ids:
+        - SE-FD-INIT-BLOCKIDX
+        - SE-FD-METADATA-PARTITION
   constraints:
-  - unknown
+    - blockIdx must be captured before the FD service compares it against usedVecNumOfFd and consumes the per-core fdParams arrays.
   risks_if_changed:
-  - unknown
+    - Capturing the wrong core id would route an AIV core to the wrong FD metadata slice or suppress required merge work.
   possible_dsl_sections:
-  - flash_decode.merge
+    - flash_decode.metadata_bridge
+    - pipeline.stage_graph
   suggested_dsl_fields:
-  - path: flash_decode.merge.source_function
-    meaning: Lowering evidence from FiaBlockVecFlashDecode<FIAT>::InitDecodeParams
-    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:155-161
-    confidence: medium
+    - path: flash_decode.fdparams.core_selector
+      meaning: FD setup stores the executing AIV core id in owner state before metadata-gated merge dispatch.
+      source_evidence_ids:
+        - SE-FD-INIT-BLOCKIDX
+      confidence: high
+    - path: flash_decode.fdparams.used_vec_num
+      meaning: The captured core id participates in the usedVecNumOfFd gate rather than modifying fdParams contents directly.
+      source_evidence_ids:
+        - SE-FD-INIT-BLOCKIDX
+        - SE-FD-METADATA-PARTITION
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this as FD setup state, not as a workspace or metadata writer.
+  open_questions: []

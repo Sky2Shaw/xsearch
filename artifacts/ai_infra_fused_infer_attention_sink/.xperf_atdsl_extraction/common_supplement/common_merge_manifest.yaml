@@ -1,0 +1,155 @@
+operator: ai_infra_fused_infer_attention_sink
+merge_policy: supplement_plus_primary_artifact_merge
+supplement_files:
+  - path: common_supplement/common_dependency_inventory.yaml
+    role: source_of_truth_for_linked_direct_and_filtered_common_dependencies
+  - path: common_supplement/split_core_extraction.yaml
+    fact_groups:
+      - split_core_cost_model
+      - tolerance_ratios
+      - core_search_bounds
+      - sparse_sink_key_sink_handling
+      - assignment_phases
+      - fd_metadata_generation
+  - path: common_supplement/shape_layout_extraction.yaml
+    fact_groups:
+      - common_axis_map
+      - derived_dimensions
+      - nz_layout_contract
+      - shape_compare_modes
+  - path: common_supplement/memory_copy_extraction.yaml
+    fact_groups:
+      - gm_format_categories
+      - offset_calculation
+      - query_kv_copy_helpers
+      - nd_to_nz_lowering
+  - path: common_supplement/buffer_matmul_extraction.yaml
+    fact_groups:
+      - buffer_types
+      - event_policy
+      - buffer_policies
+      - cross_core_sync
+      - matmul_unit_flags
+  - path: common_supplement/vector_common_extraction.yaml
+    fact_groups:
+      - invalid_row_handling
+      - safe_active_token_clamping
+      - repeat_stride_constraints
+      - max_valid_length_split_reductions
+primary_artifact_updates:
+  - path: evidence/source_evidence.yaml
+    supplement_files:
+      - common_supplement/common_dependency_inventory.yaml
+      - common_supplement/split_core_extraction.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+      - common_supplement/vector_common_extraction.yaml
+    fact_groups:
+      - linked_common_host_sources
+      - direct_common_host_includes
+      - direct_common_kernel_includes
+      - common_buffer_helper_headers
+    update_summary: Added common evidence entries for each included or linked common dependency in the inventory, with evidence kind, relevant symbols, and semantic summaries.
+  - path: dsl/split_core_range_contract.yaml
+    supplement_files:
+      - common_supplement/split_core_extraction.yaml
+      - common_supplement/common_dependency_inventory.yaml
+    fact_groups:
+      - split_core_cost_model
+      - tolerance_ratios
+      - core_search_bounds
+      - sparse_sink_key_sink_handling
+      - assignment_phases
+      - fd_metadata_generation
+    update_summary: Added common-backed split-core planner semantics beyond the existing host bridge contract.
+  - path: dsl/shape_layout_contract.yaml
+    supplement_files:
+      - common_supplement/shape_layout_extraction.yaml
+      - common_supplement/common_dependency_inventory.yaml
+    fact_groups:
+      - common_axis_map
+      - derived_dimensions
+      - nz_layout_contract
+      - shape_compare_modes
+    update_summary: Added common-backed axis, derived-dimension, NZ, and compare-mode contracts.
+  - path: constraints/constraints.yaml
+    supplement_files:
+      - common_supplement/split_core_extraction.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+      - common_supplement/vector_common_extraction.yaml
+    fact_groups:
+      - split_core_cost_range
+      - shape_layout_validation
+      - gm_offset_copy_lowering
+      - vector_repeat_invalid_rows
+      - buffer_event_legality
+      - matmul_unitflag
+    update_summary: Added constraints for Stage-2-critical common semantics.
+  - path: risks/risks.yaml
+    supplement_files:
+      - common_supplement/split_core_extraction.yaml
+      - common_supplement/shape_layout_extraction.yaml
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+      - common_supplement/vector_common_extraction.yaml
+    fact_groups:
+      - omitted_split_core_model
+      - omitted_shape_layout_validation
+      - unsafe_gm_offset_copy_lowering
+      - illegal_buffer_event_scheduling
+      - invalid_row_handling_loss
+      - fd_metadata_mismatch
+    update_summary: Added omission risks for common semantics needed by Stage-2 DSL lowering.
+  - path: cards/optimization_cards.yaml
+    supplement_files:
+      - common_supplement/split_core_extraction.yaml
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+      - common_supplement/vector_common_extraction.yaml
+    fact_groups:
+      - split_core_balancing
+      - sparse_sink_s2_range_shaping
+      - gm_copy_lowering
+      - buffer_policy_selection
+      - vector_invalid_row_handling
+      - fd_metadata_merge_behavior
+    update_summary: Added common-backed optimization cards for DSL planning and lowering opportunities.
+  - path: auxiliary/memory_lifetime.yaml
+    supplement_files:
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+    fact_groups:
+      - buffer_policy_lifetime
+      - nd_to_nz_copy_tile_lifetime
+      - cross_core_event_id_lifetime
+    update_summary: Added justified buffer/copy lifetime facts.
+  - path: auxiliary/pipeline_graphs.yaml
+    supplement_files:
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+      - common_supplement/vector_common_extraction.yaml
+    fact_groups:
+      - gm_to_l1_copy_pipeline
+      - buffer_policy_event_pipeline
+      - matmul_unitflag_pipeline
+      - vector_invalid_row_barrier_pipeline
+    update_summary: Added a common buffer/event/copy/vector graph for scheduling facts.
+supplement_only_items:
+  - item: common_dependency_inventory.filtered_common_inputs
+    reason: Retained in supplement as dependency audit data; not all inventory evidence locations are Stage-2 DSL facts.
+  - item: vector_common_extraction.fd_merge_helpers.status
+    reason: Retained as supplement-only negative evidence because FD/Merge symbols were not found in vector_common.h; FD merge behavior was merged from split_core and existing FD artifacts instead.
+filtered_items:
+  - item: unrelated_attention_common_files_without_current_operator_link_or_include_evidence
+    reason: Excluded by dependency inventory policy.
+  - item: .xperf_atdsl_extraction_candidate/stage1_review_directories
+    reason: User policy forbids reading or modifying review directories.
+review_directories:
+  policy: do_not_read_or_modify
+verification:
+  yaml_parse: passed
+  dependency_inventory_consistency: passed
+  merge_coverage: passed

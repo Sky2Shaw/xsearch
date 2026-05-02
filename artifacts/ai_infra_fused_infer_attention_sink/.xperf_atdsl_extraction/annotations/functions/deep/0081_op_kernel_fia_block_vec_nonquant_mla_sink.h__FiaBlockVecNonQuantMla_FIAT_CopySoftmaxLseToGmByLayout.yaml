@@ -5,118 +5,121 @@ function_annotation:
   owner: FiaBlockVecNonQuantMla
   owner_qualified: FiaBlockVecNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
-  stage: softmax
+  stage: softmax.lse_export
   file: op_kernel/fia_block_vec_nonquant_mla_sink.h
   line_range:
     start: 747
     end: 771
-  role: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
-  confidence: medium
+  role: MLA Vec1 helper that exports final softmaxLse rows to GM with layout-specific offset formulas.
+  confidence: high
+  source_evidence_ids:
+    - SE-MLA-LSE-LAYOUT-COPY
+    - SE-SHAPE-LAYOUT-CONTRACT
   code_behavior:
-    summary: mla vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Routes the same LSE source tensor to TND or BSH/BSND/BNSD GM layouts by choosing the appropriate base offset and copy helper.
     key_steps:
-    - 'Calls: GetValue, DataCopySoftmaxLseTND, DataCopySoftmaxLseBSND.'
-    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
-    - Touches online softmax state or LSE outputs.
+      - Returns immediately when vecDealM is zero for the current MLA M partition.
+      - For TND, computes prefixBS1 from actualSeqLengthsGmQ and forms bN2Offset from qHeadNum and gSize.
+      - For BSH and BSND, uses the BSND copier with a batch-head-sequence base offset.
+      - For the remaining branch, uses the BNSD copier with qActSeqLensParser and the same batch-head-sequence base offset.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - lseSrc UB tensor from the MLA Vec1 final-softmax path
+      - actualSeqLengthsGmQ or qActSeqLensParser for layout-aware offsets
+      - info.bIdx, info.n2Idx, and mOffset
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - softmaxLseGm rows in the target output layout
     gm:
       reads:
-      - GM tensors referenced in function body
+        - actualSeqLengthsGmQ for TND prefix offsets
       writes:
-      - DataCopy/Fixpipe destinations visible in body
+        - softmaxLseGm through DataCopySoftmaxLseTND, DataCopySoftmaxLseBSND, or DataCopySoftmaxLseBNSD
     ub:
       reads:
-      - LocalTensor/UB operands
-      writes:
-      - LocalTensor/UB temporaries
+        - lseSrc
+      writes: []
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - if
-    - else
+      - if vecDealM == 0
+      - if LAYOUT_T == TND
+      - else if LAYOUT_T == BSND or BSH
+      - else
   pipeline:
     stages:
-    - softmax
-    - mla
-    - calls:GetValue,DataCopySoftmaxLseTND,DataCopySoftmaxLseBSND
-    sync:
-    - unknown
+      - mla.vec1
+      - softmax.lse_export
+    sync: []
   memory_behavior:
     buffers:
-    - LocalTensor
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - lseSrc
+      - softmaxLseGm
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - unknown
+      - qHeadNum
+      - gSize
+      - qSeqSize
+      - vecDealM
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:747-771'
+      - TND layout exports LSE by prefix-flattened token rows, while BSH, BSND, and BNSD export by batch-head-sequence coordinates.
+      - The GM destination rank for LSE is T,N,1 for TND-family outputs and B,N,S1,1 for the dense layout family.
   workspace:
     layout:
-    - unknown
+      - softmaxLseGm is a final-output tensor, not a temporary workspace ring
     offsets:
-    - uint32_t mOffset, const MSplitInfo &mSplitInfo)
-    - uint64_t bN2Offset =
-    - DataCopySoftmaxLseTND(softmaxLseGm, lseSrc, bN2Offset, mOffset, mSplitInfo.vecDealM, constInfo);
-    - uint64_t bN2Offset = static_cast<uint64_t>(info.bIdx) * constInfo.qHeadNum * constInfo.qSeqSize +
-    - DataCopySoftmaxLseBSND(softmaxLseGm, lseSrc, bN2Offset, mOffset, mSplitInfo.vecDealM, constInfo,
-    - uint64_t bN2Offset = static_cast<uint64_t>(info.bIdx) * constInfo.qHeadNum * constInfo.qSeqSize +
+      - TND bN2Offset = prefixBS1 * qHeadNum + n2Idx * gSize
+      - BSH/BSND/BNSD bN2Offset = bIdx * qHeadNum * qSeqSize + n2Idx * gSize * qSeqSize
+      - mOffset = info.gS1Idx + nBufferStartM + vecStartM in the calling Vec1 wrapper
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
-  tunable_or_structural_fields: []
+    - Normalize the softmaxLse export path as a reusable layout contract instead of scattering it across Vec1 wrapper prose.
+  tunable_or_structural_fields:
+    - name: outputLayout
+      role: Layout family selector for final softmaxLse export.
+      source_evidence_ids:
+        - SE-MLA-LSE-LAYOUT-COPY
+        - SE-SHAPE-LAYOUT-CONTRACT
   constraints:
-  - unknown
+    - TND exports must preserve prefixBS1-based offsets from actualSeqLengthsGmQ.
+    - BSH and BSND intentionally share the BSND copy helper and must not be split into inconsistent offset rules.
+    - vecDealM == 0 must remain a no-op branch.
   risks_if_changed:
-  - unknown
+    - Wrong layout branch selection will write softmaxLse rows to the wrong batch/head/sequence coordinates.
+    - Dropping the TND prefixBS1 rule corrupts varlen exports for flattened-token layouts.
   possible_dsl_sections:
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.vector_stages
-  - softmax.online_state
+    - shape_layout.contract
+    - softmax.online_state
+    - pipeline.vector_stages
   suggested_dsl_fields:
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:747-771
-    confidence: medium
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:747-771
-    confidence: medium
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:747-771
-    confidence: medium
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:747-771
-    confidence: medium
+    - path: shape_layout.softmax_lse_layouts.tnd_family
+      meaning: TND-family softmaxLse export uses prefixBS1-derived offsets and a T,N,1 destination shape.
+      source_evidence_ids:
+        - SE-MLA-LSE-LAYOUT-COPY
+        - SE-SHAPE-LAYOUT-CONTRACT
+      confidence: high
+    - path: shape_layout.softmax_lse_layouts.dense_family
+      meaning: BSH, BSND, and BNSD softmaxLse exports use batch-head-sequence offsets and a B,N,S1,1 destination shape.
+      source_evidence_ids:
+        - SE-MLA-LSE-LAYOUT-COPY
+        - SE-SHAPE-LAYOUT-CONTRACT
+      confidence: high
+    - path: shape_layout.varlen.q_prefix_offset_rule
+      meaning: actualSeqLengthsGmQ provides the prefixBS1 term used to flatten TND-family LSE outputs.
+      source_evidence_ids:
+        - SE-MLA-LSE-LAYOUT-COPY
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this helper as the canonical MLA softmaxLse layout adapter instead of embedding layout branches ad hoc inside the Vec1 wrapper.
+  open_questions: []

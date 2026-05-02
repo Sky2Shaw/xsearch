@@ -1,0 +1,149 @@
+artifact_type: common_kernel_buffer_matmul_extraction
+source_files:
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer_manager.h
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+
+buffer_types:
+  enum:
+    name: BufferType
+    values:
+      - {name: L1, value: 0, tposition: A1}
+      - {name: L0A, value: 1, tposition: A2}
+      - {name: L0B, value: 2, tposition: B2}
+      - {name: L0C, value: 3, tposition: CO1}
+      - {name: UB, value: 4, tposition: VECIN}
+      - {name: GM, value: 5, tposition: GM}
+    evidence:
+      enum: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:30
+      tposition_mapping: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:77
+  manager:
+    class: BufferManager
+    local_init: Non-GM buffers are initialized from TPipe::InitBuffer and TBuf at BufferInfo<bufferType>::Position.
+    gm_init: GM BufferManager is initialized from workspace and statically asserts BufferType::GM.
+    allocation: AllocBuffer returns Buffer<bufferType, syncType> at the current offset and increments offset by size.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer_manager.h:26
+
+event_policy:
+  hard_events:
+    L1: {producer_to_consumer: MTE2_MTE1, consumer_to_producer: MTE1_MTE2}
+    L0A: {producer_to_consumer: MTE1_M, consumer_to_producer: M_MTE1}
+    L0B: {producer_to_consumer: MTE1_M, consumer_to_producer: M_MTE1}
+    L0C: {producer_to_consumer: M_FIX, consumer_to_producer: FIX_M}
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:52
+  inner_core_sync:
+    init: Allocates producer-to-consumer and consumer-to-producer event IDs and pre-sets the consumer-to-producer flag.
+    wait: Waits on EventP2C for producer completion or EventC2P for consumer completion.
+    set: Sets EventP2C for produced data or EventC2P for consumed data.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:120
+  sync_types:
+    values: [NO_SYNC, INNER_CORE_SYNC, CROSS_CORE_SYNC_FORWARD, CROSS_CORE_SYNC_BOTH]
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:39
+
+buffer_policies:
+  single_buffer:
+    class: BuffersPolicySingleBuffer
+    behavior: Allocates one buffer, initializes it, and returns the same buffer for Get, GetPre, and GetReused.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:26
+  double_buffer:
+    class: BuffersPolicyDB
+    behavior: Present as the common double-buffer policy used by matmul L0A/L0B paths.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:56
+    usage_evidence:
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:451
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:452
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:519
+      - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:520
+  triple_buffer:
+    class: BuffersPolicy3buff
+    buffer_count: 3
+    behavior: Allocates buffers a, b, and c and rotates Get across them; separate GetVec and GetCube cursors support mixcore access.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:126
+  four_buffer:
+    class: BuffersPolicy4buff
+    buffer_count: 4
+    behavior: Allocates buffers a through d; Get indexes by id modulo 4 and queue cursors support Get, GetReused, and GetFree.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:223
+  matrix_2x2:
+    class: Matrix2x2BufferPolicy
+    buffer_count: 4
+    behavior: Allocates M0K0, M0K1, M1K0, and M1K1 buffers with row-first memory naming and column-first allocation/use/free traversal.
+    m_extent: Runtime mExtent may be 1 or 2.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:293
+
+cross_core_sync:
+  constants:
+    aiv0_aiv1_offset: {value: 16, evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:28}
+    invalid_cross_core_event_id: {value: 16, evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:46}
+    cross_core_sync_mode: {value: 4, evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:47}
+  id_assignment:
+    forward: CROSS_CORE_SYNC_FORWARD assigns id0 and invalidates id1.
+    both: CROSS_CORE_SYNC_BOTH assigns both id0 and id1.
+    otherwise: Other sync types use invalid IDs for both id0 and id1.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:110
+  ub_or_gm:
+    role: AIC is producer and AIV is consumer.
+    wait: AIC waits on PIPE_FIX for id1 and id1 plus AIV0_AIV1_OFFSET; AIV waits on PIPE_V for id0.
+    set: AIC sets PIPE_FIX for id0 and id0 plus AIV0_AIV1_OFFSET; AIV sets PIPE_V for id1.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:172
+  l1:
+    role: AIC is consumer and AIV is producer.
+    wait: AIC waits on PIPE_MTE1 for id0 and id0 plus AIV0_AIV1_OFFSET; AIV waits on PIPE_MTE3 id1 only for CROSS_CORE_SYNC_BOTH.
+    set: AIC sets PIPE_MTE1 id1 and id1 plus AIV0_AIV1_OFFSET only for CROSS_CORE_SYNC_BOTH; AIV sets PIPE_MTE3 id0.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:180
+
+matmul_unit_flags:
+  constants:
+    UNITFLAG_DISABLE: {value: 0, evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:21}
+    UNITFLAG_ENABLE: {value: 2, evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:22}
+    UNITFLAG_EN_OUTER_LAST: {value: 3, evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:23}
+  mm_param:
+    fields: [singleM, singleN, singleK, isLeftTranspose, isRightTranspose, cmatrixInitVal, isOutKFisrt, unitFlag, realM]
+    unit_flag_comment: The parameter comment documents 0 as disabled, 2 as enabled, and 3 as enabled with the outer last K loop setting 0b11.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:40
+  matmul_k_behavior:
+    description: In K-split matmul, nonzero param.unitFlag maps to UNITFLAG_ENABLE except when param.unitFlag is UNITFLAG_EN_OUTER_LAST and k is the final K loop, where UNITFLAG_EN_OUTER_LAST is used.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:343
+  matmul_kpp_behavior:
+    description: MatmulKPP applies the same nonzero unitFlag mapping and aligns K split size to FP16_ONE_FRACTAL_ELEMENT.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:517
+
+pipeline_implications:
+  - L1 to L0A/L0B movement is guarded by L0A/L0B M_MTE1 waits before load, MTE1_M sets after load, MTE1_M waits before Mmad, and M_MTE1 sets after Mmad.
+  - MatmulBase dispatches among MatmulK, MatmulN, and MatmulFull based on whether K or N split counts exceed one.
+  - MatmulKPP uses double-buffer L0A/L0B policies and per-K-loop LoadDataToL0A/LoadDataToL0B before Mmad.
+  - Cross-core synchronization differs for UB/GM and L1 because producer/consumer roles are reversed between AIC and AIV.
+
+memory_lifetime_implications:
+  - BufferManager allocation is monotonic by offset and FreeBuffer is empty, so lifetime is policy-scoped rather than individually reclaimed.
+  - Each buffer policy owns Init and Uninit calls for its allocated buffers; DSL lifetime modeling should pair policy allocation count with policy Uninit.
+  - Matrix2x2BufferPolicy models four persistent buffers with traversal state, not transient per-use allocation.
+  - CROSS_CORE_SYNC_BOTH requires two event IDs per Buffer instance while CROSS_CORE_SYNC_FORWARD requires only id0.
+
+source_evidence:
+  rg_commands:
+    - command: rg -n "BufferType|HardEvent|AIV0_AIV1_OFFSET|CROSS_CORE_SYNC_MODE|BufferPolicy|DB|3|4|Matrix2x2|MatmulKPP|UNITFLAG_ENABLE|UNITFLAG_EN_OUTER_LAST|L0A|L0B|L0C|L1|UB|GM" inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer_manager.h inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h
+      result: matched buffer types, hard-event mappings, cross-core constants, buffer policies, Matrix2x2 policy, MatmulKPP, and unitFlag behavior.
+  key_lines:
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:28
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:30
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:47
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:52
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:77
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:102
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h:172
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer_manager.h:26
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:26
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:56
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:126
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:223
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h:293
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:21
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:40
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:343
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:451
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:452
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:517
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:519
+    - inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h:520

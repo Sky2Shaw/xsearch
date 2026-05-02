@@ -6,92 +6,102 @@ function_annotation:
   owner_qualified: null
   owner_template_args: []
   template_params: []
-  variant: unknown
-  stage: unknown
+  variant: host_api
+  stage: host_contiguity
   file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
   line_range:
     start: 221
-    end: 252
-  role: unknown
-  confidence: medium
+    end: 249
+  role: Host-side tensor-list contiguity wrapper that stages element results in order, delegates per-element normalization to ProcessTensorContiguous, and allocates a replacement aclTensorList from the staged vector.
+  confidence: high
+  source_evidence_ids:
+    - SE-HOST-PROCESS-TENSOR-LIST-CONTIGUOUS
+    - SE-HOST-PROCESS-TENSOR-CONTIGUOUS
   code_behavior:
-    summary: unknown
+    summary: Returns null for a null list, otherwise iterates the list, pushes a nullptr marker when the current source element is null, still calls ProcessTensorContiguous on that same loop iteration, and finally allocates a new aclTensorList from the staged vector.
     key_steps:
-    - 'Calls: Size, push_back, ProcessTensorContiguous, CHECK_RET, AllocTensorList, data, size.'
+      - Exits immediately when tensorList itself is null.
+      - Captures tensorList->Size() once and iterates from 0 to size - 1.
+      - Reads each element from the source list and pushes nullptr into the staging vector when the current source element is null.
+      - Calls ProcessTensorContiguous(tensor, executor, tensorListName) for every loop iteration, including iterations where tensor is nullptr.
+      - CHECK_RET requires the ProcessTensorContiguous result to be non-null before appending that result to the staging vector and proceeding to the next element.
+      - Uses executor->AllocTensorList(processedTensorsTmp.data(), processedTensorsTmp.size()) to build the returned list from the staged element pointers collected before any CHECK_RET failure.
   dataflow:
     inputs:
-    - ProcessTensorListContiguous
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - tensorList as the source aclTensorList
+      - executor as the allocator for the returned aclTensorList and the downstream per-element helper
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - a newly allocated aclTensorList built from the staged element pointers, or nullptr on the explicit null-input or CHECK_RET failure paths
     gm:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each element in tensorList
     branches:
-    - if
+      - null-list early return
+      - per-element null staging branch with no continue
+      - CHECK_RET guards after ProcessTensorContiguous and AllocTensorList
   pipeline:
     stages:
-    - unknown
-    - unknown
-    - calls:Size,push_back,ProcessTensorContiguous,CHECK_RET,AllocTensorList,data
-    sync:
-    - unknown
+      - host_api_boundary
+      - tensor_list_contiguity_dispatch
+      - calls ProcessTensorContiguous and AllocTensorList
+    sync: []
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - host-side std::vector<const aclTensor*> staging buffer
+      - aclTensorList descriptor allocated from the staged tensor pointer array
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
-    fields:
-    - unknown
+    fields: []
     shape_assumptions:
-    - 'source line evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:221-252'
+      - The helper preserves source list order by appending staged entries in iteration order before any failure path returns.
+      - Each non-null element inherits whatever metadata policy ProcessTensorContiguous selects for that element.
+      - Null elements are staged once as nullptr, but the current implementation then immediately calls ProcessTensorContiguous(nullptr, ...) and hits the subsequent non-null CHECK_RET failure path.
   workspace:
-    layout:
-    - unknown
-    offsets:
-    - unknown
+    layout: []
+    offsets: []
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Centralize tensor-list input normalization in one host helper instead of duplicating per-element contiguity handling at each callsite.
+    - Reuse the single-tensor contiguity adapter so list handling stays aligned with the per-tensor API contract.
   tunable_or_structural_fields: []
   constraints:
-  - unknown
+    - Preserve the source list order when staging tensor pointers for AllocTensorList.
+    - Keep per-element normalization delegated to ProcessTensorContiguous rather than open-coding a second contiguity policy here.
+    - Keep the observed null-element control flow honest: the function stages nullptr and still falls through to ProcessTensorContiguous plus CHECK_RET on the same iteration.
   risks_if_changed:
-  - unknown
+    - Reordering elements before AllocTensorList would change the semantic pairing between caller list slots and downstream inputs.
+    - Diverging from ProcessTensorContiguous would let list inputs and standalone tensor inputs observe different contiguity rules.
+    - Assuming null slots cleanly continue would hide the current early-failure behavior triggered by CHECK_RET after ProcessTensorContiguous(nullptr, ...).
   possible_dsl_sections:
-  - operator.helpers
+    - operator.helpers
+    - operator.input_tensor_lists
   suggested_dsl_fields:
-  - path: operator.helpers.source_function
-    meaning: Lowering evidence from ProcessTensorListContiguous
-    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:221-252
-    confidence: medium
+    - path: operator.input_tensor_lists.contiguity_adapter
+      meaning: Tensor-list normalization is defined as an ordered host-side staging pass that delegates each element to the single-tensor contiguity helper before allocating a replacement list.
+      source_evidence_ids:
+        - SE-HOST-PROCESS-TENSOR-LIST-CONTIGUOUS
+        - SE-HOST-PROCESS-TENSOR-CONTIGUOUS
+      confidence: high
+    - path: operator.input_tensor_lists.null_slot_behavior
+      meaning: A null list element is first staged as nullptr, then the same iteration still calls ProcessTensorContiguous(nullptr, ...) and the following CHECK_RET makes that path fail rather than cleanly continue.
+      source_evidence_ids:
+        - SE-HOST-PROCESS-TENSOR-LIST-CONTIGUOUS
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this as a host-side list wrapper around ProcessTensorContiguous and AllocTensorList.
+    - Preserve the staged-vector allocation pattern because the helper returns a replacement aclTensorList rather than mutating the source list in place.
+    - Do not model null-element handling as a clean sparse-slot preservation contract without also carrying the current CHECK_RET failure behavior.
+  open_questions: []

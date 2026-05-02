@@ -6,99 +6,90 @@ function_annotation:
   owner_qualified: null
   owner_template_args: []
   template_params: []
-  variant: unknown
-  stage: softmax
+  variant: host_api
+  stage: host_optional_output
   file: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp
   line_range:
     start: 137
     end: 149
-  role: unknown vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
-  confidence: medium
+  role: Host-side optional-output adapter that either forwards the caller-provided softmaxLse tensor or substitutes a synthetic zero-shape placeholder tensor.
+  confidence: high
+  source_evidence_ids:
+    - SE-HOST-PROCESS-SOFTMAX-LSE
   code_behavior:
-    summary: unknown vector stage for softmax, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: When softmaxLseFlag is false, allocates an ACL_FLOAT tensor with shape {0} and binds placeHolder to it; otherwise forwards the incoming softmaxLse pointer unchanged.
     key_steps:
-    - 'Calls: aclCreateTensor, data, size.'
-    - Touches online softmax state or LSE outputs.
+      - Checks softmaxLseFlag before deciding whether the operator should expose a real softmaxLse tensor.
+      - On the disabled path, builds a shape vector containing a single zero extent and passes it to aclCreateTensor with ACL_FLOAT dtype and ND format.
+      - Stores the created placeholder tensor through placeHolder by assigning placeHolder = tempTensor.
+      - On the enabled path, sets placeHolder directly to softmaxLse with no further metadata rewrite.
   dataflow:
     inputs:
-    - AiInfraFusedInferAttentionSinkProcessSoftmaxLse
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - softmaxLseFlag as the host-side optional-output switch
+      - softmaxLse as the caller-provided output tensor when the flag is enabled
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - placeHolder pointing either to softmaxLse or to a synthetic zero-shape ACL_FLOAT tensor
     gm:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     ub:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
-    loops:
-    - unknown
+    loops: []
     branches:
-    - if
-    - else
+      - disabled-output placeholder allocation path
+      - enabled-output forward path
   pipeline:
     stages:
-    - softmax
-    - unknown
-    - calls:aclCreateTensor,data,size
-    sync:
-    - unknown
+      - host_api_boundary
+      - optional_output_binding
+      - calls aclCreateTensor on the disabled-output path
+    sync: []
   memory_behavior:
     buffers:
-    - unknown
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - temporary host-side shape vector {0}
+      - placeholder aclTensor descriptor created when softmaxLseFlag is false
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - unknown
+      - softmaxLseFlag
     shape_assumptions:
-    - 'source line evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:137-149'
+      - The placeholder path always constructs a zero-shape tensor represented as a one-dimensional shape vector containing 0.
+      - The enabled path preserves the caller-provided softmaxLse metadata unchanged.
   workspace:
-    layout:
-    - unknown
-    offsets:
-    - unknown
+    layout: []
+    offsets: []
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve a uniform host call path by always binding placeHolder, even when the logical softmaxLse output is disabled.
+    - Avoid inventing device-side work for a disabled optional output by substituting a zero-shape placeholder descriptor.
   tunable_or_structural_fields: []
   constraints:
-  - unknown
+    - Keep the disabled-output placeholder as ACL_FLOAT with shape {0}.
+    - Preserve direct pointer forwarding to softmaxLse when softmaxLseFlag is true.
+    - Treat this helper strictly as output binding logic; it does not populate softmax values or alter caller-provided softmaxLse metadata.
   risks_if_changed:
-  - unknown
+    - Changing the placeholder dtype or shape could break downstream host logic that expects a zero-shape float sentinel.
+    - Replacing the enabled path with a copied or rewritten tensor would change pointer aliasing and lifetime relative to the caller contract.
+    - Allocating a non-empty placeholder could create unintended storage or validation requirements for a logically disabled output.
   possible_dsl_sections:
-  - pipeline.vector_stages
-  - softmax.online_state
+    - operator.helpers
+    - operator.optional_outputs
   suggested_dsl_fields:
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from AiInfraFusedInferAttentionSinkProcessSoftmaxLse
-    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:137-149
-    confidence: medium
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from AiInfraFusedInferAttentionSinkProcessSoftmaxLse
-    evidence: op_api/aclnn_ai_infra_fused_infer_attention_sink.cpp:137-149
-    confidence: medium
+    - path: operator.optional_outputs.softmax_lse.binding_policy
+      meaning: softmaxLseFlag selects between direct forwarding of softmaxLse and a synthetic zero-shape ACL_FLOAT placeholder tensor.
+      source_evidence_ids:
+        - SE-HOST-PROCESS-SOFTMAX-LSE
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - No additional source-local question identified.
+    - Lower this as host-side optional-output binding, not as a softmax compute stage.
+    - Keep the zero-shape placeholder contract explicit so Stage-2 does not infer a real tensor payload on the disabled path.
+  open_questions: []

@@ -7,7 +7,7 @@ Generated: 2026-05-01T01:46:30.097086+00:00
 - Files scanned: 38
 - Functions indexed: 616
 - Brief annotations: 18
-- Deep annotations: 126
+- Deep annotations: 128
 
 ## Critical Coverage
 
@@ -20,7 +20,7 @@ Generated: 2026-05-01T01:46:30.097086+00:00
 ## Top DSL Sections
 
 1. `pipeline.stage_graph`
-2. `memory.l1_residency`
-3. `mla.nupdate`
-4. `flash_decode.merge`
-5. `workspace.layout`
+2. `mla.nupdate`
+3. `flash_decode.metadata_bridge`
+4. `shape_layout.contract`
+5. `sparse.policy`

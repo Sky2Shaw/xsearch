@@ -1,19 +1,220 @@
+forbidden_transforms_artifact: constraints/forbidden_transforms.yaml
 constraints:
-- id: C-TEMPLATE-IDENTITY
-  description: Same-name stage functions must preserve owner/template identity.
-  evidence: reports/function_index.yaml
-- id: C-GQA-MM2-SYNC
-  description: GQA MM2 must wait syncV1C2 and set syncC2V2 around PV compute.
-  evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1125-1237
-- id: C-MLA-MM2-NUPDATE
-  description: MLA MM2 waits syncV1NupdateC2 before first fixpipe.
-  evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
-- id: C-MLA-NUPDATE-FIRST-LOOP
-  description: ProcessAmlaNupdate returns on first S-inner loop.
-  evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-666
-- id: C-FD-METADATA
-  description: FlashDecode requires AIC/AIV metadata arrays and usedVecNumOfFd bounds.
-  evidence: op_kernel/fia_block_vec_flashdecode_sink.h:438-458
-- id: C-WORKSPACE-MLA-FD
-  description: MLA workspace includes nUpdate/softmaxSum plus FD accumOut/LSE when splitKV is enabled.
-  evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-526
+  - id: C-TEMPLATE-IDENTITY
+    description: Same-name stage functions must preserve canonical_name, owner, owner_qualified, and template identity.
+    evidence: reports/function_index.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-MM2-OWNER-COLLAPSE
+  - id: C-WORKSPACE-CONTIGUOUS-ABI
+    description: Host and kernel must preserve the contiguous normal workspace order mm1 -> vec1 -> mm2 -> vec2 and append FD regions only with synchronized ABI updates.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:373-409
+    source_evidence_ids:
+      - SE-WORKSPACE-NORMAL-SIZE
+      - SE-WORKSPACE-NORMAL-ABI
+      - SE-WORKSPACE-FD-SIZE-NONQUANT
+      - SE-WORKSPACE-FD-SIZE-MLA
+    related_forbidden_transform_ids:
+      - FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+  - id: C-GQA-MM2-SYNC
+    description: GQA MM2 must wait syncV1C2, preserve the V reuse/release guard, and set syncC2V2 around PV compute.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1125-1237
+    source_evidence_ids:
+      - SE-GQA-V-L1-RELEASE
+    related_forbidden_transform_ids:
+      - FT-NO-MM2-OWNER-COLLAPSE
+      - FT-NO-ELIDE-GQA-V-L1-RELEASE
+  - id: C-MLA-MM2-NUPDATE
+    description: MLA MM2 must wait syncV1NupdateC2 before the first fixpipe that consumes corrected data.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
+    source_evidence_ids:
+      - SE-MLA-NUPDATE-BARRIER
+    related_forbidden_transform_ids:
+      - FT-NO-REORDER-MLA-NUPDATE-BARRIER
+  - id: C-MLA-NUPDATE-FIRST-LOOP
+    description: ProcessAmlaNupdate must skip the first S-inner loop and only apply correction on later loops with non-empty M partitions.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-666
+    source_evidence_ids:
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+    related_forbidden_transform_ids:
+      - FT-NO-REORDER-MLA-NUPDATE-BARRIER
+  - id: C-EVENT-ORDER-RUNINFO
+    description: ExecuteTask must preserve current-slot MM1, older-slot Vec1/MM2, and previous-slot Vec2 ordering, and may invalidate a slot only after Vec2 completes.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:882-909
+    source_evidence_ids:
+      - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+      - SE-RUNINFO-THREE-STAGE-RING-MLA
+    related_forbidden_transform_ids:
+      - FT-NO-RUNINFO-STAGE-REORDER
+  - id: C-VEC-UB-ALIGNMENT
+    description: Vec1 and Vec2 must keep 32B-safe mSplitSize rounding and headDimAlign-based workspace stride so UB accesses and copy-out padding remain valid.
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:305-318
+    source_evidence_ids:
+      - SE-VEC1-UB-ALIGNMENT
+      - SE-VEC2-UB-ALIGNMENT
+      - SE-KNOB-HEADDIM-ALIGN
+    related_forbidden_transform_ids:
+      - FT-NO-VEC-TILE-ALIGNMENT-DRIFT
+  - id: C-INVALID-ROW-LSE-CORRECTION
+    description: When sparse or mask rules produce invalid rows, AdjustSoftMaxRes must run before final softmaxLse export on the last S2 loop.
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:356-394
+    source_evidence_ids:
+      - SE-VEC1-SINK-SOFTMAX
+    related_forbidden_transform_ids:
+      - FT-NO-INVALID-ROW-CORRECTION-BYPASS
+  - id: C-VEC2-PARTIAL-RING-SEPARATION
+    description: Vec2 must read the previous preload-slot partial and write the current slot; current and previous vec2ResGm slots must remain distinct.
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:601-662
+    source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+      - SE-KNOB-PRELOAD-NUM
+    related_forbidden_transform_ids:
+      - FT-NO-VEC2-RING-SLOT-COLLAPSE
+  - id: C-FD-METADATA
+    description: FlashDecode requires fdParams metadata arrays that map per-core split-KV ranges plus usedVecNumOfFd bounds.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:731-761
+    source_evidence_ids:
+      - SE-FD-METADATA-PARTITION
+    related_forbidden_transform_ids:
+      - FT-NO-REORDER-FD-MERGE-WEIGHT-FORMULA
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: C-FD-USED-VEC-BOUNDS
+    description: Host SetSplitOutput and kernel FlashDecode readers must agree on usedVecNumOfFd and fdRes array lengths and ordering.
+    evidence: op_host/fia_tiling_nonquant_sink.cpp:331-360
+    source_evidence_ids:
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-FD-METADATA-PARTITION
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: C-WORKSPACE-MLA-FD
+    description: MLA host sizing reserves extra nUpdate and softmaxSum bytes, but current kernel bindings expose nUpdate through normal.mm2 int32 aliasing and no dedicated aMlaSum GM tail.
+    evidence: auxiliary/workspace_cross_reference.yaml
+    source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+      - SE-MLA-MM2-INT32-ALIAS
+      - SE-MLA-AMLASUM-UB-ONLY
+    related_forbidden_transform_ids:
+      - FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+  - id: C-WORKSPACE-MLA-NUPDATE-STUB
+    description: MLA nUpdate budget bytes must be modeled as a host-budget-only stub whose observed runtime consumer is the normal.mm2 mm2ResInt32Gm alias, not a standalone GM tail.
+    evidence: dsl/mla_workspace_tail_contract.yaml
+    source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+      - SE-MLA-MM2-INT32-ALIAS
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+    related_forbidden_transform_ids:
+      - FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+  - id: C-WORKSPACE-MLA-SOFTMAX-SUM-UB
+    description: MLA softmaxSum budget bytes must be modeled as a host-budget-only stub whose observed producer and consumer communicate through aMlaSumUb local UB state.
+    evidence: dsl/mla_workspace_tail_contract.yaml
+    source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+      - SE-MLA-AMLASUM-UB-ONLY
+      - SE-MLA-SOFTMAX-SUM-GEN
+      - SE-MLA-SOFTMAX-SUM-CONSUME
+    related_forbidden_transform_ids:
+      - FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+  - id: C-SHAPE-LAYOUT-CONTRACT
+    description: Host infer-shape, MLA softmaxLse export, and FlashDecode final copy-out must preserve the same canonical layout-family mapping for query axes, attentionOut shapes, and softmaxLse ranks.
+    evidence: dsl/shape_layout_contract.yaml
+    source_evidence_ids:
+      - SE-SHAPE-LAYOUT-CONTRACT
+      - SE-MLA-LSE-LAYOUT-COPY
+      - SE-FD-OUTPUT-LAYOUTS
+      - SE-TEST-INFER-SHAPE-LAYOUTS
+    related_forbidden_transform_ids: []
+  - id: C-SPARSE-POLICY-CONTRACT
+    description: Host maskParams packing and kernel sparse branches must preserve sparseMode, preToken, nextToken, sink adjustments, and isRowInvalid semantics.
+    evidence: dsl/sparse_policy.yaml
+    source_evidence_ids:
+      - SE-SPARSE-MASK-PARAMS
+      - SE-SPARSE-LEFTUP-INVALID-ROW
+      - SE-FD-SPARSE-POLICY
+      - SE-VEC1-SINK-SOFTMAX
+      - SE-TEST-TILING-SINK-CONSTRAINTS
+      - SE-TEST-ST-EAGER-REFERENCE
+    related_forbidden_transform_ids:
+      - FT-NO-INVALID-ROW-CORRECTION-BYPASS
+  - id: C-SPLIT-CORE-FD-BRIDGE
+    description: split_core input params, host SetSplitOutput, and kernel FlashDecode consumers must preserve mBaseSize, s2BaseSize, gS1BaseSizeOfFd, usedVecNumOfFd, and fdRes array ordering.
+    evidence: dsl/flash_decode_metadata_bridge.yaml
+    source_evidence_ids:
+      - SE-SPLIT-CORE-INPUT-PARAMS
+      - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+      - SE-FD-METADATA-PARTITION
+      - SE-FD-METADATA-PARTITION-MLA
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: C-SPLIT-CORE-RANGE-ORDER
+    description: split_core producer output, host bridge copies, and kernel FlashDecode consumers must preserve fdRes array ordering and per-core BN2/GS1/S2 range semantics.
+    evidence: dsl/split_core_range_contract.yaml
+    source_evidence_ids:
+      - SE-SPLIT-CORE-INPUT-PARAMS
+      - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE
+      - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+      - SE-FD-METADATA-PARTITION
+      - SE-FD-METADATA-PARTITION-MLA
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: C-SCALAR-OFFSET-CONSISTENCY
+    description: FD taskOffset prefix sums, preload-slot reload bases, atomic MM2 bases, and headDimAlign padded strides must stay consistent across MLA Vec2, MLA nUpdate, and FlashDecode.
+    evidence: dsl/scalar_offset_contract.yaml
+    source_evidence_ids:
+      - SE-FD-TASK-OFFSET-SCALARS
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+      - SE-MLA-VEC2-NORMALIZE-COPY
+      - SE-KNOB-HEADDIM-ALIGN
+    related_forbidden_transform_ids:
+      - FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+      - FT-NO-VEC2-RING-SLOT-COLLAPSE
+  - id: C-COMMON-SPLIT-CORE-COST-RANGE
+    description: Stage-2 split-core lowering must preserve the common discrete cost model, FA/FD tolerance ratios, sparse/sink/key-sink S2 range shaping, supportFD-gated assignment phases, and FD metadata generation.
+    evidence: common_supplement/split_core_extraction.yaml
+    source_evidence_ids:
+      - SE-COMMON-SPLIT-CORE-CPP
+      - SE-COMMON-SPLIT-CORE-H
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: C-COMMON-SHAPE-LAYOUT-VALIDATION
+    description: Shape validation must use the common ordered layout axis map, derived H=N*D and D derivation rules, NZ {Bn,N,D/D0,Bs,D0} packing with D0=16, and per-axis compare modes including IGNORE_INPUT.
+    evidence: common_supplement/shape_layout_extraction.yaml
+    source_evidence_ids:
+      - SE-COMMON-FIA-TILING-SHAPE-CPP
+      - SE-COMMON-FIA-TILING-SHAPE-H
+      - SE-COMMON-FIA-TILING-INFO-H
+    related_forbidden_transform_ids: []
+  - id: C-COMMON-GM-FORMAT-OFFSET-COPY
+    description: GM copy lowering must derive GmFormat from layout and page-attention state, group offsets by FormatCategory, and preserve ND-to-NZ row count, D extent, source stride, destination NZ C0 stride, int4 divisor, and large-stride fallback behavior.
+    evidence: common_supplement/memory_copy_extraction.yaml
+    source_evidence_ids:
+      - SE-COMMON-MEMORY-COPY-H
+    related_forbidden_transform_ids:
+      - FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+  - id: C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS
+    description: Vector lowering must preserve repeat-stride thresholds, MAX_VALID_LENGTH split reductions with PIPE_V barriers, safe active-token clamping from actual sequence lengths, and sparse-mode-specific invalid-row handling.
+    evidence: common_supplement/vector_common_extraction.yaml
+    source_evidence_ids:
+      - SE-COMMON-VECTOR-COMMON-H
+    related_forbidden_transform_ids:
+      - FT-NO-INVALID-ROW-CORRECTION-BYPASS
+  - id: C-COMMON-BUFFER-EVENT-LEGALITY
+    description: Buffer/event scheduling must preserve BufferType-to-position mappings, hard event pairs, inner-core producer/consumer waits and sets, cross-core event ID legality, policy-owned Init/Uninit, and monotonic BufferManager allocation.
+    evidence: common_supplement/buffer_matmul_extraction.yaml
+    source_evidence_ids:
+      - SE-COMMON-BUFFER-H
+      - SE-COMMON-BUFFER-MANAGER-H
+      - SE-COMMON-BUFFERS-POLICY-H
+      - SE-COMMON-MATMUL-H
+    related_forbidden_transform_ids:
+      - FT-NO-RUNINFO-STAGE-REORDER
+  - id: C-COMMON-MATMUL-UNITFLAG
+    description: Matmul lowering must preserve UNITFLAG_DISABLE=0, UNITFLAG_ENABLE=2, and UNITFLAG_EN_OUTER_LAST=3, including the final-K-loop-only outer-last behavior in K-split and KPP paths.
+    evidence: common_supplement/buffer_matmul_extraction.yaml
+    source_evidence_ids:
+      - SE-COMMON-MATMUL-H
+    related_forbidden_transform_ids: []

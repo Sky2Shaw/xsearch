@@ -5,128 +5,157 @@ function_annotation:
   owner: FiaBlockVecNonQuantMla
   owner_qualified: FiaBlockVecNonQuantMla<FIAT>
   owner_template_args:
-  - FIAT
+    - FIAT
   template_params:
-  - template<typename FIAT>
+    - template<typename FIAT>
   variant: mla
-  stage: vec1
+  stage: mla.vec1
   file: op_kernel/fia_block_vec_nonquant_mla_sink.h
   line_range:
     start: 775
     end: 867
-  role: mla vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
+  role: MLA Vec1 wrapper that partitions the current M range, orchestrates the Vec1 compute and nUpdate apply phases, and on the last S2 loop exports either FD LSE scratch or final softmaxLse.
   confidence: high
+  source_evidence_ids:
+    - SE-KNOB-NBUFFER-MBASE-SIZE
+    - SE-MLA-VEC1-NUPDATE-SYNC
+    - SE-MLA-NUPDATE-FORMULA
+    - SE-MLA-LSE-LAYOUT-COPY
   code_behavior:
-    summary: mla vector stage for vec1, including UB movement, softmax/output handling, or split-KV export when present.
+    summary: Splits the active M range into n-buffer chunks, runs the MLA Vec1 body on each chunk, injects the row-wise nUpdate side channel after MM2 completion, and performs the layout- or FD-specific LSE export on the last S2 loop.
     key_steps:
-    - 'Calls: GetBlockIdx, CrossCoreWaitFlag, ProcessVec1SingleBuf, ProcessAmlaNupdate, ComputeLogSumExpAndCopyToGm.'
-    - Uses DataCopy/DataCopyPad for GM/L1/UB movement.
-    - Coordinates pipeline state with event or cross-core flags.
-    - Touches online softmax state or LSE outputs.
+      - Derives nBufferLoopTimes and nBufferTail from actMBaseSize and nBufferMBaseSize.
+      - Computes vecDealM and vecStartM for each chunk, including the odd-core split when subBlockNum != 1.
+      - Waits syncC1V1, calls ProcessVec1SingleBuf, then signals syncV1C2.
+      - Waits syncC2V1, calls ProcessAmlaNupdate, then signals syncV1NupdateC2.
+      - On the last S2 loop, either exports FD log-sum-exp scratch for split-core FlashDecode or rebuilds totalLseUb, applies invalid-row correction, and exports layout-specific softmaxLse.
   dataflow:
     inputs:
-    - FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
-    - RunInfo/ConstInfo or metadata as visible in signature/body
+      - info.actMBaseSize and current run-state flags
+      - nBufferMBaseSize, subBlockNum, preLoadNum, and sparse/layout flags from constInfo
+      - Vec1 tile data and online-softmax state consumed by ProcessVec1SingleBuf and AmlaVecCompute
     outputs:
-    - stage outputs in GM/UB/L1 according to function body
+      - vec1ResGm through ProcessVec1SingleBuf
+      - mm2ResInt32Gm correction through ProcessAmlaNupdate
+      - FD LSE scratch through ComputeLogSumExpAndCopyToGm when split-core FD is active
+      - softmaxLseGm through CopySoftmaxLseToGmByLayout on non-FD last-S2 paths
     gm:
       reads:
-      - GM tensors referenced in function body
+        - actualSeqLengthsGmQ and qActSeqLensParser through LSE export helpers
       writes:
-      - DataCopy/Fixpipe destinations visible in body
+        - vec1ResGm through ProcessVec1SingleBuf
+        - mm2ResInt32Gm through ProcessAmlaNupdate
+        - softmaxLseGm through CopySoftmaxLseToGmByLayout
+        - FD LSE scratch through ComputeLogSumExpAndCopyToGm
     ub:
       reads:
-      - LocalTensor/UB operands
+        - tmpBuff1 softmax workspaces
+        - softmaxSumUb and softmaxMaxUb current preload slot
       writes:
-      - LocalTensor/UB temporaries
+        - totalLseUb and optional lseSum/lseMax expansion buffers
+        - outputBuff2 reused for nUpdate or LSE cast staging
     l1:
-      reads:
-      - unknown
-      writes:
-      - unknown
+      reads: []
+      writes: []
     l0:
-      l0a:
-      - unknown
-      l0b:
-      - unknown
-      l0c:
-      - unknown
+      l0a: []
+      l0b: []
+      l0c: []
   control_flow:
     loops:
-    - for
+      - for each n-buffer M chunk
     branches:
-    - if
-    - else
+      - subBlockNum == 1 special case
+      - odd-core split branch via GetBlockIdx() % 2
+      - info.isLastS2Loop gate
+      - info.tndIsS2SplitCore and FLASH_DECODE export branch
+      - constInfo.softmaxLseFlag branch
+      - invalid-row correction branch
   pipeline:
     stages:
-    - vec1
-    - mla
-    - calls:GetBlockIdx,CrossCoreWaitFlag,ProcessVec1SingleBuf,ProcessAmlaNupdate,ComputeLogSumExpAndCopyToGm
+      - mla.vec1
+      - mla.nupdate.apply
+      - softmax.lse_export
     sync:
-    - WaitFlag
-    - SetFlag
-    - CrossCoreWaitFlag
-    - CrossCoreSetFlag
+      - CrossCoreWaitFlag(syncC1V1)
+      - CrossCoreSetFlag(syncV1C2)
+      - CrossCoreWaitFlag(syncC2V1)
+      - CrossCoreSetFlag(syncV1NupdateC2)
+      - WaitFlag / SetFlag around outputBuff2 during final LSE export
   memory_behavior:
     buffers:
-    - LocalTensor
-    - mm2ResGm
-    l1_residency:
-    - unknown
-    l1_partition:
-    - unknown
+      - tmpBuff1
+      - outputBuff2
+      - softmaxSumUb
+      - softmaxMaxUb
+    l1_residency: []
+    l1_partition: []
   tiling_and_shape:
     fields:
-    - nBufferMBaseSize
-    - preLoadNum
+      - nBufferMBaseSize
+      - preLoadNum
+      - subBlockNum
+      - qHeadNum
+      - gSize
+      - qSeqSize
     shape_assumptions:
-    - 'source line evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867'
+      - vecDealM is either the whole n-buffer chunk or a half-chunk rounded to 16-row alignment depending on subBlockNum and core parity.
+      - Non-FD softmaxLse export uses the same query layout family normalization as the host infer-shape contract.
   workspace:
     layout:
-    - workspace region or GM temporary referenced
+      - outputBuff2 alternates between nUpdate staging and final LSE cast staging
+      - FD split-core export writes to dedicated LSE scratch, while non-FD export writes to softmaxLseGm
     offsets:
-    - tmpBuff1.GetWithOffset<COMPUTE_T>(LSE_TMP_BUFFER_SIZE, LSE_TMP_BUFFER_SIZE);
-    - tmpBuff1.GetWithOffset<COMPUTE_T>(LSE_TMP_BUFFER_SIZE, LSE_TMP_BUFFER_SIZE * 2);
-    - uint32_t mOffset = info.gS1Idx + mSplitInfo.nBufferStartM + mSplitInfo.vecStartM;
-    - CopySoftmaxLseToGmByLayout(info, tmpLseResCastTensor, mOffset, mSplitInfo);
+      - mOffset = gS1Idx + nBufferStartM + vecStartM for non-FD softmaxLse export
+      - totalLseUb lives in tmpBuff1, with optional lseSumUb and lseMaxUb at successive LSE_TMP_BUFFER_SIZE offsets
   optimization_intent:
-  - Stage-specific tiling and buffer reuse reduce GM/L1 traffic.
-  - Explicit synchronization exposes producer/consumer lifetime.
+    - Preserve the exact Vec1 -> nUpdate -> LSE-export ordering so MM2 and FD consumers observe consistent state without extra GM passes.
   tunable_or_structural_fields:
-  - name: preLoadNum
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867
-  - name: nBufferMBaseSize
-    role: shape, stride, or pipeline structural field
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867
+    - name: nBufferMBaseSize
+      role: Governs the outer M partitioning shared by MLA Vec1 and Vec2 wrappers.
+      source_evidence_ids:
+        - SE-KNOB-NBUFFER-MBASE-SIZE
+    - name: preLoadNum
+      role: Selects the current softmax state slot and gates FD preload behavior.
+      source_evidence_ids:
+        - SE-KNOB-PRELOAD-NUM
+        - SE-MLA-NUPDATE-FORMULA
   constraints:
-  - Event wait/set ordering is part of correctness, not only performance.
+    - Vec1 must signal syncV1C2 before waiting for syncC2V1 and applying nUpdate.
+    - nUpdate apply must happen before syncV1NupdateC2 is emitted to MM2.
+    - Invalid-row adjustment must happen before non-FD softmaxLse export on the last S2 loop.
+    - The odd-core vecStartM / vecDealM split must remain consistent with the MLA sub-block scheduling contract.
   risks_if_changed:
-  - Missing event release can stall producer/consumer queues.
+    - Reordering the sync edges can make MM2 miss the MLA correction or deadlock waiting for a signal that was moved.
+    - Breaking vecDealM partitioning can duplicate or drop rows on odd cores.
+    - Skipping invalid-row adjustment changes the semantics of final softmaxLse.
   possible_dsl_sections:
-  - mla.nupdate
-  - mla.shape_contract
-  - pipeline.vector_stages
-  - softmax.online_state
+    - pipeline.vector_stages
+    - mla.nupdate
+    - shape_layout.contract
+    - flash_decode.merge
   suggested_dsl_fields:
-  - path: mla.nupdate.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867
-    confidence: high
-  - path: mla.shape_contract.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867
-    confidence: high
-  - path: pipeline.vector_stages.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867
-    confidence: high
-  - path: softmax.online_state.source_function
-    meaning: Lowering evidence from FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
-    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:775-867
-    confidence: high
+    - path: pipeline.vector_stages.mla_vec1_nbuffer_partition
+      meaning: MLA Vec1 partitions each n-buffer chunk into vecStartM and vecDealM according to subBlockNum and core parity.
+      source_evidence_ids:
+        - SE-KNOB-NBUFFER-MBASE-SIZE
+      confidence: high
+    - path: mla.nupdate.mm2_sync
+      meaning: Vec1 emits syncV1NupdateC2 only after ProcessAmlaNupdate completes for the current chunk.
+      source_evidence_ids:
+        - SE-MLA-VEC1-NUPDATE-SYNC
+      confidence: high
+    - path: flash_decode.merge.lse_export_policy
+      meaning: Last-S2 Vec1 exports FD log-sum-exp scratch only on split-core FlashDecode paths and otherwise writes final softmaxLse.
+      source_evidence_ids:
+        - SE-MLA-VEC1-NUPDATE-SYNC
+      confidence: high
+    - path: shape_layout.softmax_lse_layouts
+      meaning: Non-FD last-S2 export uses the layout adapter captured by CopySoftmaxLseToGmByLayout.
+      source_evidence_ids:
+        - SE-MLA-LSE-LAYOUT-COPY
+        - SE-SHAPE-LAYOUT-CONTRACT
+      confidence: high
   lowering_hints:
-  - Preserve owner/template identity when lowering same-named stage functions.
-  - Treat synchronization and workspace offsets as part of the stage contract.
-  open_questions:
-  - unknown
+    - Lower this wrapper as the MLA Vec1 orchestration rule; separating the partition logic, nUpdate handshake, and final LSE export loses the stage contract.
+  open_questions: []
