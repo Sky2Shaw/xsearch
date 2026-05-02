@@ -269,6 +269,20 @@ class PrepareNextRoundTests(unittest.TestCase):
             self.assertIn("source_root", result.stderr)
             self.assertFalse((loop_root / "round_002").exists())
 
+    def test_malformed_source_root_returns_2_without_creating_next_round(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir))
+            manifest_path = loop_root / "run_manifest.yaml"
+            manifest = load_json(manifest_path)
+            manifest["source_root"] = 123
+            write_json(manifest_path, manifest)
+
+            result = run_prepare(loop_root)
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("source_root", result.stderr)
+            self.assertFalse((loop_root / "round_002").exists())
+
     def test_malformed_rounds_returns_2_without_creating_next_round(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             loop_root = make_loop(Path(tmpdir))

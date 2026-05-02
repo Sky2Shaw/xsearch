@@ -47,9 +47,11 @@ def main(argv=None):
         return 2
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if "source_root" not in manifest:
-        print("source_root is required", file=sys.stderr)
+    source_root = manifest.get("source_root")
+    if not isinstance(source_root, str) or not source_root.strip():
+        print("source_root must be a non-empty string", file=sys.stderr)
         return 2
+    source_root = str(absolute_path(source_root))
 
     rounds = manifest.get("rounds")
     if not isinstance(rounds, list):
@@ -107,7 +109,7 @@ def main(argv=None):
         "run_id": manifest.get("run_id"),
         "from_round": args.from_round,
         "to_round": args.to_round,
-        "source_root": str(absolute_path(manifest["source_root"])),
+        "source_root": source_root,
         "previous_artifact_root": str(previous_artifact_root),
         "output_artifact_root": str(output_artifact_root),
         "copy_mode": copy_mode,
