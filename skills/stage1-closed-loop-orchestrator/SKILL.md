@@ -17,8 +17,8 @@ Each extractor round must run in a fresh extractor subagent. Each scorer round m
 
 - Source root.
 - Extraction artifact root.
-- `stage1_review/evidence_pack.yaml`.
-- `stage1_review/source_spot_check_plan.yaml`.
+- `<review_dir>/evidence_pack.yaml`.
+- `<review_dir>/source_spot_check_plan.yaml`.
 - High-value artifact files and targeted source snippets selected by scorer.
 
 ## Allowed Extractor Inputs After Round 1
@@ -47,16 +47,21 @@ Each extractor round must run in a fresh extractor subagent. Each scorer round m
 ## Defaults
 
 - Default loop root: `<source_root>/.xperf_atdsl_loop/`
+- Default round directory: `<loop_root>/round_NNN/`
+- Default review directory: `<loop_root>/round_NNN/review/`
 - Default max rounds: `3`
 - Default terminal readiness: `READY_FOR_STAGE2`
 
-## Script Commands
+## Helper Script Entrypoints
+
+These commands are part of the completed orchestrator skill. During implementation, do not invoke a listed script until that script file exists. This is a temporary documentation safety note until later tasks add scripts.
 
 ```bash
 python3 scripts/init_loop.py --source-root <source_root>
 python3 scripts/prepare_next_round.py --loop-root <loop_root> --from-round 1 --to-round 2
 python3 scripts/sanitize_review_findings.py --review-dir <review_dir> --output <reextraction_request.yaml>
 python3 scripts/check_stop_conditions.py --loop-root <loop_root> --current-round <round>
+python3 skills/stage1-artifact-scorer/scripts/prepare_review_context.py --input <loop_root>/round_001/extraction --output <loop_root>/round_001/review --source-root <source_root>
 ```
 
 Scripts do not run model judgement. The parent Codex agent dispatches extractor and scorer subagents.

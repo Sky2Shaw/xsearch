@@ -52,8 +52,8 @@ Allowed inputs:
 
 - Source root.
 - Extraction artifact root.
-- `stage1_review/evidence_pack.yaml`.
-- `stage1_review/source_spot_check_plan.yaml`.
+- `<review_dir>/evidence_pack.yaml`.
+- `<review_dir>/source_spot_check_plan.yaml`.
 - High-value artifact files and targeted source snippets selected by scorer.
 
 Forbidden inputs:
@@ -63,6 +63,12 @@ Forbidden inputs:
 - Extractor hidden or long-form rationale.
 - Orchestrator opinions about artifact quality.
 - Prior scorer hidden reasoning traces.
-- Prior scorer conversation unless explicitly part of structured review artifacts.
+- prior scorer conversation.
+- Prior score reports.
+- Prior scorecards.
+- Prior round summaries.
+- Any hidden rationale.
 
-Produce structured scorer outputs, including `scorecard.yaml`, `blocking_findings.yaml`, `missing_patterns.yaml`, and `stage2_readiness.yaml`.
+Produce structured scorer outputs in `<review_dir>/`, including `scorecard.yaml`, `blocking_findings.yaml`, `missing_patterns.yaml`, and `stage2_readiness.yaml`.
+
+Only the parent orchestrator compares prior scorecards and prior round summaries outside scorer context.

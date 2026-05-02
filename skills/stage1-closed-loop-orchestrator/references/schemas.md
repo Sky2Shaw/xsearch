@@ -15,9 +15,9 @@ copy_mode: "copy"
 created_at: "2026-05-02T12:00:00Z"
 rounds:
   - round: 1
-    round_dir: "/absolute/path/to/source/.xperf_atdsl_loop/rounds/1"
-    extraction_dir: "/absolute/path/to/source/.xperf_atdsl_loop/rounds/1/extraction"
-    review_dir: "/absolute/path/to/source/.xperf_atdsl_loop/rounds/1/stage1_review"
+    round_dir: "/absolute/path/to/source/.xperf_atdsl_loop/round_001"
+    extraction_dir: "/absolute/path/to/source/.xperf_atdsl_loop/round_001/extraction"
+    review_dir: "/absolute/path/to/source/.xperf_atdsl_loop/round_001/review"
     status: "continue"
 ```
 
@@ -39,8 +39,8 @@ reextraction_request:
   run_id: "stage1-loop-20260502T120000Z"
   round: 2
   source_root: "/absolute/path/to/source"
-  previous_artifact_root: "/absolute/path/to/source/.xperf_atdsl_loop/rounds/1/extraction"
-  output_artifact_root: "/absolute/path/to/source/.xperf_atdsl_loop/rounds/2/extraction"
+  previous_artifact_root: "/absolute/path/to/source/.xperf_atdsl_loop/round_001/extraction"
+  output_artifact_root: "/absolute/path/to/source/.xperf_atdsl_loop/round_002/extraction"
   required_fixes:
     - id: "BF-001"
       severity: "critical"
@@ -87,7 +87,7 @@ round_summary:
   run_id: "stage1-loop-20260502T120000Z"
   round: 1
   status: "continue"
-  readiness: "NOT_READY_FOR_STAGE2"
+  readiness: "NEEDS_REEXTRACTION"
   total_score: 0.72
   gates_passed: false
   blocker_count: 1
@@ -95,6 +95,13 @@ round_summary:
     - "BF-001"
   next_action: "sanitize_review_findings"
 ```
+
+Allowed `readiness` values:
+
+- `READY_FOR_STAGE2`
+- `READY_WITH_FIXES`
+- `NEEDS_REEXTRACTION`
+- `NOT_USABLE`
 
 Allowed `status` values:
 

@@ -34,8 +34,8 @@ Allowed scorer inputs:
 
 - Source root.
 - Extraction artifact root.
-- `stage1_review/evidence_pack.yaml`.
-- `stage1_review/source_spot_check_plan.yaml`.
+- `<review_dir>/evidence_pack.yaml`.
+- `<review_dir>/source_spot_check_plan.yaml`.
 - High-value artifact files and targeted source snippets selected by scorer.
 
 Forbidden scorer inputs:
@@ -43,17 +43,24 @@ Forbidden scorer inputs:
 - Extractor conversation.
 - Extractor self-justification.
 - Orchestrator opinions about artifact quality.
-- Prior scorer hidden reasoning traces.
 - Extractor hidden or long-form rationale.
+- prior scorer conversation.
+- Prior scorer hidden reasoning traces.
+- Prior score reports.
+- Prior scorecards.
+- Prior round summaries.
+- Any hidden rationale.
+
+Only the parent orchestrator may compare prior scorecards and prior round summaries outside scorer context.
 
 ## Sanitizer Rules
 
 The sanitizer may read:
 
-- `scorecard.yaml`.
-- `blocking_findings.yaml`.
-- `missing_patterns.yaml`.
-- `stage2_readiness.yaml`.
+- `<review_dir>/scorecard.yaml`.
+- `<review_dir>/blocking_findings.yaml`.
+- `<review_dir>/missing_patterns.yaml`.
+- `<review_dir>/stage2_readiness.yaml`.
 
 The sanitizer must emit narrow, structured fix requests. It must not copy Markdown rationale, hidden reasoning, or prose recommendations. It must not include scorer conversation, scorer reasoning traces, or broad advice for the extractor.
 
