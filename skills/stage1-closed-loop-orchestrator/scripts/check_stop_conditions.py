@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_SUCCESS_SCORE_THRESHOLD = 85
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check Stage 1 loop stop conditions")
     parser.add_argument("--loop-root", required=True)
@@ -80,6 +83,25 @@ def score_total(scorecard: dict[str, Any]) -> int:
         return 0
 
 
+def success_score_threshold(manifest: dict[str, Any]) -> int:
+    try:
+        threshold = int(manifest.get("success_score_threshold", DEFAULT_SUCCESS_SCORE_THRESHOLD))
+    except (TypeError, ValueError):
+        return DEFAULT_SUCCESS_SCORE_THRESHOLD
+    if threshold < 0 or threshold > 100:
+        return DEFAULT_SUCCESS_SCORE_THRESHOLD
+    return threshold
+
+
+def previous_score_meets_threshold(
+    loop_root: Path, current_round: int, threshold: int
+) -> bool:
+    if current_round < 2:
+        return False
+    previous_score = load_score(loop_root, current_round - 1)
+    return score_total(previous_score) >= threshold
+
+
 def no_improvement(
     loop_root: Path,
     current_round: int,
@@ -110,6 +132,11 @@ def build_summary(loop_root: Path, current_round: int, manifest: dict[str, Any])
     readiness = str(scorecard.get("readiness", "UNKNOWN"))
     total = score_total(scorecard)
     passed = gates_passed(scorecard)
+    threshold = success_score_threshold(manifest)
+    current_meets_threshold = total >= threshold
+    previous_meets_threshold = previous_score_meets_threshold(
+        loop_root, current_round, threshold
+    )
     acceptable = set(manifest.get("acceptable_readiness") or ["READY_FOR_STAGE2"])
     try:
         max_rounds = int(manifest.get("max_rounds", 3))
@@ -119,9 +146,16 @@ def build_summary(loop_root: Path, current_round: int, manifest: dict[str, Any])
     if source_unavailable(loop_root, current_round):
         status = "source_unavailable"
         next_action = "Stop and provide source files or source-root configuration."
-    elif passed and readiness in acceptable:
+    elif (
+        passed
+        and readiness in acceptable
+        and current_meets_threshold
+        and previous_meets_threshold
+    ):
         status = "success"
-        next_action = "Stop; artifacts are ready according to configured gates."
+        next_action = (
+            "Stop; two consecutive scorecards meet the configured success threshold."
+        )
     elif current_round >= max_rounds:
         status = "max_rounds_reached"
         next_action = "Stop and request human review of unresolved blockers."
@@ -144,6 +178,9 @@ def build_summary(loop_root: Path, current_round: int, manifest: dict[str, Any])
             "status": status,
             "readiness": readiness,
             "total_score": total,
+            "success_score_threshold": threshold,
+            "current_score_meets_threshold": current_meets_threshold,
+            "previous_score_meets_threshold": previous_meets_threshold,
             "gates_passed": passed,
             "blocker_count": len(blockers),
             "unresolved_blockers": blockers,
@@ -165,6 +202,13 @@ def write_final_readiness(loop_root: Path, summary: dict[str, Any]) -> None:
                 "status": round_summary["status"],
                 "readiness": round_summary["readiness"],
                 "total_score": round_summary["total_score"],
+                "success_score_threshold": round_summary["success_score_threshold"],
+                "current_score_meets_threshold": round_summary[
+                    "current_score_meets_threshold"
+                ],
+                "previous_score_meets_threshold": round_summary[
+                    "previous_score_meets_threshold"
+                ],
                 "gates_passed": round_summary["gates_passed"],
                 "unresolved_blockers": round_summary["unresolved_blockers"],
                 "human_review_needed": round_summary["status"] not in {"success"},

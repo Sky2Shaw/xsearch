@@ -9,6 +9,7 @@ run_id: "stage1-loop-20260502T120000Z"
 source_root: "/absolute/path/to/source"
 loop_root: "/absolute/path/to/source/.xperf_atdsl_loop"
 max_rounds: 3
+success_score_threshold: 85
 acceptable_readiness:
   - "READY_FOR_STAGE2"
 copy_mode: "copy"
@@ -27,6 +28,7 @@ Fields:
 - `source_root`: Absolute path to the source under review.
 - `loop_root`: Absolute path to the loop directory.
 - `max_rounds`: Maximum number of extraction/scoring rounds.
+- `success_score_threshold`: Integer score threshold for terminal success. The loop requires two consecutive scorecards at or above this value.
 - `acceptable_readiness`: List of readiness values accepted as terminal success, usually containing `READY_FOR_STAGE2`.
 - `copy_mode`: Artifact handling mode, such as `copy` or `reference`.
 - `created_at`: ISO-8601 timestamp.
@@ -88,7 +90,10 @@ round_summary:
   round: 1
   status: "continue"
   readiness: "NEEDS_REEXTRACTION"
-  total_score: 0.72
+  total_score: 72
+  success_score_threshold: 85
+  current_score_meets_threshold: false
+  previous_score_meets_threshold: false
   gates_passed: false
   blocker_count: 1
   unresolved_blockers:

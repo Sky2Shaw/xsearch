@@ -39,4 +39,13 @@ If isolated subagent dispatch is unavailable, stop and ask the user to rerun in 
 
 ## Stop Policy
 
-Stop successfully when gates pass and readiness is acceptable. Stop unsuccessfully on max rounds, stalled improvement, repeated critical blocker, source unavailable, or persistent contradiction.
+Stop successfully only when all of these are true:
+
+- Current gates pass.
+- Current readiness is in `acceptable_readiness`.
+- Current `scorecard.total` is at or above `success_score_threshold`.
+- The immediately previous round's `scorecard.total` is also at or above `success_score_threshold`.
+
+The scorer does not receive prior scorecards. Only the parent orchestrator reads previous scorecards when running `check_stop_conditions.py`.
+
+Stop unsuccessfully on max rounds, stalled improvement, repeated critical blocker, source unavailable, or persistent contradiction.

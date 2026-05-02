@@ -8,6 +8,7 @@ from uuid import uuid4
 
 
 DEFAULT_ACCEPTABLE_READINESS = ["READY_FOR_STAGE2"]
+DEFAULT_SUCCESS_SCORE_THRESHOLD = 85
 
 
 def parse_args(argv):
@@ -17,6 +18,9 @@ def parse_args(argv):
     parser.add_argument("--source-root", required=True)
     parser.add_argument("--loop-root")
     parser.add_argument("--max-rounds", type=int, default=3)
+    parser.add_argument(
+        "--success-score-threshold", type=int, default=DEFAULT_SUCCESS_SCORE_THRESHOLD
+    )
     parser.add_argument("--acceptable-readiness", action="append", default=None)
     parser.add_argument("--copy-mode", choices=("copy", "reference"), default="copy")
     return parser.parse_args(argv)
@@ -32,6 +36,9 @@ def main(argv=None):
 
     if args.max_rounds < 1:
         print("max rounds must be at least 1", file=sys.stderr)
+        return 2
+    if args.success_score_threshold < 0 or args.success_score_threshold > 100:
+        print("success score threshold must be between 0 and 100", file=sys.stderr)
         return 2
 
     loop_root = (
@@ -50,6 +57,7 @@ def main(argv=None):
         "source_root": str(source_root),
         "loop_root": str(loop_root),
         "max_rounds": args.max_rounds,
+        "success_score_threshold": args.success_score_threshold,
         "acceptable_readiness": args.acceptable_readiness
         or DEFAULT_ACCEPTABLE_READINESS,
         "copy_mode": args.copy_mode,

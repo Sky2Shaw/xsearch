@@ -45,6 +45,7 @@ class InitLoopTests(unittest.TestCase):
             self.assertEqual(manifest["source_root"], str(source.resolve()))
             self.assertEqual(manifest["loop_root"], str(loop_root))
             self.assertEqual(manifest["max_rounds"], 4)
+            self.assertEqual(manifest["success_score_threshold"], 85)
             self.assertEqual(manifest["acceptable_readiness"], ["READY_FOR_STAGE2"])
             self.assertEqual(manifest["copy_mode"], "copy")
             created_at = datetime.fromisoformat(manifest["created_at"])
@@ -90,6 +91,51 @@ class InitLoopTests(unittest.TestCase):
             self.assertEqual(manifest["rounds"][0]["round_dir"], str(round_dir))
             self.assertEqual(manifest["rounds"][0]["extraction_dir"], str(round_dir / "extraction"))
             self.assertEqual(manifest["rounds"][0]["review_dir"], str(round_dir / "review"))
+
+    def test_accepts_custom_success_score_threshold(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "source"
+            source.mkdir()
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--source-root",
+                    str(source),
+                    "--success-score-threshold",
+                    "92",
+                ],
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            stdout = json.loads(result.stdout)
+            manifest_path = Path(stdout["manifest"])
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["success_score_threshold"], 92)
+
+    def test_rejects_out_of_range_success_score_threshold(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "source"
+            source.mkdir()
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--source-root",
+                    str(source),
+                    "--success-score-threshold",
+                    "101",
+                ],
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("success score threshold must be between 0 and 100", result.stderr)
 
     def test_rejects_missing_source_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:

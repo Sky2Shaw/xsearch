@@ -20,7 +20,9 @@ def load_json(path: Path):
 
 
 class CheckStopConditionsTests(unittest.TestCase):
-    def make_loop(self, root: Path, max_rounds: int = 3) -> Path:
+    def make_loop(
+        self, root: Path, max_rounds: int = 3, success_score_threshold: int = 85
+    ) -> Path:
         loop_root = root / ".xperf_atdsl_loop"
         write_json(
             loop_root / "run_manifest.yaml",
@@ -29,6 +31,7 @@ class CheckStopConditionsTests(unittest.TestCase):
                 "source_root": str(root / "operator"),
                 "loop_root": str(loop_root),
                 "max_rounds": max_rounds,
+                "success_score_threshold": success_score_threshold,
                 "acceptable_readiness": ["READY_FOR_STAGE2"],
                 "rounds": [
                     {
@@ -90,7 +93,7 @@ class CheckStopConditionsTests(unittest.TestCase):
             stderr=subprocess.PIPE,
         )
 
-    def test_success_when_ready_and_gates_pass(self):
+    def test_first_passing_score_does_not_terminate_success(self):
         with TemporaryDirectory() as td:
             loop_root = self.make_loop(Path(td))
             self.write_score(loop_root, 1, 91, "READY_FOR_STAGE2", True, [])
@@ -101,10 +104,63 @@ class CheckStopConditionsTests(unittest.TestCase):
             summary = load_json(loop_root / "round_001" / "round_summary.yaml")[
                 "round_summary"
             ]
-            self.assertEqual(summary["status"], "success")
+            self.assertEqual(summary["status"], "continue")
             self.assertTrue(summary["gates_passed"])
+            self.assertEqual(summary["success_score_threshold"], 85)
+            self.assertTrue(summary["current_score_meets_threshold"])
+            self.assertFalse(summary["previous_score_meets_threshold"])
+            self.assertFalse((loop_root / "final_readiness.yaml").exists())
+
+    def test_success_requires_two_consecutive_passing_scores(self):
+        with TemporaryDirectory() as td:
+            loop_root = self.make_loop(Path(td))
+            self.write_score(loop_root, 1, 90, "READY_FOR_STAGE2", True, [])
+            self.write_score(loop_root, 2, 91, "READY_FOR_STAGE2", True, [])
+
+            result = self.run_script(loop_root, 2)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = load_json(loop_root / "round_002" / "round_summary.yaml")[
+                "round_summary"
+            ]
+            self.assertEqual(summary["status"], "success")
+            self.assertTrue(summary["current_score_meets_threshold"])
+            self.assertTrue(summary["previous_score_meets_threshold"])
             final = load_json(loop_root / "final_readiness.yaml")["final_readiness"]
             self.assertEqual(final["status"], "success")
+
+    def test_current_score_over_threshold_continues_when_previous_score_was_low(self):
+        with TemporaryDirectory() as td:
+            loop_root = self.make_loop(Path(td))
+            self.write_score(loop_root, 1, 84, "READY_FOR_STAGE2", True, [])
+            self.write_score(loop_root, 2, 91, "READY_FOR_STAGE2", True, [])
+
+            result = self.run_script(loop_root, 2)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = load_json(loop_root / "round_002" / "round_summary.yaml")[
+                "round_summary"
+            ]
+            self.assertEqual(summary["status"], "continue")
+            self.assertTrue(summary["current_score_meets_threshold"])
+            self.assertFalse(summary["previous_score_meets_threshold"])
+
+    def test_custom_success_score_threshold_controls_success(self):
+        with TemporaryDirectory() as td:
+            loop_root = self.make_loop(Path(td), success_score_threshold=92)
+            self.write_score(loop_root, 1, 91, "READY_FOR_STAGE2", True, [])
+            self.write_score(loop_root, 2, 93, "READY_FOR_STAGE2", True, [])
+
+            result = self.run_script(loop_root, 2)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = load_json(loop_root / "round_002" / "round_summary.yaml")[
+                "round_summary"
+            ]
+            self.assertEqual(summary["status"], "continue")
+            self.assertEqual(summary["success_score_threshold"], 92)
+            self.assertTrue(summary["current_score_meets_threshold"])
+            self.assertFalse(summary["previous_score_meets_threshold"])
 
     def test_no_improvement_after_two_rounds(self):
         with TemporaryDirectory() as td:
@@ -189,12 +245,13 @@ class CheckStopConditionsTests(unittest.TestCase):
             manifest = load_json(manifest_path)
             manifest["acceptable_readiness"].append("READY_WITH_FIXES")
             write_json(manifest_path, manifest)
-            self.write_score(loop_root, 1, 78, "READY_WITH_FIXES", True, [])
+            self.write_score(loop_root, 1, 86, "READY_WITH_FIXES", True, [])
+            self.write_score(loop_root, 2, 87, "READY_WITH_FIXES", True, [])
 
-            result = self.run_script(loop_root, 1)
+            result = self.run_script(loop_root, 2)
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            summary = load_json(loop_root / "round_001" / "round_summary.yaml")[
+            summary = load_json(loop_root / "round_002" / "round_summary.yaml")[
                 "round_summary"
             ]
             self.assertEqual(summary["status"], "success")

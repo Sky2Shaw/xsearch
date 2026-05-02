@@ -1,6 +1,6 @@
 ---
 name: stage1-closed-loop-orchestrator
-description: Orchestrate isolated Stage 1 extraction and scoring loops for AscendC attention-like operator artifacts. Use when Codex should run extractor and scorer as separate fresh subagents, sanitize review findings into narrow re-extraction requests, and stop when Stage 2 readiness gates pass or the loop stops improving.
+description: Orchestrate isolated Stage 1 extraction and scoring loops for AscendC attention-like operator artifacts. Use when Codex should run extractor and scorer as separate fresh subagents, sanitize review findings into narrow re-extraction requests, and stop when Stage 2 readiness gates and two consecutive score thresholds pass or the loop stops improving.
 ---
 
 # Stage1 Closed-Loop Orchestrator
@@ -51,13 +51,15 @@ Each extractor round must run in a fresh extractor subagent. Each scorer round m
 - Default review directory: `<loop_root>/round_NNN/review/`
 - Default max rounds: `3`
 - Default terminal readiness: `READY_FOR_STAGE2`
+- Default success score threshold: `85`
+- Successful termination requires two consecutive scorecards at or above the configured threshold, with gates passing and readiness acceptable.
 
 ## Helper Script Entrypoints
 
 These commands are part of the completed orchestrator skill. During implementation, do not invoke a listed script until that script file exists. This is a temporary documentation safety note until later tasks add scripts.
 
 ```bash
-python3 scripts/init_loop.py --source-root <source_root>
+python3 scripts/init_loop.py --source-root <source_root> --success-score-threshold 85
 python3 scripts/prepare_next_round.py --loop-root <loop_root> --from-round 1 --to-round 2
 python3 scripts/sanitize_review_findings.py --review-dir <review_dir> --output <reextraction_request.yaml>
 python3 scripts/check_stop_conditions.py --loop-root <loop_root> --current-round <round>
