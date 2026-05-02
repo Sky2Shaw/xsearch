@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import secrets
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 
 DEFAULT_ACCEPTABLE_READINESS = ["READY_FOR_STAGE2"]
@@ -46,7 +46,7 @@ def main(argv=None):
 
     manifest_path = loop_root / "run_manifest.yaml"
     manifest = {
-        "run_id": f"stage1-loop-{secrets.token_hex(6)}",
+        "run_id": f"stage1-loop-{uuid4().hex[:12]}",
         "source_root": str(source_root),
         "loop_root": str(loop_root),
         "max_rounds": args.max_rounds,
