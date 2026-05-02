@@ -51,6 +51,23 @@ def make_loop(root, copy_mode="copy"):
     return loop_root
 
 
+def run_prepare(loop_root):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--loop-root",
+            str(loop_root),
+            "--from-round",
+            "1",
+            "--to-round",
+            "2",
+        ],
+        text=True,
+        capture_output=True,
+    )
+
+
 class PrepareNextRoundTests(unittest.TestCase):
     def test_copy_mode_copies_previous_artifacts_and_updates_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -227,6 +244,86 @@ class PrepareNextRoundTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 2)
             self.assertIn("to-round must be greater", result.stderr)
+
+    def test_invalid_copy_mode_returns_2_without_creating_next_round(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir), copy_mode="mirror")
+
+            result = run_prepare(loop_root)
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("copy_mode", result.stderr)
+            self.assertFalse((loop_root / "round_002").exists())
+
+    def test_missing_source_root_returns_2_without_creating_next_round(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir))
+            manifest_path = loop_root / "run_manifest.yaml"
+            manifest = load_json(manifest_path)
+            del manifest["source_root"]
+            write_json(manifest_path, manifest)
+
+            result = run_prepare(loop_root)
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("source_root", result.stderr)
+            self.assertFalse((loop_root / "round_002").exists())
+
+    def test_malformed_rounds_returns_2_without_creating_next_round(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir))
+            manifest_path = loop_root / "run_manifest.yaml"
+            manifest = load_json(manifest_path)
+            manifest["rounds"] = {"round": 1}
+            write_json(manifest_path, manifest)
+
+            result = run_prepare(loop_root)
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("rounds", result.stderr)
+            self.assertFalse((loop_root / "round_002").exists())
+
+    def test_previous_round_missing_extraction_dir_returns_2_without_creating_next_round(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir))
+            manifest_path = loop_root / "run_manifest.yaml"
+            manifest = load_json(manifest_path)
+            del manifest["rounds"][0]["extraction_dir"]
+            write_json(manifest_path, manifest)
+
+            result = run_prepare(loop_root)
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("extraction_dir", result.stderr)
+            self.assertFalse((loop_root / "round_002").exists())
+
+    def test_rejects_copy_path_overlaps_without_removing_previous_artifacts(self):
+        cases = {
+            "same path": lambda loop_root: loop_root / "round_002" / "extraction",
+            "target inside previous": lambda loop_root: loop_root,
+            "previous inside target": lambda loop_root: (
+                loop_root / "round_002" / "extraction" / "previous"
+            ),
+        }
+        for name, previous_root_factory in cases.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    loop_root = make_loop(Path(tmpdir))
+                    previous_root = previous_root_factory(loop_root)
+                    previous_root.mkdir(parents=True, exist_ok=True)
+                    sentinel = previous_root / "sentinel.txt"
+                    sentinel.write_text("keep", encoding="utf-8")
+
+                    manifest_path = loop_root / "run_manifest.yaml"
+                    manifest = load_json(manifest_path)
+                    manifest["rounds"][0]["extraction_dir"] = str(previous_root)
+                    write_json(manifest_path, manifest)
+
+                    result = run_prepare(loop_root)
+
+                    self.assertEqual(result.returncode, 2)
+                    self.assertRegex(result.stderr, r"overlaps?")
+                    self.assertTrue(sentinel.is_file())
 
 
 if __name__ == "__main__":

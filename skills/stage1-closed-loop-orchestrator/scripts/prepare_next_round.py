@@ -29,6 +29,10 @@ def absolute_path(path):
     return Path.cwd() / path
 
 
+def paths_overlap(left, right):
+    return left == right or left in right.parents or right in left.parents
+
+
 def main(argv=None):
     args = parse_args(argv)
 
@@ -43,13 +47,34 @@ def main(argv=None):
         return 2
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    rounds = manifest.get("rounds", [])
+    if "source_root" not in manifest:
+        print("source_root is required", file=sys.stderr)
+        return 2
+
+    rounds = manifest.get("rounds")
+    if not isinstance(rounds, list):
+        print("rounds must be a list", file=sys.stderr)
+        return 2
+
+    copy_mode = manifest.get("copy_mode", "copy")
+    if copy_mode not in ("copy", "reference"):
+        print("copy_mode must be copy or reference", file=sys.stderr)
+        return 2
+
     previous_round = next(
-        (round_record for round_record in rounds if round_record.get("round") == args.from_round),
+        (
+            round_record
+            for round_record in rounds
+            if isinstance(round_record, dict)
+            and round_record.get("round") == args.from_round
+        ),
         None,
     )
     if previous_round is None:
         print("from round not found", file=sys.stderr)
+        return 2
+    if "extraction_dir" not in previous_round:
+        print("extraction_dir is required for previous round", file=sys.stderr)
         return 2
 
     previous_artifact_root = absolute_path(previous_round["extraction_dir"])
@@ -57,10 +82,15 @@ def main(argv=None):
         print("previous extraction_dir not found", file=sys.stderr)
         return 2
 
-    copy_mode = manifest.get("copy_mode", "copy")
     round_dir = loop_root / f"round_{args.to_round:03d}"
     output_artifact_root = round_dir / "extraction"
     review_dir = round_dir / "review"
+
+    previous_artifact_root_resolved = previous_artifact_root.resolve()
+    output_artifact_root_resolved = output_artifact_root.resolve()
+    if paths_overlap(previous_artifact_root_resolved, output_artifact_root_resolved):
+        print("previous extraction_dir overlaps output extraction_dir", file=sys.stderr)
+        return 2
 
     if copy_mode == "copy":
         if output_artifact_root.exists():
