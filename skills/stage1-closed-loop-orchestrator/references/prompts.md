@@ -44,6 +44,8 @@ Forbidden inputs:
 
 Honor the request exactly. Use source evidence for every critical correction.
 
+Use `score_improvement_targets` as the work plan for the round. Start with the largest score gaps and blocking findings. Extract the named operator facts, source evidence, target symbols, required artifacts, and acceptance checks. Avoid broad regeneration when a targeted artifact update can satisfy the request.
+
 ## Scorer
 
 Use `stage1-artifact-scorer` to review Stage 1 extraction artifacts. Treat artifacts as claims, not facts. Verify critical claims against source code before accepting them.
@@ -70,5 +72,7 @@ Forbidden inputs:
 - Any hidden rationale.
 
 Produce structured scorer outputs in `<review_dir>/`, including `scorecard.yaml`, `blocking_findings.yaml`, `missing_patterns.yaml`, and `stage2_readiness.yaml`.
+
+Each blocking finding or missing pattern should be actionable for a later isolated extractor round. Include structured fields such as `dimension`, `severity`, `target_files`, `target_symbols`, `required_artifacts`, `required_evidence`, `operator_info_needed`, and `acceptance_checks`. These fields should name missing or incorrect operator facts, not broad advice.
 
 Only the parent orchestrator compares prior scorecards and prior round summaries outside scorer context.

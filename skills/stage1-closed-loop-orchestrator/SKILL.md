@@ -68,6 +68,8 @@ python3 skills/stage1-artifact-scorer/scripts/prepare_review_context.py --input 
 
 Scripts do not run model judgement. The parent Codex agent dispatches extractor and scorer subagents.
 
+`sanitize_review_findings.py` turns scorer outputs into targeted extraction work. It preserves safe structured fields, infers missing `operator_info_needed` from the weak scoring dimension, and writes `score_improvement_targets` so the next extractor round focuses on the highest-impact operator facts first.
+
 ## Final Response
 
 Include these bullets:

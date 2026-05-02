@@ -278,6 +278,24 @@ The report must include:
 9. Examples of weak cards and rewritten versions.
 10. Stage-2 input recommendations: which artifacts can be consumed, which must be fixed.
 
+Structured `blocking_findings.yaml` and `missing_patterns.yaml` entries must be actionable by an isolated re-extraction agent. For each issue, include safe fields such as:
+
+```yaml
+id:
+severity:
+dimension:
+type:
+target_files:
+target_symbols:
+required_artifacts:
+required_evidence:
+operator_info_needed:
+acceptance_checks:
+evidence_class:
+```
+
+Use these fields to identify the exact missing or incorrect operator facts that would improve the relevant score dimension. Do not encode long rationale, chain-of-thought, or broad recommendations into structured findings.
+
 ## Required judgement style
 
 Be strict. A fluent summary is not enough. Prefer low scores when artifacts are not traceable or not DSL-convertible.

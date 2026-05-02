@@ -31,6 +31,8 @@ Orchestrator helper commands in this workflow are planned completed-skill entryp
 5. Dispatch a fresh scorer subagent with only allowed inputs, including `<review_dir>/evidence_pack.yaml` and `<review_dir>/source_spot_check_plan.yaml`.
 6. Run `check_stop_conditions.py`.
 
+`sanitize_review_findings.py` must convert scorer outputs into targeted extraction work. The generated `reextraction_request.yaml` includes `score_improvement_targets`, which groups safe structured findings by scoring dimension and score gap. The next extractor round should handle the highest-impact targets first, so the loop improves specific score dimensions instead of blindly regenerating everything.
+
 ## Subagent Dispatch Requirements
 
 The user must explicitly authorize isolated subagents before the orchestrator dispatches them. The parent Codex agent must use the available subagent dispatch tool with `fork_context=false` when supported. Give each subagent only the files and instructions listed in [isolation-policy.md](isolation-policy.md).

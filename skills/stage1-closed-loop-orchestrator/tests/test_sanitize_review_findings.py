@@ -196,6 +196,90 @@ class SanitizeReviewFindingsTests(unittest.TestCase):
                 ["file", "line_range"],
             )
 
+    def test_generates_score_improvement_targets_from_scorecard_dimensions(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            review = root / "review"
+            output = root / "reextraction_request.yaml"
+            write_json(
+                review / "scorecard.yaml",
+                {
+                    "scorecard": {
+                        "total": 71,
+                        "readiness": "NEEDS_REEXTRACTION",
+                        "dimensions": {
+                            "coverage": {"score": 13, "max": 25},
+                            "accuracy": {"score": 22, "max": 25},
+                            "traceability": {"score": 8, "max": 15},
+                        },
+                    }
+                },
+            )
+            write_json(
+                review / "blocking_findings.yaml",
+                {
+                    "blocking_findings": [
+                        {
+                            "id": "missing_l1_residency",
+                            "severity": "blocking",
+                            "dimension": "coverage",
+                            "target_symbols": ["LoadKVToL1"],
+                            "required_artifacts": ["cards/l1_residency.yaml"],
+                        },
+                        {
+                            "id": "weak_source_links",
+                            "severity": "major",
+                            "dimension": "traceability",
+                            "target_files": ["op/kernel.cpp"],
+                            "required_evidence": ["file", "function", "line_range"],
+                        },
+                    ]
+                },
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--review-dir",
+                    str(review),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "run-1",
+                    "--round",
+                    "2",
+                    "--source-root",
+                    "/src",
+                    "--previous-artifact-root",
+                    "/prev",
+                    "--output-artifact-root",
+                    "/next",
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            request = load_json(output)["reextraction_request"]
+            self.assertEqual(
+                request["required_fixes"][0]["id"], "missing_l1_residency"
+            )
+            self.assertIn(
+                "operator_info_needed", request["required_fixes"][0]
+            )
+            targets = request["score_improvement_targets"]
+            self.assertEqual(targets[0]["dimension"], "coverage")
+            self.assertEqual(targets[0]["current_score"], 13)
+            self.assertEqual(targets[0]["max_score"], 25)
+            self.assertEqual(targets[0]["score_gap"], 12)
+            self.assertEqual(
+                targets[0]["related_finding_ids"], ["missing_l1_residency"]
+            )
+            self.assertIn("LoadKVToL1", targets[0]["target_symbols"])
+            self.assertIn("cards/l1_residency.yaml", targets[0]["required_artifacts"])
+
 
 if __name__ == "__main__":
     unittest.main()

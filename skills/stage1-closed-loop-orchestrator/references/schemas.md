@@ -56,10 +56,32 @@ reextraction_request:
         - "operator_structure_card"
       required_evidence:
         - "source line references for tiling and workspace decisions"
+      operator_info_needed:
+        - "exact tilingData fields, workspace offsets, loop stage ownership, memory residency, and source evidence for the missing structure"
       acceptance_checks:
         - "Artifact names the kernel entrypoint and source lines."
         - "Critical claims are verified against source."
       evidence_class: "contradicted_or_suspicious"
+  score_improvement_targets:
+    - dimension: "coverage"
+      current_score: 13
+      max_score: 25
+      score_gap: 12
+      related_finding_ids:
+        - "BF-001"
+      operator_info_needed:
+        - "missing operator structures, critical functions, loop stages, memory hierarchy, pipeline stages, workspace layout, masks, and split-KV or merge behavior when present"
+      target_files:
+        - "cards/operator_structure.yaml"
+      target_symbols:
+        - "FlashAttentionKernel"
+      required_artifacts:
+        - "operator_structure_card"
+      required_evidence:
+        - "source line references for tiling and workspace decisions"
+      acceptance_checks:
+        - "Artifact names the kernel entrypoint and source lines."
+      objective: "Target only this scoring dimension's missing operator facts before broad regeneration."
   forbidden_context:
     - "extractor conversation"
     - "extractor self-justification"
@@ -79,8 +101,11 @@ reextraction_request:
 - `target_symbols`
 - `required_artifacts`
 - `required_evidence`
+- `operator_info_needed`
 - `acceptance_checks`
 - `evidence_class`
+
+`score_improvement_targets` groups safe, structured findings by scoring dimension. It is designed to help the next extractor round focus on the operator facts that are most likely to improve the score. It must not include scorer prose rationale, hidden reasoning, or prior scorer conversation.
 
 ## round_summary.yaml
 
