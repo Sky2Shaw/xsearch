@@ -25,7 +25,7 @@ def parse_args(argv):
 def main(argv=None):
     args = parse_args(argv)
 
-    source_root = Path(args.source_root)
+    source_root = Path(args.source_root).resolve()
     if not source_root.is_dir():
         print("source root must exist and be a directory", file=sys.stderr)
         return 2
@@ -34,7 +34,9 @@ def main(argv=None):
         print("max rounds must be at least 1", file=sys.stderr)
         return 2
 
-    loop_root = Path(args.loop_root) if args.loop_root else source_root / ".xperf_atdsl_loop"
+    loop_root = (
+        Path(args.loop_root) if args.loop_root else source_root / ".xperf_atdsl_loop"
+    ).resolve()
     round_dir = loop_root / "round_001"
     extraction_dir = round_dir / "extraction"
     review_dir = round_dir / "review"
@@ -45,7 +47,7 @@ def main(argv=None):
     manifest_path = loop_root / "run_manifest.yaml"
     manifest = {
         "run_id": f"stage1-loop-{secrets.token_hex(6)}",
-        "source_root": str(source_root.resolve()),
+        "source_root": str(source_root),
         "loop_root": str(loop_root),
         "max_rounds": args.max_rounds,
         "acceptable_readiness": args.acceptable_readiness
