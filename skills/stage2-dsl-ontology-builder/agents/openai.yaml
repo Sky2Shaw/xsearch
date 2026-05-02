@@ -1,0 +1,7 @@
+name: stage2-dsl-ontology-builder
+description: Build Stage 2 ATDSL ontology, schemas, validators, lowering specs, and shadow DSL examples from Stage 1 AscendC attention extraction artifacts.
+recommended_model: gpt-5.5-thinking
+inputs:
+  - stage1_outputs
+outputs:
+  - stage2_outputs
