@@ -55,6 +55,9 @@ def main(argv=None):
     if not isinstance(rounds, list):
         print("rounds must be a list", file=sys.stderr)
         return 2
+    if any(not isinstance(round_record, dict) for round_record in rounds):
+        print("rounds entries must be objects", file=sys.stderr)
+        return 2
 
     copy_mode = manifest.get("copy_mode", "copy")
     if copy_mode not in ("copy", "reference"):
@@ -65,8 +68,7 @@ def main(argv=None):
         (
             round_record
             for round_record in rounds
-            if isinstance(round_record, dict)
-            and round_record.get("round") == args.from_round
+            if round_record.get("round") == args.from_round
         ),
         None,
     )

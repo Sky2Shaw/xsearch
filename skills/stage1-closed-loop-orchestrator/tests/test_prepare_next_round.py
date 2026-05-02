@@ -283,6 +283,20 @@ class PrepareNextRoundTests(unittest.TestCase):
             self.assertIn("rounds", result.stderr)
             self.assertFalse((loop_root / "round_002").exists())
 
+    def test_malformed_round_entry_returns_2_without_creating_next_round(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir))
+            manifest_path = loop_root / "run_manifest.yaml"
+            manifest = load_json(manifest_path)
+            manifest["rounds"].append("bad-entry")
+            write_json(manifest_path, manifest)
+
+            result = run_prepare(loop_root)
+
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIn("rounds", result.stderr)
+            self.assertFalse((loop_root / "round_002").exists())
+
     def test_previous_round_missing_extraction_dir_returns_2_without_creating_next_round(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             loop_root = make_loop(Path(tmpdir))
