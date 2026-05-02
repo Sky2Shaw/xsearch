@@ -132,6 +132,54 @@ class PrepareNextRoundTests(unittest.TestCase):
                 str(loop_root / "round_001" / "extraction"),
             )
 
+    def test_existing_to_round_manifest_metadata_is_preserved(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loop_root = make_loop(Path(tmpdir), copy_mode="reference")
+            manifest_path = loop_root / "run_manifest.yaml"
+            manifest = load_json(manifest_path)
+            manifest["rounds"].append(
+                {
+                    "round": 2,
+                    "round_dir": "stale-round-dir",
+                    "extraction_dir": "stale-extraction-dir",
+                    "review_dir": "stale-review-dir",
+                    "status": "stale",
+                    "manual_note": "keep-me",
+                }
+            )
+            write_json(manifest_path, manifest)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--loop-root",
+                    str(loop_root),
+                    "--from-round",
+                    "1",
+                    "--to-round",
+                    "2",
+                ],
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = load_json(manifest_path)
+            round_two = next(
+                round_record
+                for round_record in manifest["rounds"]
+                if round_record["round"] == 2
+            )
+            self.assertEqual(round_two["manual_note"], "keep-me")
+            self.assertEqual(round_two["round_dir"], str(loop_root / "round_002"))
+            self.assertEqual(
+                round_two["extraction_dir"],
+                str(loop_root / "round_002" / "extraction"),
+            )
+            self.assertEqual(round_two["review_dir"], str(loop_root / "round_002" / "review"))
+            self.assertEqual(round_two["status"], "initialized")
+
     def test_rejects_missing_previous_round(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             loop_root = make_loop(Path(tmpdir))

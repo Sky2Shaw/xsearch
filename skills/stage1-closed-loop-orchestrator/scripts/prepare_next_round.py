@@ -82,19 +82,35 @@ def main(argv=None):
     }
     write_json(round_dir / "next_round_context.yaml", context)
 
-    next_round_record = {
-        "round": args.to_round,
-        "round_dir": str(round_dir),
-        "extraction_dir": str(output_artifact_root),
-        "review_dir": str(review_dir),
-        "status": "initialized",
-    }
-    updated_rounds = [
-        round_record
-        for round_record in rounds
-        if round_record.get("round") != args.to_round
-    ]
-    updated_rounds.append(next_round_record)
+    existing_to_round = next(
+        (
+            round_record
+            for round_record in rounds
+            if round_record.get("round") == args.to_round
+        ),
+        None,
+    )
+    next_round_record = dict(existing_to_round or {})
+    next_round_record.update(
+        {
+            "round": args.to_round,
+            "round_dir": str(round_dir),
+            "extraction_dir": str(output_artifact_root),
+            "review_dir": str(review_dir),
+            "status": "initialized",
+        }
+    )
+    updated_rounds = []
+    to_round_was_present = False
+    for round_record in rounds:
+        if round_record.get("round") == args.to_round:
+            if not to_round_was_present:
+                updated_rounds.append(next_round_record)
+                to_round_was_present = True
+        else:
+            updated_rounds.append(round_record)
+    if not to_round_was_present:
+        updated_rounds.append(next_round_record)
     manifest["rounds"] = sorted(
         updated_rounds, key=lambda round_record: round_record.get("round", 0)
     )
