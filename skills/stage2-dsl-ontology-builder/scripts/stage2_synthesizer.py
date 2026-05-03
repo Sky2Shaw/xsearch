@@ -179,6 +179,95 @@ def _build_field_policy(modules: list[dict]) -> dict[str, list[str]]:
     return policies
 
 
+def _edges_from(graph: EvidenceGraph, node_id: str, label: str | None = None) -> list:
+    return [
+        edge for edge in graph.edges
+        if edge.from_id == node_id and (label is None or edge.label == label)
+    ]
+
+
+def _edges_to(graph: EvidenceGraph, node_id: str, label: str | None = None) -> list:
+    return [
+        edge for edge in graph.edges
+        if edge.to_id == node_id and (label is None or edge.label == label)
+    ]
+
+
+def _nodes_by_kind(graph: EvidenceGraph, kind: str) -> list[EvidenceNode]:
+    return [node for node in graph.nodes if node.kind == kind]
+
+
+def _field_path_for_node(node: EvidenceNode) -> str:
+    return node.data.get("path") or node.data.get("field_path", "")
+
+
+def _knob_for_field(graph: EvidenceGraph, field_id: str) -> EvidenceNode | None:
+    for edge in _edges_from(graph, field_id, "tuned_by"):
+        knob = graph.get_node(edge.to_id)
+        if knob and knob.kind == "knob":
+            return knob
+    return None
+
+
+def _range_from_knob(knob: EvidenceNode | None) -> dict | None:
+    if knob is None:
+        return None
+    domain = knob.data.get("domain", {})
+    result = {}
+    if "minimum" in domain:
+        result["minimum"] = domain["minimum"]
+    if "maximum" in domain:
+        result["maximum"] = domain["maximum"]
+    if "unit" in domain:
+        result["unit"] = domain["unit"]
+    if result:
+        return result
+    if "candidates" in domain:
+        return {"candidates": domain["candidates"]}
+    return {"kind": domain.get("kind", "unspecified")}
+
+
+def _agent_metadata_for_field(graph: EvidenceGraph, field_node: EvidenceNode) -> dict[str, Any]:
+    ir_edges = _edges_from(graph, field_node.id, "field_maps_to_ir")
+    ir_layer = "needs_review"
+    schedule_points = []
+    for edge in ir_edges:
+        target = graph.get_node(edge.to_id)
+        if target is None:
+            continue
+        if target.kind == "schedule_point":
+            schedule_points.append(target.id)
+        if "ir_layer" in target.data and target.data["ir_layer"] != "kernel":
+            ir_layer = target.data["ir_layer"]
+        elif target.id.startswith("ir:kernel:"):
+            ir_layer = "kernel"
+
+    feature_sources = [
+        edge.from_id for edge in _edges_to(graph, field_node.id, "feature_derived_from")
+    ]
+    measurement_metrics = [
+        edge.from_id.replace("metric:", "")
+        for edge in _edges_to(graph, field_node.id, "metric_measures_field")
+    ]
+
+    return {
+        "ir_layer": ir_layer,
+        "schedule_points": sorted(set(schedule_points)),
+        "feature_sources": sorted(set(feature_sources)),
+        "measurement_metrics": sorted(set(measurement_metrics)),
+        "replay_requirements": [
+            "environment_fingerprint",
+            "shape_signature",
+            "dsl_version",
+            "schedule_trace",
+            "validator_results",
+            "compile_result",
+            "measurement_result",
+            "failure_metadata",
+        ],
+    }
+
+
 def _build_module_schemas(graph: EvidenceGraph, rules: dict[str, str]) -> dict[str, dict]:
     schemas: dict[str, dict] = {}
     for e in graph.edges:
@@ -198,6 +287,8 @@ def _build_module_schemas(graph: EvidenceGraph, rules: dict[str, str]) -> dict[s
                 ee.label == "tuned_by" and ee.from_id == field_node.id
                 for ee in graph.edges
             )
+            knob_node = _knob_for_field(graph, field_node.id)
+            agent_metadata = _agent_metadata_for_field(graph, field_node)
 
             # Collect source cards
             source_cards = sorted(set(
@@ -215,7 +306,7 @@ def _build_module_schemas(graph: EvidenceGraph, rules: dict[str, str]) -> dict[s
                             source_evidence.append(ev_node.id)
             source_evidence = sorted(set(source_evidence))
 
-            schemas[mod][field_name] = {
+            field_spec = {
                 "type": _infer_field_type(meaning),
                 "searchable": has_knob,
                 "editable_policy": _infer_editable_policy(field_node, has_knob),
@@ -223,7 +314,13 @@ def _build_module_schemas(graph: EvidenceGraph, rules: dict[str, str]) -> dict[s
                 "source_evidence": source_evidence if source_evidence else ["needs_evidence: true"],
                 "meaning": meaning,
                 "confidence": confidence,
+                **agent_metadata,
             }
+            if has_knob:
+                knob_range = _range_from_knob(knob_node)
+                if knob_range is not None:
+                    field_spec["range"] = knob_range
+            schemas[mod][field_name] = field_spec
     return schemas
 
 
@@ -274,7 +371,7 @@ def _build_validators(graph: EvidenceGraph) -> list[dict]:
             "module": "derived",
             "severity": "hard",
             "inputs": constraint_ids,
-            "expr": f"derived from {', '.join(constraint_ids) if constraint_ids else 'risk description'}",
+            "expr": f"placeholder: derived from {', '.join(constraint_ids) if constraint_ids else 'risk description'}",
             "error_message": f"{v_name} failed",
             "related_risks": [risk_id],
             "source_cards": [],
@@ -332,6 +429,111 @@ def _build_shadow_dsl(graph: EvidenceGraph) -> dict[str, dict]:
     return shadows
 
 
+def _build_ir_artifacts(graph: EvidenceGraph) -> dict[str, dict]:
+    semantic_entities = [
+        node.data for node in _nodes_by_kind(graph, "semantic_entity")
+        if node.data.get("ir_layer") == "semantic"
+    ]
+    kernel_schedule_points = [
+        {
+            "id": node.id,
+            "field": node.data.get("field_path", ""),
+            "action": node.data.get("action", ""),
+            "searchable": node.data.get("searchable", False),
+            "guard_validators": sorted(edge.to_id for edge in _edges_from(graph, node.id, "schedule_point_guarded_by")),
+        }
+        for node in _nodes_by_kind(graph, "schedule_point")
+    ]
+    capabilities = []
+    for node in _nodes_by_kind(graph, "hardware_capability"):
+        item = {"id": node.id, **node.data}
+        item.setdefault("name", node.data.get("field_path", node.id))
+        capabilities.append(item)
+    metrics = [
+        {"id": node.id, **node.data}
+        for node in _nodes_by_kind(graph, "measurement_metric")
+    ]
+    features = [
+        {"id": node.id, **node.data}
+        for node in _nodes_by_kind(graph, "feature_source")
+    ]
+    tuning_record_fields = [
+        {"id": node.id, **node.data}
+        for node in _nodes_by_kind(graph, "tuning_record_field")
+    ]
+
+    return {
+        "semantic_ir": {
+            "version": "0.4",
+            "kind": "ascend.attention.semantic_ir",
+            "entities": semantic_entities,
+        },
+        "kernel_ir": {
+            "version": "0.4",
+            "kind": "ascend.attention.kernel_ir",
+            "schedule_points": kernel_schedule_points,
+        },
+        "hardware_contract": {
+            "version": "0.4",
+            "kind": "ascend.attention.hardware_contract",
+            "capabilities": capabilities,
+        },
+        "execution_feedback": {
+            "version": "0.4",
+            "kind": "ascend.attention.execution_feedback",
+            "metrics": metrics,
+            "features": features,
+            "tuning_record_fields": tuning_record_fields,
+        },
+    }
+
+
+def _build_search_artifacts(graph: EvidenceGraph) -> dict[str, dict]:
+    schedule_points = []
+    for node in _nodes_by_kind(graph, "schedule_point"):
+        field_id = f"field:{node.data.get('field_path', '')}"
+        field_node = graph.get_node(field_id)
+        knob = _knob_for_field(graph, field_id)
+        item = {
+            "id": node.id,
+            "field": node.data.get("field_path", ""),
+            "action": node.data.get("action", ""),
+            "searchable": node.data.get("searchable", False),
+            "source_knob": knob.data.get("name") if knob else None,
+            "guard_validators": sorted(edge.to_id for edge in _edges_from(graph, node.id, "schedule_point_guarded_by")),
+            "forbidden_moves": ["event_wait_reorder", "online_softmax_formula_edit", "lse_formula_edit"],
+        }
+        knob_range = _range_from_knob(knob)
+        if knob_range is not None:
+            item["range"] = knob_range
+        if field_node is not None:
+            item["meaning"] = field_node.data.get("meaning", "")
+        schedule_points.append(item)
+
+    return {
+        "schedule_space": {
+            "version": "0.4",
+            "kind": "ascend.attention.schedule_space",
+            "schedule_points": schedule_points,
+        },
+        "feature_schema": {
+            "version": "0.4",
+            "kind": "ascend.attention.feature_schema",
+            "features": [{"id": node.id, **node.data} for node in _nodes_by_kind(graph, "feature_source")],
+        },
+        "measurement_schema": {
+            "version": "0.4",
+            "kind": "ascend.attention.measurement_schema",
+            "metrics": [{"id": node.id, **node.data} for node in _nodes_by_kind(graph, "measurement_metric")],
+        },
+        "tuning_record_schema": {
+            "version": "0.4",
+            "kind": "ascend.attention.tuning_record_schema",
+            "fields": [{"id": node.id, **node.data} for node in _nodes_by_kind(graph, "tuning_record_field")],
+        },
+    }
+
+
 def synthesize(graph: EvidenceGraph, output_dir: Path, rules_path: Path | None = None) -> dict[str, Any]:
     if rules_path is None:
         rules_path = Path(__file__).parent / "module_inference_rules.yaml"
@@ -344,11 +546,23 @@ def synthesize(graph: EvidenceGraph, output_dir: Path, rules_path: Path | None =
     validators = _build_validators(graph)
     lowering = _build_lowering_specs(graph)
     shadows = _build_shadow_dsl(graph)
+    ir_artifacts = _build_ir_artifacts(graph)
+    search_artifacts = _build_search_artifacts(graph)
 
     # Write ontology
     _write(output_dir / "ontology" / "canonical_optimizations.yaml", _ydump(canon))
     _write(output_dir / "ontology" / "modules.yaml", _ydump(modules))
     _write(output_dir / "ontology" / "field_policy.yaml", _ydump(field_policy))
+
+    _write(output_dir / "ir" / "semantic_ir.yaml", _ydump(ir_artifacts["semantic_ir"]))
+    _write(output_dir / "ir" / "kernel_ir.yaml", _ydump(ir_artifacts["kernel_ir"]))
+    _write(output_dir / "ir" / "hardware_contract.yaml", _ydump(ir_artifacts["hardware_contract"]))
+    _write(output_dir / "ir" / "execution_feedback.yaml", _ydump(ir_artifacts["execution_feedback"]))
+
+    _write(output_dir / "search" / "schedule_space.yaml", _ydump(search_artifacts["schedule_space"]))
+    _write(output_dir / "search" / "feature_schema.yaml", _ydump(search_artifacts["feature_schema"]))
+    _write(output_dir / "search" / "measurement_schema.yaml", _ydump(search_artifacts["measurement_schema"]))
+    _write(output_dir / "search" / "tuning_record.schema.yaml", _ydump(search_artifacts["tuning_record_schema"]))
 
     # Write schema
     _write(output_dir / "schema" / "atdsl.schema.yaml", _ydump({
@@ -383,6 +597,8 @@ def synthesize(graph: EvidenceGraph, output_dir: Path, rules_path: Path | None =
 
     return {
         "ontology": ["canonical_optimizations.yaml", "modules.yaml", "field_policy.yaml"],
+        "ir": ["semantic_ir.yaml", "kernel_ir.yaml", "hardware_contract.yaml", "execution_feedback.yaml"],
+        "search": ["schedule_space.yaml", "feature_schema.yaml", "measurement_schema.yaml", "tuning_record.schema.yaml"],
         "schema": ["atdsl.schema.yaml"] + [f"{m}.schema.yaml" for m in module_schemas],
         "validators": [f"{v['name']}.yaml" for v in validators],
         "lowering": [f"{s['name']}.yaml" for s in lowering],
