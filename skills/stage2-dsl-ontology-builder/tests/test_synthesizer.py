@@ -5,7 +5,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from stage2_parser import parse_stage1, EvidenceGraph
+from stage2_parser import parse_stage1, EvidenceGraph, EvidenceNode, EvidenceEdge
 from stage2_synthesizer import synthesize
 
 
@@ -157,3 +157,76 @@ def test_synthesizer_preserves_yaml_contract_types(tmp_path):
     )
     target_ub_capacity = target_schema["target"]["ub_capacity_bytes"]
     assert target_ub_capacity["schedule_points"] == []
+
+
+def test_synthesizer_preserves_enum_values_from_knob_domain(tmp_path):
+    graph = EvidenceGraph(
+        nodes=[
+            EvidenceNode(
+                id="CARD-ENUM",
+                kind="card",
+                data={
+                    "id": "CARD-ENUM",
+                    "applies_to": {"variants": []},
+                    "tunable_knobs": [],
+                },
+            ),
+            EvidenceNode(
+                id="field:pipeline.kind",
+                kind="dsl_field",
+                data={
+                    "path": "pipeline.kind",
+                    "meaning": "pipeline kind mode",
+                    "confidence": "high",
+                },
+            ),
+            EvidenceNode(
+                id="knob:pipeline_kind",
+                kind="knob",
+                data={
+                    "name": "pipeline_kind",
+                    "domain": {"kind": "enum", "values": ["a", "b"]},
+                },
+            ),
+            EvidenceNode(
+                id="schedule:pipeline.kind",
+                kind="schedule_point",
+                data={
+                    "field_path": "pipeline.kind",
+                    "action": "pipeline",
+                    "searchable": True,
+                    "ir_layer": "kernel",
+                },
+            ),
+        ],
+        edges=[
+            EvidenceEdge(from_id="CARD-ENUM", to_id="field:pipeline.kind", label="suggests"),
+            EvidenceEdge(
+                from_id="field:pipeline.kind",
+                to_id="knob:pipeline_kind",
+                label="tuned_by",
+            ),
+            EvidenceEdge(
+                from_id="field:pipeline.kind",
+                to_id="schedule:pipeline.kind",
+                label="field_maps_to_ir",
+            ),
+        ],
+    )
+    output_dir = tmp_path / "stage2_outputs"
+    synthesize(graph, output_dir=output_dir)
+
+    schema = yaml.safe_load(
+        (output_dir / "schema" / "modules" / "pipeline.schema.yaml").read_text()
+    )
+    field = schema["pipeline"]["kind"]
+    assert field.get("enum") == ["a", "b"] or field.get("candidates") == ["a", "b"]
+
+    schedule_space = yaml.safe_load((output_dir / "search" / "schedule_space.yaml").read_text())
+    schedule_point = next(
+        item for item in schedule_space["schedule_points"] if item["field"] == "pipeline.kind"
+    )
+    assert schedule_point.get("enum") == ["a", "b"] or schedule_point.get("candidates") == [
+        "a",
+        "b",
+    ]

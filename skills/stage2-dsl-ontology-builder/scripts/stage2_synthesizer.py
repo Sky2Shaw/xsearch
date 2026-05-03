@@ -196,6 +196,8 @@ def _finite_domain_from_knob(knob: EvidenceNode | None) -> dict | None:
     domain = knob.data.get("domain", {})
     if "candidates" in domain:
         return {"candidates": domain["candidates"]}
+    if "values" in domain:
+        return {"enum": domain["values"]}
     if "minimum" in domain and "maximum" in domain:
         range_spec = {
             "minimum": domain["minimum"],
