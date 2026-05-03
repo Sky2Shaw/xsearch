@@ -85,3 +85,29 @@ def test_synthesizer_adds_agent_metadata_to_schema_fields():
     assert field["measurement_metrics"]
     assert "schedule_trace" in field["replay_requirements"]
     assert "range" in field
+
+
+def test_synthesizer_preserves_yaml_contract_types(tmp_path):
+    fixtures = Path(__file__).parent / "fixtures"
+    graph = parse_stage1(fixtures)
+    output_dir = tmp_path / "stage2_outputs"
+    synthesize(graph, output_dir=output_dir)
+
+    pipeline_schema = yaml.safe_load(
+        (output_dir / "schema" / "modules" / "pipeline.schema.yaml").read_text()
+    )
+    pipeline_kind = pipeline_schema["pipeline"]["kind"]
+    assert isinstance(pipeline_kind["schedule_points"], list)
+    assert "schedule:pipeline.kind" in pipeline_kind["schedule_points"]
+
+    schedule_space = yaml.safe_load((output_dir / "search" / "schedule_space.yaml").read_text())
+    pipeline_schedule = next(
+        item for item in schedule_space["schedule_points"] if item["field"] == "pipeline.kind"
+    )
+    assert pipeline_schedule["source_knob"] is None
+
+    target_schema = yaml.safe_load(
+        (output_dir / "schema" / "modules" / "target.schema.yaml").read_text()
+    )
+    target_ub_capacity = target_schema["target"]["ub_capacity_bytes"]
+    assert target_ub_capacity["schedule_points"] == []

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from typing import Any
 
@@ -53,31 +52,13 @@ def _infer_editable_policy(field_node: EvidenceNode, has_knob: bool) -> str:
     return "fixed"
 
 
-def _ydump(obj: Any, indent: int = 0) -> str:
-    sp = "  " * indent
-    if isinstance(obj, dict):
-        lines = []
-        for k, v in obj.items():
-            if isinstance(v, (dict, list)):
-                lines.append(f"{sp}{k}:")
-                lines.append(_ydump(v, indent + 1))
-            else:
-                lines.append(f"{sp}{k}: {json.dumps(v, ensure_ascii=False) if isinstance(v, str) else str(v).lower() if isinstance(v, bool) else v}")
-        return "\n".join(lines)
-    if isinstance(obj, list):
-        lines = []
-        for item in obj:
-            if isinstance(item, dict):
-                lines.append(f"{sp}-")
-                lines.append(_ydump(item, indent + 1))
-            else:
-                lines.append(f"{sp}- {json.dumps(item, ensure_ascii=False) if isinstance(item, str) else item}")
-        return "\n".join(lines)
-    return f"{sp}{obj}"
-
-
-def _write(path: Path, text: str) -> None:
+def _write(path: Path, content: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    text = (
+        content
+        if isinstance(content, str)
+        else yaml.safe_dump(content, sort_keys=False, allow_unicode=True)
+    )
     path.write_text(text.rstrip() + "\n", encoding="utf-8")
 
 
@@ -550,22 +531,22 @@ def synthesize(graph: EvidenceGraph, output_dir: Path, rules_path: Path | None =
     search_artifacts = _build_search_artifacts(graph)
 
     # Write ontology
-    _write(output_dir / "ontology" / "canonical_optimizations.yaml", _ydump(canon))
-    _write(output_dir / "ontology" / "modules.yaml", _ydump(modules))
-    _write(output_dir / "ontology" / "field_policy.yaml", _ydump(field_policy))
+    _write(output_dir / "ontology" / "canonical_optimizations.yaml", canon)
+    _write(output_dir / "ontology" / "modules.yaml", modules)
+    _write(output_dir / "ontology" / "field_policy.yaml", field_policy)
 
-    _write(output_dir / "ir" / "semantic_ir.yaml", _ydump(ir_artifacts["semantic_ir"]))
-    _write(output_dir / "ir" / "kernel_ir.yaml", _ydump(ir_artifacts["kernel_ir"]))
-    _write(output_dir / "ir" / "hardware_contract.yaml", _ydump(ir_artifacts["hardware_contract"]))
-    _write(output_dir / "ir" / "execution_feedback.yaml", _ydump(ir_artifacts["execution_feedback"]))
+    _write(output_dir / "ir" / "semantic_ir.yaml", ir_artifacts["semantic_ir"])
+    _write(output_dir / "ir" / "kernel_ir.yaml", ir_artifacts["kernel_ir"])
+    _write(output_dir / "ir" / "hardware_contract.yaml", ir_artifacts["hardware_contract"])
+    _write(output_dir / "ir" / "execution_feedback.yaml", ir_artifacts["execution_feedback"])
 
-    _write(output_dir / "search" / "schedule_space.yaml", _ydump(search_artifacts["schedule_space"]))
-    _write(output_dir / "search" / "feature_schema.yaml", _ydump(search_artifacts["feature_schema"]))
-    _write(output_dir / "search" / "measurement_schema.yaml", _ydump(search_artifacts["measurement_schema"]))
-    _write(output_dir / "search" / "tuning_record.schema.yaml", _ydump(search_artifacts["tuning_record_schema"]))
+    _write(output_dir / "search" / "schedule_space.yaml", search_artifacts["schedule_space"])
+    _write(output_dir / "search" / "feature_schema.yaml", search_artifacts["feature_schema"])
+    _write(output_dir / "search" / "measurement_schema.yaml", search_artifacts["measurement_schema"])
+    _write(output_dir / "search" / "tuning_record.schema.yaml", search_artifacts["tuning_record_schema"])
 
     # Write schema
-    _write(output_dir / "schema" / "atdsl.schema.yaml", _ydump({
+    _write(output_dir / "schema" / "atdsl.schema.yaml", {
         "version": "0.3",
         "kind": "ascend.attention.dsl_schema",
         "modules": [m["name"] for m in modules],
@@ -573,22 +554,22 @@ def synthesize(graph: EvidenceGraph, output_dir: Path, rules_path: Path | None =
         "readonly_fields": field_policy.get("fixed", []) + field_policy.get("forbidden", []),
         "validators": [v["name"] for v in validators],
         "lowering_passes": [s["name"] for s in lowering],
-    }))
+    })
 
     for mod_name, fields in module_schemas.items():
-        _write(output_dir / "schema" / "modules" / f"{mod_name}.schema.yaml", _ydump({mod_name: fields}))
+        _write(output_dir / "schema" / "modules" / f"{mod_name}.schema.yaml", {mod_name: fields})
 
     # Write validators
     for v in validators:
-        _write(output_dir / "validators_spec" / f"{v['name']}.yaml", _ydump(v))
+        _write(output_dir / "validators_spec" / f"{v['name']}.yaml", v)
 
     # Write lowering
     for s in lowering:
-        _write(output_dir / "lowering_spec" / f"{s['name']}.yaml", _ydump(s))
+        _write(output_dir / "lowering_spec" / f"{s['name']}.yaml", s)
 
     # Write shadow examples
     for variant, shadow in shadows.items():
-        _write(output_dir / "examples" / f"{variant}_shadow.yaml", _ydump(shadow))
+        _write(output_dir / "examples" / f"{variant}_shadow.yaml", shadow)
 
     # Write review scaffold
     _write(output_dir / "review" / "schema_review.md", "# Stage 2 Schema Review\n\nGenerated by stage2_synthesizer.\n")
