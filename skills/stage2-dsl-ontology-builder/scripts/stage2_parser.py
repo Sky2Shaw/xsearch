@@ -275,8 +275,16 @@ TUNING_RECORD_FIELDS = [
 
 
 def _add_node_once(graph: EvidenceGraph, node_id: str, kind: str, data: dict[str, Any]) -> None:
-    if graph.get_node(node_id) is None:
+    existing = graph.get_node(node_id)
+    if existing is None:
         graph.add_node(EvidenceNode(id=node_id, kind=kind, data=data))
+        return
+    if "source_fields" in data:
+        existing_fields = existing.data.setdefault("source_fields", [])
+        for source_field in data["source_fields"]:
+            if source_field not in existing_fields:
+                existing_fields.append(source_field)
+        existing_fields.sort()
 
 
 def _add_edge_once(graph: EvidenceGraph, from_id: str, to_id: str, label: str) -> None:
@@ -291,14 +299,20 @@ def _first_path_token(field_path: str) -> str:
 def _infer_ir_layer(field_path: str, meaning: str) -> str:
     token = _first_path_token(field_path)
     lowered = meaning.lower()
-    if token in SEMANTIC_TOKENS or any(word in lowered for word in ("formula", "identity", "tensor", "dtype", "layout")):
+    if token in SEMANTIC_TOKENS:
         return "semantic"
-    if token in HARDWARE_TOKENS or any(word in lowered for word in ("capacity", "target", "ub", "l1")):
-        return "hardware"
-    if token in EXECUTION_TOKENS or any(word in lowered for word in ("metric", "trace", "record", "measure")):
-        return "execution_feedback"
     if token in KERNEL_TOKENS:
         return "kernel"
+    if token in HARDWARE_TOKENS:
+        return "hardware"
+    if token in EXECUTION_TOKENS:
+        return "execution_feedback"
+    if any(word in lowered for word in ("formula", "identity", "tensor", "dtype", "layout")):
+        return "semantic"
+    if any(word in lowered for word in ("capacity", "target", "ub", "l1")):
+        return "hardware"
+    if any(word in lowered for word in ("metric", "trace", "record", "measure")):
+        return "execution_feedback"
     return "needs_review"
 
 
@@ -390,7 +404,7 @@ def _add_agent_ready_nodes(graph: EvidenceGraph) -> None:
             capability_id = f"capability:{capability}"
             _add_node_once(graph, capability_id, "hardware_capability", {
                 "name": capability,
-                "source_field": field_path,
+                "source_fields": [field_path],
             })
             _add_edge_once(graph, field_node.id, capability_id, "field_requires_capability")
 

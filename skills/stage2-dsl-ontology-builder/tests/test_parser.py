@@ -1,4 +1,5 @@
 import sys
+from textwrap import dedent
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
@@ -95,3 +96,48 @@ def test_agent_ready_graph_nodes_and_edges():
         and edge.to_id == "capability:ub_capacity"
         for edge in graph.edges
     )
+
+
+def test_l1_residency_field_prefers_kernel_namespace_over_capacity_meaning(tmp_path):
+    (tmp_path / "optimization_cards.yaml").write_text(dedent("""
+        optimization_cards:
+          - id: OC-L1-RESIDENCY
+            possible_dsl_fields:
+              - path: l1_residency.max_tokens
+                meaning: Max tokens constrained by L1 capacity
+                confidence: high
+        """), encoding="utf-8")
+
+    graph = parse_stage1(tmp_path)
+
+    assert graph.get_node("ir:kernel:l1_residency.max_tokens") is not None
+    assert graph.get_node("ir:hardware:l1_residency.max_tokens") is None
+    assert any(
+        edge.label == "field_requires_capability"
+        and edge.from_id == "field:l1_residency.max_tokens"
+        and edge.to_id == "capability:l1_capacity"
+        for edge in graph.edges
+    )
+
+
+def test_shared_capability_node_records_all_source_fields(tmp_path):
+    (tmp_path / "optimization_cards.yaml").write_text(dedent("""
+        optimization_cards:
+          - id: OC-L1-SHARED
+            possible_dsl_fields:
+              - path: l1_partition.bytes_per_buffer
+                meaning: L1 partition capacity per buffer
+                confidence: high
+              - path: l1_residency.max_tokens
+                meaning: Max tokens resident in L1
+                confidence: high
+        """), encoding="utf-8")
+
+    graph = parse_stage1(tmp_path)
+
+    capability_node = graph.get_node("capability:l1_capacity")
+    assert capability_node is not None
+    assert capability_node.data["source_fields"] == [
+        "l1_partition.bytes_per_buffer",
+        "l1_residency.max_tokens",
+    ]
