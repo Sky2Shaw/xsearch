@@ -1,0 +1,6 @@
+risks:
+  - id: R-TEST-1
+    description: Test risk description
+    evidence: test/file.h
+    related_forbidden_transform_ids:
+      - FT-TEST-1

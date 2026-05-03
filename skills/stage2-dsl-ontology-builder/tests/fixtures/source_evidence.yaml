@@ -1,0 +1,10 @@
+source_evidence:
+  - id: SE-TEST-1
+    artifact_ids: []
+    file: test/file.h
+    symbol: TestFunction
+    line_range:
+      start: 1
+      end: 10
+    observed_fact: Test observed fact
+    confidence: high

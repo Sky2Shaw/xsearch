@@ -1,0 +1,15 @@
+constraints:
+  - id: C-TEST-1
+    description: Test constraint description
+    evidence: reports/function_index.yaml
+    source_evidence_ids:
+      - SE-TEST-1
+    related_forbidden_transform_ids:
+      - FT-TEST-1
+forbidden_transforms:
+  - id: FT-TEST-1
+    scope: test.scope
+    forbidden_change: Do not change this test thing
+    affected_artifacts: []
+    source_evidence_ids:
+      - SE-TEST-1

@@ -1,0 +1,20 @@
+workspace_layout:
+  schema_version: 1
+  regions:
+    - region_id: normal.mm1
+      family: normal
+      region_name: mm1
+      binding_status: explicit_kernel_gm
+      enabled_when: Always
+      element_type: float32
+      size_formula: slots * coreNum * size
+      base_offset_rule: Starts at 0
+      byte_order_rule: row-major
+      producer_functions:
+        - TestOwner::ComputeMm1
+      consumer_functions:
+        - TestOwner::ProcessVec1
+      aliasing_rule: Dedicated
+      confidence: high
+      source_evidence_ids:
+        - SE-TEST-1

@@ -1,0 +1,17 @@
+pipeline_graphs:
+  schema_version: 1
+  graphs:
+    - id: graph.test.main
+      variant: nonquant
+      description: Test pipeline
+      preload_scheduler:
+        pattern: current.mm1 -> older.vec1
+        source_evidence_ids:
+          - SE-TEST-1
+      nodes:
+        - id: test.mm1
+          stage: test.mm1
+          canonical_name: TestOwner::ComputeMm1
+          owner: TestOwner
+          role: Test MM1 stage
+      edges: []

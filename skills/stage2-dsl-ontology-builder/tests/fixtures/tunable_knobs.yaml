@@ -1,0 +1,19 @@
+tunable_knobs:
+  - name: s1_base
+    type: integer
+    domain:
+      kind: positive_integer
+      minimum: 1
+      unit: tokens
+    applies_to:
+      variants: [nonquant]
+      owners: [TestOwner]
+      consumers: []
+    default_behavior:
+      source: host tiling
+      fixed_or_derived: host_selected
+    coupled_constraints:
+      - C-TEST-1
+    searchable: true
+    source_evidence:
+      - id: SE-TEST-1

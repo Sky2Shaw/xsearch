@@ -1,0 +1,26 @@
+optimization_cards:
+  - id: OC-TEST-CARD-1
+    canonical_name: test.card.one
+    aliases: [test_card_alias]
+    title: Test card for parser
+    applies_to:
+      variants: [nonquant]
+      owners: [TestOwner]
+      stages: [test.stage]
+    pattern_summary: Test pattern summary
+    optimization_intent: Test intent
+    preconditions: []
+    tunable_knobs: [s1_base]
+    constraints: [C-TEST-1]
+    risks: [R-TEST-1]
+    possible_dsl_fields:
+      - path: tiling.s1_base
+        meaning: Base S1 tile size in tokens
+        confidence: high
+      - path: pipeline.kind
+        meaning: Pipeline variant kind
+        confidence: medium
+    source_evidence:
+      - id: SE-TEST-1
+        role: test evidence for card
+    confidence: high

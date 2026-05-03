@@ -1,0 +1,8 @@
+suggested_dsl_sections:
+  - name: tiling
+    purpose: Test tiling section
+    fields:
+      - path: tiling.s1_base
+        meaning: Base S1 tile size
+        evidence: test/file.h
+        confidence: high
