@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""Semantic verifier for Stage 2 outputs against EvidenceGraph."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from stage2_parser import EvidenceGraph, EvidenceNode
+
+
+def _load_yaml_file(path: Path) -> Any:
+    if not path.exists():
+        return None
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _scan_placeholders(text: str) -> int:
+    markers = ["needs evidence", "needs_evidence", "needs review", "placeholder"]
+    return sum(text.lower().count(m) for m in markers)
+
+
+def _check_evidence_connectivity(graph: EvidenceGraph) -> tuple[int, list[dict]]:
+    score = 20
+    issues = []
+
+    for card_node in graph.nodes:
+        if card_node.kind != "card":
+            continue
+        ev_edges = [e for e in graph.edges if e.from_id == card_node.id and e.label == "backed_by"]
+        if not ev_edges:
+            score -= 3
+            issues.append({
+                "severity": "error",
+                "category": "evidence",
+                "message": f"Card {card_node.id} has no evidence path",
+                "remediation": "Add source_evidence entries or mark as needs_evidence: true",
+            })
+
+    for ev_node in graph.nodes:
+        if ev_node.kind != "evidence":
+            continue
+        data = ev_node.data
+        if not data.get("file") or not data.get("symbol"):
+            score -= 2
+            issues.append({
+                "severity": "error",
+                "category": "evidence",
+                "message": f"Evidence {ev_node.id} missing file or symbol",
+                "remediation": "Add file and symbol fields to source_evidence",
+            })
+
+    for node in graph.nodes:
+        if node.kind != "dsl_field":
+            continue
+        card_edges = [e for e in graph.edges if e.to_id == node.id and e.label == "suggests"]
+        if not card_edges:
+            score -= 2
+            issues.append({
+                "severity": "warning",
+                "category": "field",
+                "message": f"Field {node.id} has no card source",
+                "remediation": "Link field to at least one optimization card",
+            })
+
+    return max(0, score), issues
+
+
+def _check_field_completeness(stage2_dir: Path, graph: EvidenceGraph) -> tuple[int, list[dict]]:
+    score = 20
+    issues = []
+    placeholder_count = 0
+
+    # Scan all schema files
+    schema_dir = stage2_dir / "schema" / "modules"
+    if schema_dir.exists():
+        for fpath in schema_dir.rglob("*.yaml"):
+            content = fpath.read_text(encoding="utf-8")
+            placeholder_count += _scan_placeholders(content)
+
+            data = yaml.safe_load(content)
+            if not data:
+                continue
+            for mod_name, fields in data.items():
+                if not isinstance(fields, dict):
+                    continue
+                for field_name, spec in fields.items():
+                    if not isinstance(spec, dict):
+                        continue
+                    if "type" not in spec:
+                        score -= 2
+                        issues.append({
+                            "severity": "error",
+                            "category": "schema",
+                            "message": f"Field {mod_name}.{field_name} missing type",
+                        })
+                    if "searchable" in spec and spec.get("searchable"):
+                        if not any(k in spec for k in ("candidates", "range", "enum")):
+                            score -= 3
+                            issues.append({
+                                "severity": "error",
+                                "category": "schema",
+                                "message": f"Searchable field {mod_name}.{field_name} has no candidates/range/enum",
+                            })
+
+    if placeholder_count > 20:
+        score -= min(placeholder_count - 20, 8)
+        issues.append({
+            "severity": "warning",
+            "category": "evidence",
+            "message": f"Too many placeholder markers: {placeholder_count}",
+        })
+
+    return max(0, score), issues
+
+
+def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, list[dict]]:
+    score = 15
+    issues = []
+
+    field_nodes = [n for n in graph.nodes if n.kind == "dsl_field"]
+    for field_node in field_nodes:
+        has_knob = any(
+            e.label == "tuned_by" and e.from_id == field_node.id
+            for e in graph.edges
+        )
+        if not has_knob:
+            continue
+
+        # Searchable field must map to a knob with domain
+        knob_edges = [e for e in graph.edges if e.from_id == field_node.id and e.label == "tuned_by"]
+        if not knob_edges:
+            score -= 3
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Field {field_node.data.get('path')} searchable but no knob mapping",
+            })
+            continue
+
+        knob_node = graph.get_node(knob_edges[0].to_id)
+        if knob_node and "domain" in knob_node.data:
+            domain = knob_node.data["domain"]
+            if not any(k in domain for k in ("candidates", "range", "minimum", "maximum")):
+                score -= 2
+                issues.append({
+                    "severity": "warning",
+                    "category": "knob",
+                    "message": f"Knob {knob_node.data.get('name')} domain not mapped to field range",
+                })
+
+    return max(0, score), issues
+
+
+def _check_validator_coverage(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, list[dict]]:
+    score = 20
+    issues = []
+
+    # Check mandatory validators exist
+    mandatory = [
+        "ub_capacity", "l1_capacity", "workspace_no_alias",
+        "sparse_window_alignment", "split_kv_lse_merge_valid",
+        "event_dependency_valid", "l1_residency_loop_order",
+    ]
+    for v_name in mandatory:
+        v_path = stage2_dir / "validators_spec" / f"{v_name}.yaml"
+        if not v_path.exists():
+            score -= 5
+            issues.append({
+                "severity": "error",
+                "category": "validator",
+                "message": f"Missing mandatory validator: {v_name}",
+            })
+
+    # Check high-risk cards have validators
+    for risk_node in graph.nodes:
+        if risk_node.kind != "risk":
+            continue
+        risk_id = risk_node.id
+        # Look for validator matching risk
+        v_name = f"valid_{risk_id.lower().replace('-', '_')}"
+        v_path = stage2_dir / "validators_spec" / f"{v_name}.yaml"
+        if not v_path.exists():
+            score -= 4
+            issues.append({
+                "severity": "error",
+                "category": "validator",
+                "message": f"High-risk card missing validator: {risk_id}",
+            })
+
+    # Check validator expr is not placeholder
+    val_dir = stage2_dir / "validators_spec"
+    if val_dir.exists():
+        for vfile in val_dir.glob("*.yaml"):
+            content = vfile.read_text()
+            if "placeholder" in content.lower():
+                score -= 2
+                issues.append({
+                    "severity": "warning",
+                    "category": "validator",
+                    "message": f"Validator {vfile.stem} has placeholder expr",
+                })
+
+    return max(0, score), issues
+
+
+def _check_lowering_specs(stage2_dir: Path, graph: EvidenceGraph) -> tuple[int, list[dict]]:
+    score = 10
+    issues = []
+
+    lowering_dir = stage2_dir / "lowering_spec"
+    if not lowering_dir.exists():
+        return 0, [{"severity": "error", "category": "lowering", "message": "No lowering_spec directory"}]
+
+    for lfile in lowering_dir.glob("*.yaml"):
+        data = _load_yaml_file(lfile)
+        if not data:
+            continue
+        for key in ("consumes", "emits", "patch_points"):
+            if key not in data or not data[key]:
+                score -= 2
+                issues.append({
+                    "severity": "error",
+                    "category": "lowering",
+                    "message": f"Lowering pass {lfile.stem} missing {key}",
+                })
+
+    return max(0, score), issues
+
+
+def _check_shadow_dsl_coverage(stage2_dir: Path, graph: EvidenceGraph) -> tuple[int, list[dict], dict]:
+    score = 15
+    issues = []
+    coverage = {}
+
+    # Count high-confidence fields per variant from graph
+    variant_fields: dict[str, list[str]] = {}
+    for card_node in graph.nodes:
+        if card_node.kind != "card":
+            continue
+        variants = card_node.data.get("applies_to", {}).get("variants", [])
+        for e in graph.edges:
+            if e.from_id == card_node.id and e.label == "suggests":
+                field_node = graph.get_node(e.to_id)
+                if field_node and field_node.data.get("confidence") == "high":
+                    for v in variants:
+                        variant_fields.setdefault(v, []).append(field_node.data.get("path", ""))
+
+    for variant, paths in variant_fields.items():
+        total = len(set(paths))
+        shadow_path = stage2_dir / "examples" / f"{variant}_shadow.yaml"
+        covered = 0
+        if shadow_path.exists():
+            shadow_data = _load_yaml_file(shadow_path)
+            if shadow_data:
+                shadow_paths = {f.get("path", "") for f in shadow_data.get("fields", [])}
+                covered = len(set(paths) & shadow_paths)
+
+        pct = (covered / total * 100) if total > 0 else 0
+        coverage[variant] = {"covered": covered, "total": total, "pct": round(pct, 1)}
+
+        if pct < 60:
+            variant_score = 0
+        elif pct < 80:
+            variant_score = (pct - 60) / 20 * (15 / len(variant_fields) if variant_fields else 15)
+        else:
+            variant_score = 15 / len(variant_fields) if variant_fields else 15
+
+        score -= (15 / len(variant_fields) if variant_fields else 15) - variant_score
+
+        if pct < 80:
+            issues.append({
+                "severity": "warning",
+                "category": "shadow",
+                "message": f"Shadow DSL coverage for {variant}: {pct:.1f}% (need >= 80%)",
+                "remediation": f"Add {total - covered} missing fields to {variant}_shadow.yaml",
+            })
+
+    return max(0, round(score)), issues, coverage
+
+
+def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
+    scores = {}
+    all_issues = []
+
+    scores["card_to_module_coverage"], issues = _check_evidence_connectivity(graph)
+    all_issues.extend(issues)
+
+    scores["field_design_completeness"], issues = _check_field_completeness(stage2_dir, graph)
+    all_issues.extend(issues)
+
+    scores["searchable_knob_quality"], issues = _check_knob_quality(graph, stage2_dir)
+    all_issues.extend(issues)
+
+    scores["validator_completeness"], issues = _check_validator_coverage(graph, stage2_dir)
+    all_issues.extend(issues)
+
+    scores["lowering_spec_clarity"], issues = _check_lowering_specs(stage2_dir, graph)
+    all_issues.extend(issues)
+
+    scores["shadow_dsl_coverage"], issues, coverage = _check_shadow_dsl_coverage(stage2_dir, graph)
+    all_issues.extend(issues)
+
+    total = sum(scores.values())
+    hard_failures = [i for i in all_issues if i["severity"] == "error"]
+    status = "pass" if total >= 85 and not hard_failures else "warn" if total >= 70 else "fail"
+
+    result = {
+        "overall_status": status,
+        "total_score": total,
+        "scores": scores,
+        "hard_failures": [i["message"] for i in hard_failures],
+        "semantic_issues": all_issues,
+        "coverage": {"shadow_dsl": coverage},
+        "next_actions": list(dict.fromkeys(
+            i.get("remediation", f"Fix: {i['message']}") for i in all_issues
+        )),
+    }
+
+    out = stage2_dir / "review" / "quality_gate.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    # Also write markdown report
+    md = ["# Stage 2 Quality Gate", "", f"Status: **{status}**", f"Total score: **{total}/100**", "", "## Scores", ""]
+    for k, v in scores.items():
+        md.append(f"- {k}: {v}")
+    md += ["", "## Issues", ""]
+    md += [f"- [{i['severity']}] ({i['category']}) {i['message']}" for i in all_issues] or ["- No issues found."]
+    (stage2_dir / "review" / "quality_gate.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--evidence-graph", default="stage2_outputs/.evidence_graph.json")
+    parser.add_argument("--stage2-dir", default="stage2_outputs")
+    parser.add_argument("--output", default=None)
+    args = parser.parse_args()
+
+    graph = EvidenceGraph.load(Path(args.evidence_graph))
+    stage2_dir = Path(args.stage2_dir)
+    result = verify(graph, stage2_dir)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
