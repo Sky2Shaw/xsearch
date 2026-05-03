@@ -14,12 +14,18 @@ optimization_cards:
     constraints: [C-TEST-1]
     risks: [R-TEST-1]
     possible_dsl_fields:
+      - path: shape_layout.input_layout
+        meaning: Input tensor layout mode
+        confidence: high
       - path: tiling.s1_base
         meaning: Base S1 tile size in tokens
         confidence: high
       - path: pipeline.kind
         meaning: Pipeline variant kind
         confidence: medium
+      - path: target.ub_capacity_bytes
+        meaning: Target UB capacity size in bytes
+        confidence: high
     source_evidence:
       - id: SE-TEST-1
         role: test evidence for card

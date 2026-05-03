@@ -50,3 +50,48 @@ def test_graph_save_load():
     assert len(loaded.nodes) == len(graph.nodes)
     assert len(loaded.edges) == len(graph.edges)
     path.unlink()
+
+
+def test_agent_ready_graph_nodes_and_edges():
+    fixtures = Path(__file__).parent / "fixtures"
+    graph = parse_stage1(fixtures)
+
+    kinds = {node.kind for node in graph.nodes}
+    assert "semantic_entity" in kinds
+    assert "schedule_point" in kinds
+    assert "hardware_capability" in kinds
+    assert "measurement_metric" in kinds
+    assert "feature_source" in kinds
+    assert "tuning_record_field" in kinds
+
+    assert graph.get_node("ir:semantic:shape_layout.input_layout") is not None
+    assert graph.get_node("ir:kernel:tiling.s1_base") is not None
+    assert graph.get_node("ir:hardware:target.ub_capacity_bytes") is not None
+    assert graph.get_node("schedule:tiling.s1_base") is not None
+    assert graph.get_node("metric:latency_us") is not None
+    assert graph.get_node("tuning_record:schedule_trace") is not None
+
+    assert any(
+        edge.label == "field_maps_to_ir"
+        and edge.from_id == "field:tiling.s1_base"
+        and edge.to_id == "ir:kernel:tiling.s1_base"
+        for edge in graph.edges
+    )
+    assert any(
+        edge.label == "field_maps_to_ir"
+        and edge.from_id == "field:tiling.s1_base"
+        and edge.to_id == "schedule:tiling.s1_base"
+        for edge in graph.edges
+    )
+    assert any(
+        edge.label == "schedule_point_guarded_by"
+        and edge.from_id == "schedule:tiling.s1_base"
+        and edge.to_id == "C-TEST-1"
+        for edge in graph.edges
+    )
+    assert any(
+        edge.label == "field_requires_capability"
+        and edge.from_id == "field:target.ub_capacity_bytes"
+        and edge.to_id == "capability:ub_capacity"
+        for edge in graph.edges
+    )
