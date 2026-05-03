@@ -1,0 +1,472 @@
+version: 0.7-execution-closure
+kind: atdsl.reviewed_symbol_binding
+status: fia_sink_core_bindings_reviewed_or_rule_validated
+source_root: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink
+records:
+- semantic_id: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_tiling.h:87 TILING_DATA_FIELD_DEF(uint32_t, s2BaseSize)
+  - op_host/fia_tiling_nonquant_sink.cpp:360 tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:390 tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+  - op_kernel/fia_kernel_nonquant_sink.h:254 constInfo.s2BaseSize = metadataGm.GetValue(...S_INNER_SIZE_INDEX)
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:221 constInfo.s2BaseSize = metadataGm.GetValue(...S_INNER_SIZE_INDEX)
+  roles:
+    host_tiling_field:
+      symbol: s2BaseSize
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+      anchor: TILING_DATA_FIELD_DEF(uint32_t, s2BaseSize)
+    host_producers:
+    - file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+    - file: op_host/fia_tiling_nonquant_mla_sink.cpp
+      anchor: tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+    kernel_tiling_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: optiling::S_INNER_SIZE_INDEX -> constInfo.s2BaseSize
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: optiling::S_INNER_SIZE_INDEX -> constInfo.s2BaseSize
+  patch_points:
+  - kind: update_host_tiling_expression
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    anchor: tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+    rewrite_kind: replace_expr_arg
+    argument_index: 0
+    requires_guarded_cost_check: true
+  - kind: update_host_tiling_expression
+    file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    anchor: tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+    rewrite_kind: replace_expr_arg
+    argument_index: 0
+    requires_guarded_cost_check: true
+  notes: For production, prefer rewriting the upstream planner variable sInnerSize_ or inserting guarded candidate override before SetSplitOutput;
+    direct setter rewrite is valid only for controlled experiments.
+- semantic_id: attention.tiling.m_base
+  dsl_path: kernel_ir.tiles.m_base.value
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_tiling.h:86 TILING_DATA_FIELD_DEF(uint32_t, mBaseSize)
+  - op_host/fia_tiling_nonquant_sink.cpp:359 tilingData_.innerSplitParams.set_mBaseSize(mBaseSize_)
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:389 tilingData_.innerSplitParams.set_mBaseSize(mBaseSize_)
+  - op_kernel/fia_kernel_nonquant_sink.h:253 constInfo.mBaseSize = metadataGm.GetValue(...M_BASE_SIZE_INDEX)
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:220 constInfo.mBaseSize = metadataGm.GetValue(...M_BASE_SIZE_INDEX)
+  roles:
+    host_tiling_field:
+      symbol: mBaseSize
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+      anchor: TILING_DATA_FIELD_DEF(uint32_t, mBaseSize)
+    host_producers:
+    - file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: tilingData_.innerSplitParams.set_mBaseSize(mBaseSize_)
+    - file: op_host/fia_tiling_nonquant_mla_sink.cpp
+      anchor: tilingData_.innerSplitParams.set_mBaseSize(mBaseSize_)
+    kernel_tiling_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: optiling::M_BASE_SIZE_INDEX -> constInfo.mBaseSize
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: optiling::M_BASE_SIZE_INDEX -> constInfo.mBaseSize
+  patch_points:
+  - kind: update_host_tiling_expression
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    anchor: tilingData_.innerSplitParams.set_mBaseSize(mBaseSize_)
+    rewrite_kind: replace_expr_arg
+    argument_index: 0
+    requires_guarded_cost_check: true
+  - kind: update_host_tiling_expression
+    file: op_host/fia_tiling_nonquant_mla_sink.cpp
+    anchor: tilingData_.innerSplitParams.set_mBaseSize(mBaseSize_)
+    rewrite_kind: replace_expr_arg
+    argument_index: 0
+    requires_guarded_cost_check: true
+- semantic_id: flash_decode.partition.g_s1_base
+  dsl_path: kernel_ir.tiles.fd_g_s1_base_size.value
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_tiling.h:112 TILING_DATA_FIELD_DEF(uint32_t, gS1BaseSizeOfFd)
+  - op_host/fia_tiling_nonquant_sink.cpp:361 tilingData_.fdParams.set_gS1BaseSizeOfFd(mFdBaseSize_)
+  - op_kernel/fia_kernel_nonquant_sink.h:739 metadataGm.GetValue(...M_FD_BASE_SIZE_INDEX)
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:659 metadataGm.GetValue(...M_FD_BASE_SIZE_INDEX)
+  roles:
+    host_fd_metadata:
+      symbol: gS1BaseSizeOfFd
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    host_producer:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: set_gS1BaseSizeOfFd(mFdBaseSize_)
+    kernel_fd_metadata_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: M_FD_BASE_SIZE_INDEX -> gS1BaseSizeOfFd
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: M_FD_BASE_SIZE_INDEX -> gS1BaseSizeOfFd
+  patch_points:
+  - kind: update_fd_partition_expression
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    anchor: tilingData_.fdParams.set_gS1BaseSizeOfFd(mFdBaseSize_)
+    rewrite_kind: replace_expr_arg
+    argument_index: 0
+    requires_split_core_recompute: true
+  notes: MLA host path packages mFdBaseSize_ into splitParam; direct fdParams setter only appears in nonquant sink path. MLA lowering should rewrite
+    mFdBaseSize_ before SetSplitOutput.
+- semantic_id: flash_decode.fdparams.used_vec_num
+  dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.used_vec_num]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_tiling.h:113
+  - op_kernel/fia_kernel_nonquant_sink.h:728 usedAivCoreNum / FD active core guard
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:654 usedVecNumOfFd
+  roles:
+    host_fd_metadata_field:
+      symbol: usedVecNumOfFd
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    host_fd_metadata_producer:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: usedVecNumOfFd
+    kernel_fd_metadata_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: usedVecNumOfFd
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: usedVecNumOfFd
+  patch_points: []
+  notes: Metadata arrays are produced by split_core output bridge; direct source rewrite is not allowed unless split_core bridge remains synchronized.
+- semantic_id: flash_decode.fdparams.bn2_idx_of_fd_head
+  dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.bn2_idx_of_fd_head]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp:336-348
+  - op_kernel/fia_kernel_nonquant_sink.h:731-741
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:660-667
+  roles:
+    host_fd_metadata_field:
+      symbol: bN2IdxOfFdHead[]
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    host_fd_metadata_producer:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: bN2IdxOfFdHead
+    kernel_fd_metadata_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: bN2IdxOfFdHead
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: bN2IdxOfFdHead
+  patch_points: []
+  notes: Metadata arrays are produced by split_core output bridge; direct source rewrite is not allowed unless split_core bridge remains synchronized.
+- semantic_id: flash_decode.fdparams.gs1_idx_of_fd_head
+  dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.gs1_idx_of_fd_head]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp:337-349
+  - op_kernel/fia_kernel_nonquant_sink.h:732-742
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:661-668
+  roles:
+    host_fd_metadata_field:
+      symbol: gS1IdxOfFdHead[]
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    host_fd_metadata_producer:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: gS1IdxOfFdHead
+    kernel_fd_metadata_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: gS1IdxOfFdHead
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: gS1IdxOfFdHead
+  patch_points: []
+  notes: Metadata arrays are produced by split_core output bridge; direct source rewrite is not allowed unless split_core bridge remains synchronized.
+- semantic_id: flash_decode.fdparams.s2_split_num_of_fd_head
+  dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.s2_split_num_of_fd_head]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp:338-350
+  - op_kernel/fia_kernel_nonquant_sink.h:733-743
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:662-669
+  roles:
+    host_fd_metadata_field:
+      symbol: s2SplitNumOfFdHead[]
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    host_fd_metadata_producer:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: s2SplitNumOfFdHead
+    kernel_fd_metadata_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: s2SplitNumOfFdHead
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: s2SplitNumOfFdHead
+  patch_points: []
+  notes: Metadata arrays are produced by split_core output bridge; direct source rewrite is not allowed unless split_core bridge remains synchronized.
+- semantic_id: flash_decode.fdparams.gs1_idx_end_of_fd_head_split
+  dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.gs1_idx_end_of_fd_head_split]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_tiling.h:121
+  - op_kernel/fia_kernel_nonquant_sink.h:755-757
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:683-685
+  roles:
+    host_fd_metadata_field:
+      symbol: gS1IdxEndOfFdHeadSplit[]
+      file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+    host_fd_metadata_producer:
+      file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: gS1IdxEndOfFdHeadSplit
+    kernel_fd_metadata_consumer:
+    - file: op_kernel/fia_kernel_nonquant_sink.h
+      anchor: gS1IdxEndOfFdHeadSplit
+    - file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: gS1IdxEndOfFdHeadSplit
+  patch_points: []
+  notes: Metadata arrays are produced by split_core output bridge; direct source rewrite is not allowed unless split_core bridge remains synchronized.
+- semantic_id: flash_decode.route.split_kv_enabled
+  dsl_path: kernel_ir.flash_decode.route.split_kv_enabled.value
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp:378 splitKVFlag_ = true
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:392 splitKVFlag_ = true
+  - op_host/fia_tiling_nonquant_sink.h:75 bool splitKVFlag_ = false
+  roles:
+    host_route_field:
+      symbol: splitKVFlag_
+      file: op_host/fia_tiling_nonquant_sink.h
+    host_route_setters:
+    - file: op_host/fia_tiling_nonquant_sink.cpp
+      anchor: splitKVFlag_ = true
+    - file: op_host/fia_tiling_nonquant_mla_sink.cpp
+      anchor: splitKVFlag_ = true
+  patch_points:
+  - kind: guarded_route_override
+    file: op_host/fia_tiling_nonquant_sink.cpp
+    anchor: splitKVFlag_ = true
+    rewrite_kind: guarded_branch_or_override
+    requires_review: true
+- semantic_id: split_core.range_assignments
+  dsl_path: kernel_ir.loop_nest.split_core_range.range_assignments
+  state: validated_by_rules
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp:326-350 packages splitParam and copies fdRes arrays
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:348-373 mirrors split output bridge
+  - source_refs/stage1_split_core_range_contract.yaml
+  roles:
+    host_split_core_input:
+      functions:
+      - FiaTilingNonQuant::CreateSplitInput
+      - FiaTilingNonQuantMla::CreateSplitInput
+    host_split_core_output_bridge:
+      functions:
+      - FiaTilingNonQuant::SetSplitOutput
+      - FiaTilingNonQuantMla::SetSplitOutput
+    kernel_fd_consumer:
+      files:
+      - op_kernel/fia_kernel_nonquant_sink.h
+      - op_kernel/fia_kernel_nonquant_mla_sink.h
+  patch_points: []
+  notes: External split_core producer. Treat as verified import contract; do not rewrite producer without external model.
+- semantic_id: shape_layout.contract
+  dsl_path: semantic_ir.layout
+  state: validated_by_rules
+  confidence: high
+  evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_infershape.cpp shape functions
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h CopySoftmaxLseToGmByLayout
+  - op_kernel/fia_block_vec_flashdecode_sink.h Bmm2DataCopyOutTrans
+  - source_refs/stage1_shape_layout_contract.yaml
+  roles:
+    host_infershape_rule:
+      file: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp
+    kernel_output_layout_consumer:
+      files:
+      - op_kernel/fia_block_vec_nonquant_mla_sink.h
+      - op_kernel/fia_block_vec_flashdecode_sink.h
+  patch_points: []
+  notes: Validation contract; patch lowering forbidden unless infer-shape tests are regenerated.
+- semantic_id: sparse.policy.mode
+  dsl_path: kernel_ir.sparse_policy.mode
+  state: validated_by_rules
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp::FillTilingMaskParams
+  - source_refs/stage1_sparse_policy.yaml
+  roles:
+    host_sparse_policy_field:
+      status: bound_by_stage1_contract
+  patch_points: []
+  notes: Policy-level binding; source rewrite requires semantic review.
+- semantic_id: sparse.policy.invalid_row_rule
+  dsl_path: kernel_ir.sparse_policy.invalid_row_rule
+  state: validated_by_rules
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp::IsExistRowInvalid
+  - op_kernel/fia_block_vec_nonquant_sink.h::Vec1SinkSoftmaxProc
+  - source_refs/stage1_sparse_policy.yaml
+  roles:
+    host_invalid_row_rule:
+      status: bound_by_stage1_contract
+  patch_points: []
+  notes: Policy-level binding; source rewrite requires semantic review.
+- semantic_id: sparse.policy.fd_pre_next_token_rule
+  dsl_path: kernel_ir.sparse_policy.fd_pre_next_token_rule
+  state: validated_by_rules
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_flashdecode_sink.h::CalaPreNextTokens
+  - source_refs/stage1_sparse_policy.yaml
+  roles:
+    kernel_fd_pre_next_consumer:
+      status: bound_by_stage1_contract
+  patch_points: []
+  notes: Policy-level binding; source rewrite requires semantic review.
+- semantic_id: scalar.offset_rules.fd_task_offset
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[fd_task_offset]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_flashdecode_sink.h:467 taskOffset = combineTaskPrefixSum * constInfo.mBaseSize
+  - op_kernel/fia_block_vec_flashdecode_sink.h:480-486 CopyLseIn / CopyAccumOutIn uses taskOffset+startRow
+  roles:
+    kernel_fd_offset_formula:
+      file: op_kernel/fia_block_vec_flashdecode_sink.h
+      anchor: taskOffset = combineTaskPrefixSum * constInfo.mBaseSize
+  patch_points: []
+  notes: Formula binding is reviewed for analysis and verifier. Source rewrite requires requires_review=true because scalar formula changes can
+    break workspace ABI.
+- semantic_id: scalar.offset_rules.fd_partial_output_offset
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[fd_partial_output_offset]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_flashdecode_sink.h:226 splitKVIndex * constInfo.mBaseSize * constInfo.headDim
+  roles:
+    kernel_fd_partial_output_offset_formula:
+      file: op_kernel/fia_block_vec_flashdecode_sink.h
+      anchor: CopyAccumOutIn splitKVIndex offset
+  patch_points: []
+  notes: Formula binding is reviewed for analysis and verifier. Source rewrite requires requires_review=true because scalar formula changes can
+    break workspace ABI.
+- semantic_id: scalar.offset_rules.mla_nupdate_atomic_base
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_nupdate_atomic_base]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:700 baseoffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + ...
+  roles:
+    kernel_mla_atomic_base_formula:
+      file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      anchor: baseoffset = ...
+  patch_points: []
+  notes: Formula binding is reviewed for analysis and verifier. Source rewrite requires requires_review=true because scalar formula changes can
+    break workspace ABI.
+- semantic_id: scalar.offset_rules.mla_mm2_reload_slot
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_mm2_reload_slot]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:1126 srcGmOffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + mStart * columnCount
+  roles:
+    kernel_mla_reload_slot_formula:
+      file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      anchor: srcGmOffset = ...
+  patch_points: []
+  notes: Formula binding is reviewed for analysis and verifier. Source rewrite requires requires_review=true because scalar formula changes can
+    break workspace ABI.
+- semantic_id: scalar.offset_rules.mla_fd_partial_offset
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_fd_partial_offset]
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:1003-1004 accumTmpOutNum/tndCoreStartKVSplitPos FD partial offset
+  roles:
+    kernel_mla_fd_partial_offset_formula:
+      file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      anchor: accumTmpOutNum * kvHeadNum * constInfo.mBaseSize * headDim + ...
+  patch_points: []
+  notes: Formula binding is reviewed for analysis and verifier. Source rewrite requires requires_review=true because scalar formula changes can
+    break workspace ABI.
+- semantic_id: mla.nupdate.numeric_contract
+  dsl_path: kernel_ir.compute.mla_nupdate
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:471-561 AmlaVecCompute
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:658-710 ProcessAmlaNupdate and atomic target
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:803-804 ProcessAmlaNupdate then syncV1NupdateC2
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:243 constInfo.syncV1NupdateC2 = SYNC_V1_NUPDATE_C2_FLAG
+  roles:
+    kernel_mla_vec_compute:
+      file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      anchor: AmlaVecCompute
+    kernel_mla_nupdate_atomic:
+      file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      anchor: ProcessAmlaNupdate
+    kernel_mm2_sync_wait:
+      file: op_kernel/fia_kernel_nonquant_mla_sink.h
+      anchor: syncV1NupdateC2
+  patch_points: []
+  notes: Numeric contract only. Lowering must preserve ordered micro-steps and sync barrier.
+- semantic_id: workspace.mla.tail_regions
+  dsl_path: kernel_ir.memory_plan.workspace.mla_tail_regions.tail_regions
+  state: validated_by_rules
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:506-507 host budgets MLA nUpdate and softmaxSum tail bytes
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:700-710 atomic target aliases mm2ResInt32Gm
+  - op_kernel/fia_block_vec_nonquant_mla_sink.h:1150 aMlaSumUb broadcast
+  roles:
+    host_workspace_budget:
+      file: op_host/fia_tiling_nonquant_mla_sink.cpp
+      anchor: CalcNormalWorkspaceSize + MLA tail budgets
+    kernel_alias_or_ub_bridge:
+      file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+      anchor: mm2ResInt32Gm/aMlaSumUb bridges
+  patch_points: []
+  notes: Do not lower as standalone GM region; preserve budget-only stub contract.
+- semantic_id: memory.l1_residency.v_tile.scope
+  dsl_path: kernel_ir.memory_plan.l1_residency.objects[v_tile].scope
+  state: validated_by_rules
+  confidence: medium
+  evidence:
+  - op_kernel/fia_block_cube_nonquant_gqa_sink.h:1002/1027 V L1 tile uses s2Idx * s2BaseSize + nL1.start
+  roles:
+    kernel_l1_buffer:
+      file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    mm2_consumer:
+      file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+  patch_points: []
+  notes: Needs specialist review before automatic memory residency rewrite.
+- semantic_id: workspace.flash_decode_regions
+  dsl_path: kernel_ir.memory_plan.workspace.flash_decode_regions
+  state: reviewed
+  confidence: high
+  evidence:
+  - op_host/fia_tiling_nonquant_sink.cpp:483-485 fdAccumOutSize/fdLogSumExpSize host sizing
+  - op_host/fia_tiling_nonquant_mla_sink.cpp:452-454 MLA FD accumOut/logsum sizing
+  - op_kernel/fia_block_vec_flashdecode_sink.h:211-226 CopyAccumOutIn partial output offset
+  - op_kernel/fia_block_vec_flashdecode_sink.h:480-486 FD LSE/accumOut reload uses taskOffset+startRow
+  roles:
+    host_workspace_size:
+      files:
+      - op_host/fia_tiling_nonquant_sink.cpp
+      - op_host/fia_tiling_nonquant_mla_sink.cpp
+      anchor: fdAccumOutSize / fdLogSumExpSize sizing
+    kernel_workspace_region_indexing:
+      file: op_kernel/fia_block_vec_flashdecode_sink.h
+      anchor: CopyAccumOutIn / CopyLseIn
+    fd_region_offset_consumer:
+      file: op_kernel/fia_block_vec_flashdecode_sink.h
+      anchor: taskOffset + startRow
+  patch_points: []
+  notes: Reviewed as workspace ABI contract. No direct source rewrite until workspace offset graph and no-alias verifier are shape-specialized.
+review_policy:
+  auto_lowering_allowed: only records with state=reviewed, confidence=high, and patch_points non-empty
+  semantic_policy_bindings: validated_by_rules records may feed verifiers but must not emit source diff directly
+  requires_review:
+  - workspace_or_event_rewrites
+  - scalar_formula_rewrites
+  - shape_layout_rewrites
+  - sparse_policy_semantics

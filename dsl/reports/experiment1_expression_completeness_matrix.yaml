@@ -1,0 +1,41 @@
+version: 0.7-execution-closure
+kind: atdsl.experiment1_expression_completeness_matrix
+target_operator: ai_infra_fused_infer_attention_sink
+result: PARTIAL_PASS_AFTER_V0_6
+coverage:
+- area: tiling fields mBaseSize/s2BaseSize/gS1BaseSizeOfFd
+  v0_5: partial
+  v0_6: field-level binding and schedule points
+  status: pass
+- area: FD metadata bridge arrays
+  v0_5: source_ref only
+  v0_6: first-class fdparams contract + binding
+  status: pass_contract_guard
+- area: split-core range assignment
+  v0_5: owner reference only
+  v0_6: range assignment contract imported
+  status: pass_contract_guard
+- area: workspace FD/MLA tail
+  v0_5: region names only
+  v0_6: region contract + MLA budget-only tail model
+  status: partial_pass
+- area: shape/layout
+  v0_5: contract_ref only
+  v0_6: query/output/LSE layout families embedded
+  status: partial_pass
+- area: sparse policy
+  v0_5: fields list
+  v0_6: mode/invalid-row/fd pre-next/sink adjustments embedded
+  status: partial_pass
+- area: scalar offset rules
+  v0_5: source_card only
+  v0_6: five formula patterns with reviewed source bindings
+  status: pass_review_required
+- area: MLA nUpdate
+  v0_5: coarse marker
+  v0_6: numeric micro-step contract + atomic target + sync
+  status: pass_contract_guard
+- area: automatic source diff lowering
+  v0_5: not implemented
+  v0_6: patch plan improved, source diff backend still missing
+  status: blocked

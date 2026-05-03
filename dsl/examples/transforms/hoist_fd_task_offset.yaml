@@ -1,0 +1,25 @@
+version: 0.7-execution-closure
+kind: atdsl.transform_trace
+id: hoist_fd_task_offset
+type: scalar_formula_optimization
+reason: FD taskOffset prefix sum is hoistable outside the per-gS1 partition loop if workspace ABI and split-KV-major ordering
+  are preserved.
+schedule_points:
+- sp_scalar_fd_task_offset_hoist
+preconditions:
+- flash_decode profile active
+- scalar.offset_rules.fd_task_offset binding reviewed
+- formula equivalence proof attached
+mutations:
+- path: kernel_ir.compute.scalar_offset_rules.patterns[fd_task_offset]
+  old: baseline
+  new: hoist_prefix_sum
+expected_effect: Reduce repeated scalar prefix-sum and address arithmetic in FD merge.
+risk: workspace_addressing_error_if_prefix_sum_or_startRow_semantics_drift
+validators:
+- scalar_offset_consistency
+- workspace_contiguous_abi
+- fd_lse_merge_valid
+forbidden:
+- FT-NO-COLLAPSE-FD-TASK-PREFIX-SPLIT-ROW-TERMS
+requires_review: true

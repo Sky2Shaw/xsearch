@@ -1,0 +1,42 @@
+shared_stage_aliases:
+  - id: ALIAS-GQA-VEC1-SHARED
+    alias_stage: gqa.vec1
+    critical_path_stage: gqa.vec1
+    dispatcher_owner: FiaKernelNonQuant<FIAT>
+    dispatcher_stage: ComputeVec1
+    shared_owner: FiaBlockVecNonQuant<FIAT>
+    shared_stage: ComputeVec1
+    canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+    shared_stage_annotation: annotations/functions/deep/0126_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec1.yaml
+    inner_contract_annotation: annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+    producer_stages:
+      - gqa.mm1
+    consumer_stages:
+      - gqa.mm2
+      - flash_decode.merge
+    producer_consumer_link: FiaKernelNonQuant dispatches the GQA Vec1 slot into the shared vectorService ComputeVec1, which waits syncC1V1, runs ProcessVec1SingleBuf, and signals syncV1C2 for downstream MM2 or FD consumers.
+    source_evidence_ids:
+      - SE-GQA-SHARED-VECTOR-OWNER
+      - SE-GQA-VEC1-DISPATCH
+      - SE-SHARED-VEC1-SYNC
+  - id: ALIAS-GQA-VEC2-SHARED
+    alias_stage: gqa.vec2.output
+    legacy_alias_stage: gqa.vec2
+    critical_path_stage: gqa.vec2.output
+    dispatcher_owner: FiaKernelNonQuant<FIAT>
+    dispatcher_stage: ComputeVec2
+    shared_owner: FiaBlockVecNonQuant<FIAT>
+    shared_stage: ComputeVec2
+    canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+    shared_stage_annotation: annotations/functions/deep/0127_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec2.yaml
+    inner_contract_annotation: annotations/functions/deep/0099_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec2SingleBuf.yaml
+    producer_stages:
+      - gqa.mm2
+    consumer_stages:
+      - output.final_attention
+      - flash_decode.merge
+    producer_consumer_link: FiaKernelNonQuant dispatches the GQA Vec2 slot into the shared vectorService ComputeVec2, which waits syncC2V2, runs ProcessVec2SingleBuf, and signals syncV2C2 after final output or split-KV partial export.
+    source_evidence_ids:
+      - SE-GQA-SHARED-VECTOR-OWNER
+      - SE-GQA-VEC2-DISPATCH
+      - SE-SHARED-VEC2-SYNC

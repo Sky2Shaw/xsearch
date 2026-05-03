@@ -1,0 +1,135 @@
+version: 0.9-card-driven-execution
+kind: atdsl.tiling_ir
+purpose: Card-driven tiling/split-core candidate generation for FIA Sink; this is the bridge from Tiling cards to schedule-point candidates.
+source_cards:
+- OC-TILING-SPLIT-CORE-COST-TABLE
+- OC-TILING-USED-CORE-SEARCH-BOUNDS
+- OC-TILING-FD-GS1-PARTITION-SEARCH
+- OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+- OC-COMMON-SPLIT-CORE-BALANCING
+- OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+split_core_planner:
+  cost_model_source: runtime_ir/split_core_planner_ir.common_attention.yaml
+  cost_model:
+    block_cost_formula:
+      expression: 6 * ceil(M / 16) + 10 * ceil(S2 / 64)
+      implementation_notes:
+      - M is aligned upward with (basicM + 16 - 1) >> 4.
+      - S2 is aligned upward with (basicS2 + 64 - 1) >> 6.
+      - The returned scalar combines M and S2 terms with coefficients 6 and 10.
+      evidence:
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:86
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:90
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:91
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:92
+    block_type_table:
+      semantics:
+      - Cost table records normal/normal, tail/normal, normal/tail, and tail/tail block costs.
+      - Tail entries become zero when the corresponding tail size is zero.
+      evidence:
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:95
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:99
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:100
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:101
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:102
+    tolerance:
+      fa_tolerance_ratio: 2
+      fd_tolerance_ratio: 2
+      tolerance_predicate: limit + tolerance >= value
+      evidence:
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:25
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:26
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:61
+      - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:64
+  core_search:
+    preprocessing:
+    - SplitCore first builds per-batch split metadata and exits the all-empty KV case with one used core.
+    - CalcCostInfo accumulates total cost and total block count from per-batch costs multiplied by n2Size.
+    search_bounds:
+      max_core: min(requested coreNum, totalBlockNum)
+      min_core: min(rounding expression sqrt(totalBlockNum + 0.25) + 0.5, maxCore)
+    selection:
+    - The search evaluates candidate core counts from minCore through maxCore.
+    - A candidate replaces the result when its maxCost is lower than the current best.
+    - The final usedCoreNum is clamped to at least one core.
+    evidence:
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:739
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:742
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:750
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:753
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:754
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:762
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:764
+    - inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:774
+  candidate_generation_rules:
+  - target_schedule_point: sp_tiling_s2_base
+    source_cards:
+    - OC-TILING-SPLIT-CORE-COST-TABLE
+    - OC-TILING-USED-CORE-SEARCH-BOUNDS
+    candidate_domain:
+    - 64
+    - 128
+    - 256
+    precheck:
+    - candidate_must_align_to_32
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+    ranking_features:
+    - estimated_mte2_bytes
+    - estimated_cube_utilization
+    - estimated_core_balance
+  - target_schedule_point: sp_tiling_m_base
+    source_cards:
+    - OC-TILING-SPLIT-CORE-COST-TABLE
+    - OC-TILING-USED-CORE-SEARCH-BOUNDS
+    candidate_domain:
+    - 32
+    - 64
+    - 128
+    precheck:
+    - workspace_capacity_precheck
+    - used_core_balance_precheck
+    ranking_features:
+    - m_tile_tail_rate
+    - l1_reuse_opportunity
+fd_partition:
+  target_schedule_point: sp_fd_partition_g_s1_base
+  source_cards:
+  - OC-TILING-FD-GS1-PARTITION-SEARCH
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+  fields:
+  - gS1BaseSizeOfFd
+  - usedVecNumOfFd
+  - actualGSplitSize
+  - taskOffset
+  - startRow
+  candidate_mode: planner_generated
+  precheck:
+  - fd_metadata_bridge_valid
+  - fd_blockidx_task_mapping_valid
+  - workspace_fd_regions_no_alias
+  risk: wrong fd partition can alias workspace or corrupt LSE merge state
+sparse_sink_ranges:
+  target_schedule_points:
+  - sp_sparse_s2_policy
+  - sp_sparse_policy_mode
+  source_cards:
+  - OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  fields:
+  - preTokens
+  - nextTokens
+  - s2_range_policy
+  - invalid_row_rule
+  precheck:
+  - sparse_policy_contract_valid
+  - invalid_row_rule_valid
+output_contract:
+  planner_outputs:
+  - candidate_schedule_point
+  - candidate_value
+  - precheck_results
+  - estimated_risk
+  - required_tests
+  - source_cards
+  consumer: card_driven_schedule_selection -> transform_trace -> lower_patch_plan

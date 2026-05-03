@@ -1,0 +1,81 @@
+version: 0.7-execution-closure
+kind: atdsl.lowering_ir.schema
+purpose: Define how verified transform_trace entries become reviewable AscendC source patch plans. This is patch lowering, not full kernel code
+  generation.
+lowering_pipeline:
+- name: ResolveTransform
+  input:
+  - base_atdsl_instance
+  - transform_trace
+  output: mutated_atdsl_instance
+  checks:
+  - dsl_path_resolves
+  - old_value_matches_when_present
+  - new_value_matches_schedule_point_candidates
+- name: ResolveBinding
+  input:
+  - mutated_atdsl_instance
+  - reviewed_symbol_binding.yaml
+  output: binding_resolution
+  checks:
+  - semantic_id_bound
+  - required_roles_present
+  - confidence_high_for_auto_lowering
+- name: EmitPatchPlan
+  input:
+  - binding_resolution
+  - transform_trace
+  output: patch_plan.yaml
+  checks:
+  - rewrite_kind_allowed
+  - patch_point_exists
+  - forbidden_fields_not_modified
+- name: EmitPatchDiff
+  input:
+  - patch_plan.yaml
+  - source_tree
+  output: patch_diff.patch
+  checks:
+  - dry_run_apply_ok
+  - compile_guard_comments_emitted
+supported_initial_passes:
+  LowerTiling:
+    schedule_points:
+    - sp_tiling_s2_base
+    - sp_tiling_m_base
+    - sp_fd_partition_g_s1_base
+    rewrite_kinds:
+    - replace_expr
+    - update_struct_field
+    - update_tiling_assignment
+    auto_lowering: allowed after reviewed binding and hard verifier pass
+  LowerFlashDecodeRoute:
+    schedule_points:
+    - sp_fd_split_kv_route
+    rewrite_kinds:
+    - replace_bool_expr
+    - update_route_guard
+    auto_lowering: review_required
+  LowerWorkspaceLayout:
+    schedule_points:
+    - sp_workspace_fd_regions
+    rewrite_kinds:
+    - update_workspace_region_formula
+    - insert_no_alias_assert
+    auto_lowering: review_required
+explicitly_not_supported_yet:
+- full AscendC kernel code generation
+- pipeline event reordering
+- unreviewed L1 residency rewrite
+- MLA tail standalone GM allocation
+lowering_modes:
+  source_rewrite: Requires reviewed/high binding and concrete patch_points.
+  contract_guard_only: Emits verifier guard and lowering report, no source diff.
+  semantic_policy_to_patch_plan: Requires semantic review; may emit policy-specific patch plan only after host+kernel contract check.
+  scalar_formula_patch_requires_review: Requires formula equivalence proof and specialist review.
+rewrite_kinds:
+- replace_expr_arg
+- guarded_branch_or_override
+- insert_guarded_override
+- contract_guard
+- formula_hoist_with_equivalence_proof

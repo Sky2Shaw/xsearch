@@ -1,0 +1,187 @@
+version: 0.7-execution-closure
+kind: atdsl.binding_ir.schema
+purpose: Map semantic DSL fields to reviewed concrete AscendC symbols and patch points. Lowering must use reviewed bindings only.
+binding_states:
+- candidate_llm_generated
+- validated_by_rules
+- reviewed
+- rejected_ambiguous
+semantic_fields:
+  attention.tiling.s2_base:
+    dsl_path: kernel_ir.tiles.s2_base.value
+    source_knob: s2BaseSize
+    required_roles:
+    - host_tiling_field
+    - kernel_tiling_consumer
+    - derived_constexpr?
+    auto_lowering_allowed_when: reviewed && confidence==high
+  attention.tiling.m_base:
+    dsl_path: kernel_ir.tiles.m_base.value
+    source_knob: mBaseSize
+    required_roles:
+    - host_tiling_field
+    - kernel_tiling_consumer
+  flash_decode.route.split_kv_enabled:
+    dsl_path: kernel_ir.flash_decode.route.split_kv_enabled.value
+    source_knob: splitKVFlag
+    required_roles:
+    - host_route_field
+    - kernel_fd_consumer
+    auto_lowering_allowed_when: reviewed && fd_metadata_bridge_valid
+  flash_decode.partition.g_s1_base:
+    dsl_path: kernel_ir.tiles.fd_g_s1_base_size.value
+    source_knob: gS1BaseSizeOfFd
+    required_roles:
+    - host_fd_metadata
+    - kernel_fd_metadata_consumer
+  workspace.layout.normal_ring:
+    dsl_path: kernel_ir.memory_plan.workspace.normal_ring
+    required_roles:
+    - host_workspace_size
+    - kernel_workspace_binding
+    auto_lowering_allowed_when: reviewed && workspace_contiguous_abi
+  memory.l1_residency.v_tile.scope:
+    dsl_path: kernel_ir.memory_plan.l1_residency.objects[v_tile].scope
+    required_roles:
+    - kernel_l1_buffer
+    - kernel_event_release
+    - mm2_consumer
+    requires_review: true
+  sparse.policy.s2_range:
+    dsl_path: kernel_ir.sparse_policy.s2_range_policy
+    required_roles:
+    - host_sparse_policy_field
+    - kernel_sparse_policy_consumer
+    auto_lowering_allowed_when: reviewed && sparse_policy_contract
+  workspace.flash_decode_regions:
+    dsl_path: kernel_ir.memory_plan.workspace.flash_decode_regions
+    required_roles:
+    - host_workspace_size
+    - kernel_workspace_region_indexing
+    - fd_region_offset_consumer
+    auto_lowering_allowed_when: reviewed && workspace_no_alias && fd_metadata_bridge_valid
+    requires_review: true
+  flash_decode.fdparams.used_vec_num:
+    dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.used_vec_num]
+    source_knob: usedVecNumOfFd
+    required_roles:
+    - host_fd_metadata_field
+    - kernel_fd_metadata_consumer
+    auto_lowering_allowed_when: reviewed && fd_metadata_bridge_valid
+  flash_decode.fdparams.bn2_idx_of_fd_head:
+    dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.bn2_idx_of_fd_head]
+    source_knob: bN2IdxOfFdHead[]
+    required_roles:
+    - host_fd_metadata_array
+    - kernel_fd_metadata_consumer
+  flash_decode.fdparams.gs1_idx_of_fd_head:
+    dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.gs1_idx_of_fd_head]
+    source_knob: gS1IdxOfFdHead[]
+    required_roles:
+    - host_fd_metadata_array
+    - kernel_fd_metadata_consumer
+  flash_decode.fdparams.s2_split_num_of_fd_head:
+    dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.s2_split_num_of_fd_head]
+    source_knob: s2SplitNumOfFdHead[]
+    required_roles:
+    - host_fd_metadata_array
+    - kernel_fd_metadata_consumer
+  flash_decode.fdparams.gs1_idx_end_of_fd_head_split:
+    dsl_path: kernel_ir.flash_decode.fdparams.fields[flash_decode.fdparams.gs1_idx_end_of_fd_head_split]
+    source_knob: gS1IdxEndOfFdHeadSplit[]
+    required_roles:
+    - host_fd_metadata_array
+    - kernel_fd_metadata_consumer
+  split_core.range_assignments:
+    dsl_path: kernel_ir.loop_nest.split_core_range.range_assignments
+    required_roles:
+    - host_split_core_input
+    - host_split_core_output_bridge
+    - kernel_fd_consumer
+    requires_review: true
+  shape_layout.contract:
+    dsl_path: semantic_ir.layout
+    required_roles:
+    - host_infershape_rule
+    - kernel_output_layout_consumer
+    requires_review: true
+  sparse.policy.mode:
+    dsl_path: kernel_ir.sparse_policy.mode
+    required_roles:
+    - host_sparse_policy_field
+    - kernel_sparse_policy_consumer
+  sparse.policy.invalid_row_rule:
+    dsl_path: kernel_ir.sparse_policy.invalid_row_rule
+    required_roles:
+    - host_invalid_row_rule
+    - kernel_invalid_row_consumer
+  sparse.policy.fd_pre_next_token_rule:
+    dsl_path: kernel_ir.sparse_policy.fd_pre_next_token_rule
+    required_roles:
+    - kernel_fd_pre_next_consumer
+  scalar.offset_rules.fd_task_offset:
+    dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[fd_task_offset]
+    required_roles:
+    - kernel_fd_offset_formula
+    - fd_workspace_offset_consumer
+    requires_review: true
+  scalar.offset_rules.fd_partial_output_offset:
+    dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[fd_partial_output_offset]
+    required_roles:
+    - kernel_fd_partial_output_offset_formula
+    requires_review: true
+  scalar.offset_rules.mla_nupdate_atomic_base:
+    dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_nupdate_atomic_base]
+    required_roles:
+    - kernel_mla_atomic_base_formula
+    requires_review: true
+  scalar.offset_rules.mla_mm2_reload_slot:
+    dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_mm2_reload_slot]
+    required_roles:
+    - kernel_mla_reload_slot_formula
+    requires_review: true
+  scalar.offset_rules.mla_fd_partial_offset:
+    dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_fd_partial_offset]
+    required_roles:
+    - kernel_mla_fd_partial_offset_formula
+    requires_review: true
+  mla.nupdate.numeric_contract:
+    dsl_path: kernel_ir.compute.mla_nupdate
+    required_roles:
+    - kernel_mla_vec_compute
+    - kernel_mla_nupdate_atomic
+    - kernel_mm2_sync_wait
+    requires_review: true
+  workspace.mla.tail_regions:
+    dsl_path: kernel_ir.memory_plan.workspace.mla_tail_regions.tail_regions
+    required_roles:
+    - host_workspace_budget
+    - kernel_alias_or_ub_bridge
+    requires_review: true
+binding_validator_rules:
+- high_confidence_requires_source_evidence
+- host_and_kernel_roles_required_for_tiling
+- reject_if_ambiguous
+- reject_if_patch_point_missing
+- workspace_and_event_bindings_require_review
+- fd_metadata_arrays_must_have_host_and_kernel_spans
+- shape_layout_bindings_require_infershape_and_copyout_consumer
+- scalar_offset_bindings_require_formula_span_and_consumer_span
+- mla_tail_budget_must_not_lower_as_standalone_gm_without_binding
+output_files:
+- bindings/candidate_symbol_binding.yaml
+- bindings/reviewed_symbol_binding.yaml
+- bindings/reviewed_symbol_binding.fia_sink.yaml
+- bindings/binding_validation_report.yaml
+binding_record_schema:
+  semantic_id: string, must be one of semantic_fields keys
+  dsl_path: canonical path copied from semantic_fields
+  state: candidate_llm_generated|validated_by_rules|reviewed|rejected_ambiguous
+  confidence: low|medium|high
+  evidence: list of source spans or grep hits
+  roles: map role -> source symbol/AST anchor
+  patch_points: list of concrete rewrite anchors
+minimum_review_policy:
+  auto_lowering: allowed only when state=reviewed and confidence=high
+  tiling_fields: must include host_tiling_field and kernel_tiling_consumer roles
+  workspace_or_event_fields: requires manual or specialist-agent review

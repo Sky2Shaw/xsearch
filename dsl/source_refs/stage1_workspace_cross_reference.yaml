@@ -1,0 +1,66 @@
+workspace_cross_reference:
+  schema_version: 1
+  regions:
+  - region_id: mla.nupdate
+    optimization_card_id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+    host_budget_producer:
+      function: FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+      file: op_host/fia_tiling_nonquant_mla_sink.cpp
+      line_range:
+        start: 491
+        end: 508
+      source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+    kernel_binding_scan:
+    - function: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitWorkspace
+      result: No dedicated SetGlobalBuffer is bound between vec2ResGm and optional FD scratch.
+      source_evidence_ids:
+      - SE-WORKSPACE-MLA-INIT-ORDER
+    - function: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitWorkspace
+      result: mm2ResInt32Gm is an int32 alias over normal.mm2 rather than a dedicated nUpdate tail.
+      source_evidence_ids:
+      - SE-MLA-MM2-INT32-ALIAS
+    observed_runtime_consumer:
+      function: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+      result: Broadcasts row-wise int32 corrections and atomically adds them into mm2ResInt32Gm at the current preload-slot offset.
+      source_evidence_ids:
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+    byte_order_rule: The only directly observed write order is row-major 128-lane int32 atomic updates into the normal.mm2 alias; no dedicated tail byte order is visible.
+    relation_to_named_buffers:
+    - normal.mm2 via mm2ResInt32Gm alias
+    conclusion: host_budget_stub_only
+    stage2_handling: Keep as an ABI budget field with binding_status=host_budget_only_stub. Do not lower to a standalone workspace GM region without new kernel binding evidence.
+    confidence: medium
+    confidence_rationale: Host budget is explicit, runtime correction path is explicit, but a dedicated tail SetGlobalBuffer is absent.
+  - region_id: mla.softmax_sum
+    optimization_card_id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+    host_budget_producer:
+      function: FiaTilingNonQuantMla::CalcNormalWorkspaceSize
+      file: op_host/fia_tiling_nonquant_mla_sink.cpp
+      line_range:
+        start: 491
+        end: 508
+      source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+    kernel_binding_scan:
+    - function: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::InitWorkspace
+      result: No dedicated SetGlobalBuffer is bound for an MLA-only softmaxSum tail.
+      source_evidence_ids:
+      - SE-WORKSPACE-MLA-INIT-ORDER
+    - function: FiaBlockVecNonQuantMla<FIAT>::InitBuffers
+      result: aMlaSum is allocated from local aMlaSumBuff per preload slot and not bound from workspace.
+      source_evidence_ids:
+      - SE-MLA-AMLASUM-UB-ONLY
+    observed_runtime_consumer:
+      function: FiaBlockVecNonQuantMla<FIAT>::DealBmm2ResBaseBlock
+      result: Consumes aMlaSumUb from local UB state during final Vec2 normalization.
+      source_evidence_ids:
+      - SE-MLA-SOFTMAX-SUM-CONSUME
+    byte_order_rule: No dedicated GM byte order is visible; the observed consumer reads aMlaSumUb through UB broadcast helpers.
+    relation_to_named_buffers:
+    - aMlaSumBuff
+    - aMlaSumUb
+    conclusion: host_budget_stub_only
+    stage2_handling: Keep as an ABI budget field with a local_buffer_bridge note rather than materializing a false GM producer/consumer path.
+    confidence: medium
+    confidence_rationale: Host budget is explicit, but the observed producer and consumer meet through local UB storage rather than a dedicated workspace binding.

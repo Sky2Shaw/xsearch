@@ -1,0 +1,71 @@
+version: 0.3-stage3-mvp
+passes:
+- name: LowerTiling
+  consumes:
+  - tiling.s2_base
+  - tiling.m_base
+  emits:
+  - host tiling patch intent
+  - tiling override manifest
+  patch_points:
+  - op_host/*tiling*.cpp
+  status: mvp_patch_intent_only
+- name: LowerWorkspaceLayout
+  consumes:
+  - workspace.layout
+  - workspace.binding_policy
+  emits:
+  - workspace region offset formulas
+  - ABI guard report
+  patch_points:
+  - host workspace size calculation
+  - kernel InitWorkspace / SetGlobalBuffer
+  guards:
+  - workspace_contiguous_abi
+  - workspace_no_alias
+  status: mvp_patch_intent_only
+- name: LowerFlashDecodeMetadata
+  consumes:
+  - flash_decode.metadata_bridge
+  - flash_decode.route.split_kv_enabled
+  - workspace.flash_decode_regions
+  emits:
+  - FD metadata mapping
+  - split_id workspace indexing
+  - patch intent
+  patch_points:
+  - host SetSplitOutput
+  - kernel FlashDecode setup
+  - FD merge setup
+  guards:
+  - fd_metadata_bridge_valid
+  - split_kv_lse_merge_valid
+  ownership: flash_decode.metadata_bridge
+  status: mvp_patch_intent_only
+- name: LowerL1Residency
+  consumes:
+  - l1_residency
+  - pipeline.sync_edges
+  - memory_lifetime
+  emits:
+  - DataCopy placement intent
+  - V_EVENT wait/release placement intent
+  patch_points:
+  - InitBuffer
+  - Process
+  - MM2 stage
+  guards:
+  - l1_residency_lifetime_valid
+  - event_dependency_valid
+  status: spec_only_v0
+- name: LowerPipeline
+  consumes:
+  - pipeline.stage_graph
+  emits:
+  - pipeline variant intent
+  patch_points:
+  - Process main loop
+  guards:
+  - event_dependency_valid
+  - forbidden_field_policy_valid
+  status: readonly_in_stage3_mvp

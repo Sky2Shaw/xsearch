@@ -1,0 +1,19 @@
+version: 0.5-performance-dsl-mvp
+backend: static_cost_model
+kind: estimator
+consumes:
+- feature_schema
+- kernel_ir
+- hardware_contract_ir
+- execution_ir.history_features
+emits:
+- cost_score
+- risk_score
+- candidate_priority
+initial_features:
+- gm_read_bytes_est
+- l1_working_set_bytes
+- workspace_region_count
+- event_dependency_count
+- v_tile_reuse_count
+- split_kv_enabled

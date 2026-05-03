@@ -1,0 +1,143 @@
+version: 0.7-execution-closure
+kind: atdsl.patch_plan
+patch_plan_id: patch_plan_try_s2_base_128_with_execution_guards
+source_transform: try_s2_base_128_with_execution_guards
+schedule_point: sp_tiling_s2_base
+semantic_field: attention.tiling.s2_base
+dsl_path: kernel_ir.tiles.s2_base.value
+lowering_mode: source_rewrite
+status: ready_for_source_diff
+rewrites:
+- id: rewrite_1
+  semantic_field: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  rewrite_kind: replace_expr
+  new_value: 128
+  binding_required: true
+  source_knob: s2BaseSize
+contract_guards:
+- workspace_contiguous_abi
+- sparse_policy_contract
+- ub_capacity_or_cost_precheck
+- risk_guard_attached
+- workspace_layout_abi_valid
+required_tests:
+- id: TEST-SHAPE-LAYOUT-FAMILIES
+  test_surface: unit_test_infershape
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_infershape.cpp
+  covered_contracts:
+  - shape_layout.query_layout_families
+  - shape_layout.attention_out_layouts
+  - shape_layout.softmax_lse_layouts
+- id: TEST-SPARSE-SINK-TILING-GUARDS
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  covered_contracts:
+  - sparse.policy.sink_adjustments
+  - sparse.policy.validator_rules
+  - operator.interface.sink_number_constraints
+- id: TEST-FD-WORKSPACE-TILING
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  covered_contracts:
+  - workspace.flash_decode_regions
+  - split_core.range_assignments
+  - flash_decode.metadata_bridge
+  - workspace.mla.tail_regions
+- id: TEST-API-WORKSPACE-SMOKE
+  test_surface: unit_test_op_api
+  file: tests/ut/op_api/test_aclnn_ai_infra_fused_infer_attention_sink.cpp
+  covered_contracts:
+  - operator.interface.public_aclnn_entry
+  - operator.optional_outputs.softmax_lse
+  - operator.input_tensor_lists.kv_tensor_list
+risk_guards:
+- id: R-MM2-OWNER-COLLAPSE
+  description: Collapsing ComputeMm2 or alias-aware Vec stages across owners hides distinct GQA, MLA, and generic nonquant semantics.
+  verifier_ids:
+  - mla_nupdate_numeric_contract
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-GQA-V-L1-LIFETIME
+  description: Incorrect V_EVENT release can overwrite reusable V L1 tiles or deadlock the reuse path.
+  verifier_ids:
+  - lifetime_no_overlap
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-UB-ALIGNMENT-DRIFT
+  description: Removing Vec1 and Vec2 32B-safe rounding or mishandling headDimAlign can misalign UB accesses and leak padded garbage into outputs.
+  verifier_ids:
+  - forbidden_reorder_guard
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-INVALID-ROW-SEMANTIC-DRIFT
+  description: Skipping invalid-row correction changes the semantic meaning of softmaxLse output and masked rows.
+  verifier_ids:
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-MLA-NUPDATE-TAIL-MISLOWERED
+  description: Lowering MLA nUpdate as a standalone GM tail instead of the observed normal.mm2 int32 alias can move atomic correction away from
+    the MM2 data it adjusts.
+  verifier_ids:
+  - mla_nupdate_numeric_contract
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-WORKSPACE-ABI-DRIFT
+  description: Reordering or resizing workspace regions without synchronized host and kernel ABI updates can redirect ring slots or FD scratch
+    to the wrong bytes.
+  verifier_ids:
+  - fd_metadata_bridge_valid
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SHAPE-LAYOUT-CONTRACT-DRIFT
+  description: Changing infer-shape or layout-specific exporters independently can mismatch attentionOut and softmaxLse tensor ranks or offsets
+    across BSH, BSND, BNSD, NBSD, TND, and NTD families.
+  verifier_ids:
+  - offset_calculator_matches_layout
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SPARSE-POLICY-DESYNC
+  description: Divergence between host maskParams packing and kernel sparse or invalid-row branches can invert sink-window or row-validity semantics.
+  verifier_ids:
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+dataflow_guards:
+  source: runtime_ir/dataflow_ir.fia_sink.yaml
+  required_when:
+  - fd
+  - workspace
+  - l1
+  - pipeline
+lifetime_guards:
+  source: runtime_ir/lifetime_ir.fia_sink.yaml
+  required_when:
+  - workspace
+  - l1
+  - event
+knob_domain_checks:
+- name: s2BaseSize
+  type: integer
+  domain:
+    kind: positive_integer
+    minimum: 1
+    unit: kv_tokens_per_s2_tile
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    consumers:
+    - task creation and sparse-range builders
+    - GQA MM1/MM2 inner loops
+    - shared Vec1/Vec2 softmax and output tiles
+  default_behavior:
+    source: metadata S_INNER_SIZE_INDEX populated by host tilingData.innerSplitParams.s2BaseSize
+    fixed_or_derived: host_selected_per_tiling
+  coupled_constraints:
+  - C-EVENT-ORDER-RUNINFO
+  - C-INVALID-ROW-LSE-CORRECTION
+  searchable: true
+  source_evidence:
+  - id: SE-KNOB-S2-BASE-SIZE
+notes:
+- v0.7 emits execution-closure patch_plan only; real AscendC patch.diff backend is still pending.

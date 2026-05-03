@@ -1,0 +1,280 @@
+version: 0.7-execution-closure
+kind: atdsl.test_contract_ir
+contracts:
+- id: TEST-SHAPE-LAYOUT-FAMILIES
+  test_surface: unit_test_infershape
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_infershape.cpp
+  line_range:
+    start: 31
+    end: 345
+  covered_contracts:
+  - shape_layout.query_layout_families
+  - shape_layout.attention_out_layouts
+  - shape_layout.softmax_lse_layouts
+  observed_behavior: Infer-shape UTs cover TND, BNSD, BSND_BNSD, BSH, and NTD cases, including softmax_lse shape {0} when softmax_lse_flag is
+    false.
+  source_evidence_ids:
+  - SE-TEST-INFER-SHAPE-LAYOUTS
+- id: TEST-SPARSE-SINK-TILING-GUARDS
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  line_range:
+    start: 52
+    end: 398
+  covered_contracts:
+  - sparse.policy.sink_adjustments
+  - sparse.policy.validator_rules
+  - operator.interface.sink_number_constraints
+  observed_behavior: Tiling UTs reject negative, over-boundary, and odd sinkNumber values, and accept the TND sparse-mode sink path with an expected
+    tiling key and workspace.
+  source_evidence_ids:
+  - SE-TEST-TILING-SINK-CONSTRAINTS
+- id: TEST-FD-WORKSPACE-TILING
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  line_range:
+    start: 468
+    end: 1372
+  covered_contracts:
+  - workspace.flash_decode_regions
+  - split_core.range_assignments
+  - flash_decode.metadata_bridge
+  - workspace.mla.tail_regions
+  observed_behavior: Tiling UTs exercise FD, GQA max-workspace, MLA max-workspace, and MLA FD paths with expected workspace vectors and tiling
+    keys.
+  source_evidence_ids:
+  - SE-TEST-TILING-FD-WORKSPACE
+- id: TEST-API-WORKSPACE-SMOKE
+  test_surface: unit_test_op_api
+  file: tests/ut/op_api/test_aclnn_ai_infra_fused_infer_attention_sink.cpp
+  line_range:
+    start: 39
+    end: 147
+  covered_contracts:
+  - operator.interface.public_aclnn_entry
+  - operator.optional_outputs.softmax_lse
+  - operator.input_tensor_lists.kv_tensor_list
+  observed_behavior: The op_api UT builds a TND sink case with KV tensor lists, metadata, block table, softmax_lse output enabled, and expects
+    TestGetWorkspaceSize to return ACLNN_SUCCESS.
+  source_evidence_ids:
+  - SE-TEST-API-WORKSPACE-SMOKE
+- id: TEST-ST-EAGER-REFERENCE
+  test_surface: system_test_npu
+  file: tests/st/test_npu_fused_infer_attention_sink.py
+  line_range:
+    start: 61
+    end: 92
+  covered_contracts:
+  - sparse.policy.fd_pre_next_token_rule
+  - operator.execution.eager_reference_accuracy
+  - flash_decode.metadata_bridge
+  observed_behavior: The NPU eager ST builds metadata, runs npu_fused_infer_attention_sink with sparse_mode 4 and sink_number 128, and compares
+    output against a Python softmax/matmul reference with 0.004 relative and absolute tolerances.
+  source_evidence_ids:
+  - SE-TEST-ST-EAGER-REFERENCE
+- id: TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  test_surface: system_test_npu_graph
+  file: tests/st/test_npu_fused_infer_attention_sink.py
+  line_range:
+    start: 94
+    end: 347
+  covered_contracts:
+  - operator.execution.graph_capture
+  - mla.query_rope_key_rope_path
+  - gqa.sink_tensor_path
+  - flash_decode.metadata_bridge
+  observed_behavior: Graph-capture STs build metadata on an auxiliary stream, wait from the AICore stream, replay the graph, and compare generic
+    and MLA outputs against torch_npu reference attention; sink-tensor MLA/GQA cases exercise key_sink, key_rope_sink, and value_sink routing.
+  source_evidence_ids:
+  - SE-TEST-ST-GRAPH-CAPTURE
+- id: TEST-BENCHMARK-CACHED-REFERENCE
+  test_surface: benchmark
+  file: tests/benchmark/benchmark_fused_infer_attention_sink.py
+  line_range:
+    start: 58
+    end: 116
+  covered_contracts:
+  - operator.execution.benchmark_reference_check
+  - sparse.policy.sink_reference_mask
+  observed_behavior: Benchmark uses the same TND sparse sink scenario, reuses cached CPU reference output when present, and asserts np.allclose
+    with 0.004 tolerances before optional repeated NPU execution.
+  source_evidence_ids:
+  - SE-TEST-BENCHMARK-CACHED-REFERENCE
+selection_rules:
+- changed_dsl_path: shape_layout.query_layout_families
+  required_contract_ids:
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  required_test_surfaces:
+  - unit_test_infershape
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: shape_layout.attention_out_layouts
+  required_contract_ids:
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  required_test_surfaces:
+  - unit_test_infershape
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: shape_layout.softmax_lse_layouts
+  required_contract_ids:
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  required_test_surfaces:
+  - unit_test_infershape
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: sparse.policy.sink_adjustments
+  required_contract_ids:
+  - TEST-SPARSE-SINK-TILING-GUARDS
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: sparse.policy.validator_rules
+  required_contract_ids:
+  - TEST-SPARSE-SINK-TILING-GUARDS
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.interface.sink_number_constraints
+  required_contract_ids:
+  - TEST-SPARSE-SINK-TILING-GUARDS
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: workspace.flash_decode_regions
+  required_contract_ids:
+  - TEST-FD-WORKSPACE-TILING
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: split_core.range_assignments
+  required_contract_ids:
+  - TEST-FD-WORKSPACE-TILING
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: flash_decode.metadata_bridge
+  required_contract_ids:
+  - TEST-FD-WORKSPACE-TILING
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: workspace.mla.tail_regions
+  required_contract_ids:
+  - TEST-FD-WORKSPACE-TILING
+  required_test_surfaces:
+  - unit_test_tiling
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.interface.public_aclnn_entry
+  required_contract_ids:
+  - TEST-API-WORKSPACE-SMOKE
+  required_test_surfaces:
+  - unit_test_op_api
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.optional_outputs.softmax_lse
+  required_contract_ids:
+  - TEST-API-WORKSPACE-SMOKE
+  required_test_surfaces:
+  - unit_test_op_api
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.input_tensor_lists.kv_tensor_list
+  required_contract_ids:
+  - TEST-API-WORKSPACE-SMOKE
+  required_test_surfaces:
+  - unit_test_op_api
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: sparse.policy.fd_pre_next_token_rule
+  required_contract_ids:
+  - TEST-ST-EAGER-REFERENCE
+  required_test_surfaces:
+  - system_test_npu
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.execution.eager_reference_accuracy
+  required_contract_ids:
+  - TEST-ST-EAGER-REFERENCE
+  required_test_surfaces:
+  - system_test_npu
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: flash_decode.metadata_bridge
+  required_contract_ids:
+  - TEST-ST-EAGER-REFERENCE
+  required_test_surfaces:
+  - system_test_npu
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.execution.graph_capture
+  required_contract_ids:
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  required_test_surfaces:
+  - system_test_npu_graph
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: mla.query_rope_key_rope_path
+  required_contract_ids:
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  required_test_surfaces:
+  - system_test_npu_graph
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: gqa.sink_tensor_path
+  required_contract_ids:
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  required_test_surfaces:
+  - system_test_npu_graph
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: flash_decode.metadata_bridge
+  required_contract_ids:
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  required_test_surfaces:
+  - system_test_npu_graph
+  benchmark_required: false
+  minimum_gate: system
+- changed_dsl_path: operator.execution.benchmark_reference_check
+  required_contract_ids:
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  required_test_surfaces:
+  - benchmark
+  benchmark_required: true
+  minimum_gate: benchmark
+- changed_dsl_path: sparse.policy.sink_reference_mask
+  required_contract_ids:
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  required_test_surfaces:
+  - benchmark
+  benchmark_required: true
+  minimum_gate: benchmark
+coverage_matrix:
+  contract_count: 7
+  covered_contract_paths:
+  - flash_decode.metadata_bridge
+  - gqa.sink_tensor_path
+  - mla.query_rope_key_rope_path
+  - operator.execution.benchmark_reference_check
+  - operator.execution.eager_reference_accuracy
+  - operator.execution.graph_capture
+  - operator.input_tensor_lists.kv_tensor_list
+  - operator.interface.public_aclnn_entry
+  - operator.interface.sink_number_constraints
+  - operator.optional_outputs.softmax_lse
+  - shape_layout.attention_out_layouts
+  - shape_layout.query_layout_families
+  - shape_layout.softmax_lse_layouts
+  - sparse.policy.fd_pre_next_token_rule
+  - sparse.policy.sink_adjustments
+  - sparse.policy.sink_reference_mask
+  - sparse.policy.validator_rules
+  - split_core.range_assignments
+  - workspace.flash_decode_regions
+  - workspace.mla.tail_regions

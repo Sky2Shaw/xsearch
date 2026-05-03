@@ -1,0 +1,82 @@
+version: 0.7-execution-closure
+backend: ascendc_patch
+kind: source_patch_backend
+consumes:
+- semantic_ir
+- kernel_ir
+- hardware_contract_ir
+- binding_ir
+- lowering_ir
+- transform_trace
+requires:
+- reviewed_symbol_binding.yaml
+- layered_verifier_pass
+- patch_points
+- patch_plan.schema.yaml
+- transform_apply_pass
+- canonical_path_validation
+- reviewed_symbol_binding.fia_sink.yaml
+- source_root
+- contract_guard_lowering
+- formula_equivalence_report_for_scalar_rewrites
+emits:
+- patch_plan.yaml
+- patch_diff.patch
+- lowering_report.yaml
+allowed_initial_passes:
+- LowerTiling
+- LowerFlashDecodeMetadata
+- LowerWorkspaceLayout
+guarded_later_passes:
+- LowerL1Residency
+- LowerPipeline
+safety_rules:
+- reject_if_binding_missing_or_ambiguous
+- reject_if_forbidden_field_modified
+- do_not_lower_mla_tail_host_budget_stub_as_standalone_gm
+- pipeline_event_reorder_readonly_by_default
+lowering_pass_contracts:
+  LowerTiling:
+    status: mvp_scaffold
+    inputs:
+    - sp_tiling_s2_base
+    - sp_tiling_m_base
+    - sp_fd_partition_g_s1_base
+    emits: rewrite_units with rewrite_kind=replace_expr/update_tiling_assignment
+    must_check:
+    - binding_resolved
+    - schedule_point_candidate_valid
+    - s2_alignment
+    - ub_capacity_or_cost_precheck
+  LowerFlashDecodeRoute:
+    status: review_required_scaffold
+    inputs:
+    - sp_fd_split_kv_route
+    emits: guarded route rewrite_units
+    must_check:
+    - fd_metadata_bridge_valid
+    - split_kv_lse_merge_valid
+    - workspace_no_alias
+  LowerWorkspaceLayout:
+    status: review_required_scaffold
+    inputs:
+    - sp_workspace_fd_regions
+    emits: workspace region indexing rewrite_units
+    must_check:
+    - workspace_contiguous_abi
+    - workspace_no_alias
+    - fd_metadata_bridge_valid
+v0_6_capabilities:
+  source_rewrite_ready:
+  - attention.tiling.s2_base
+  - attention.tiling.m_base
+  contract_guard_ready:
+  - flash_decode.fdparams.*
+  - split_core.range_assignments
+  - mla.nupdate.numeric_contract
+  - workspace.mla.tail_regions
+  review_required_before_source_rewrite:
+  - scalar.offset_rules.*
+  - sparse.policy.*
+  - shape_layout.contract
+  - memory.l1_residency.v_tile.scope

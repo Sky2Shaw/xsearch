@@ -1,0 +1,36 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.feature_schema
+structural_features:
+- profile_flags
+- loop_order
+- tile_shape
+- split_core_count
+- split_kv_enabled
+- runinfo_ring_depth
+memory_features:
+- gm_read_bytes_est
+- gm_write_bytes_est
+- ub_working_set_bytes
+- l1_working_set_bytes
+- v_tile_reuse_count
+- workspace_region_count
+pipeline_features:
+- stage_count
+- event_dependency_count
+- preload_slots
+- fd_merge_stage_count
+risk_features:
+- workspace_alias_risk
+- fd_metadata_desync_risk
+- event_reorder_risk
+- mla_tail_binding_risk
+- invalid_row_semantic_risk
+history_features:
+- nearest_shape_bucket
+- previous_best_schedule_points
+- previous_failed_transforms
+consumers:
+- static_cost_model
+- mskpp_backend
+- search_planner
+- failure_analyst

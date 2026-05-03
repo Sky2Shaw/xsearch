@@ -1,0 +1,49 @@
+version: 0.7-execution-closure
+kind: atdsl.patch_plan
+patch_plan_id: patch_plan_transform_try_s2_base_128
+base_dsl_hash: e55e9fa6ad0a526a
+source_root: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink
+source_commit: unknown
+transforms:
+- transform_try_s2_base_128
+rewrite_units:
+- id: rewrite_sp_tiling_s2_base_0
+  schedule_point: sp_tiling_s2_base
+  semantic_id: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  target_file: op_host/fia_tiling_nonquant_sink.cpp
+  anchor: tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+  rewrite_kind: replace_expr_arg
+  old_value: from_tiling
+  new_value: 128
+  safety_guards:
+  - workspace_contiguous_abi
+  - sparse_policy_contract
+  - ub_capacity_or_cost_precheck
+  - binding_resolved
+  requires_review: false
+- id: rewrite_sp_tiling_s2_base_1
+  schedule_point: sp_tiling_s2_base
+  semantic_id: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  target_file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  anchor: tilingData_.innerSplitParams.set_s2BaseSize(sInnerSize_)
+  rewrite_kind: replace_expr_arg
+  old_value: from_tiling
+  new_value: 128
+  safety_guards:
+  - workspace_contiguous_abi
+  - sparse_policy_contract
+  - ub_capacity_or_cost_precheck
+  - binding_resolved
+  requires_review: false
+contract_guards: []
+blocked_units: []
+validators:
+- workspace_contiguous_abi
+- sparse_policy_contract
+- binding_resolved
+rollback:
+  strategy: git_reverse_patch
+  must_emit_original_snippet: true
+status: ready_for_source_diff

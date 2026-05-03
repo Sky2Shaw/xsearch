@@ -1,0 +1,184 @@
+version: 0.9-card-driven-execution
+kind: atdsl.patch_plan
+patch_plan_id: patch_plan_card_driven_try_s2_base_128
+source_transform: card_driven_try_s2_base_128
+source_card: OC-TILING-SPLIT-CORE-COST-TABLE
+card_mapping:
+  card_id: OC-TILING-SPLIT-CORE-COST-TABLE
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_cost_model
+  pipeline_position: Tiling.split_core.cost_model
+  dsl_paths:
+  - tiling_ir.split_core_planner.cost_model
+  - split_core_planner_ir.cost_model
+  schedule_points:
+  - sp_split_core_planner_guard
+  - sp_tiling_s2_base
+  - sp_tiling_m_base
+  verifier_ids:
+  - verify_split_core_cost_table
+  - verify_candidate_cost_monotonicity
+  lowering_policy: planner_generated_candidate
+  required_tests:
+  - TEST-SPARSE-SINK-TILING-GUARDS
+  - TEST-FD-WORKSPACE-TILING
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards: &id001
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation: &id002
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-COMMON-SPLIT-CORE-CPP
+      role: SplitCore cost model implementation.
+    - id: SE-COMMON-SPLIT-CORE-H
+      role: SplitCore constants and tolerance predicates.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+schedule_point: sp_tiling_s2_base
+flow_group: TILING_SPLIT_CORE
+semantic_field: attention.tiling.s2_base
+dsl_path: kernel_ir.tiles.s2_base.value
+lowering_mode: planner_generated_candidate
+status: planner_candidate_requires_transform
+rewrites: []
+contract_guards:
+- workspace_contiguous_abi
+- sparse_policy_contract
+- ub_capacity_or_cost_precheck
+- risk_guard_attached
+- workspace_layout_abi_valid
+- verify_split_core_cost_table
+- verify_candidate_cost_monotonicity
+required_tests:
+- id: TEST-SPARSE-SINK-TILING-GUARDS
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  covered_contracts:
+  - sparse.policy.sink_adjustments
+  - sparse.policy.validator_rules
+  - operator.interface.sink_number_constraints
+  source: card_mapping
+- id: TEST-FD-WORKSPACE-TILING
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  covered_contracts:
+  - workspace.flash_decode_regions
+  - split_core.range_assignments
+  - flash_decode.metadata_bridge
+  - workspace.mla.tail_regions
+  source: card_mapping
+- id: TEST-BENCHMARK-CACHED-REFERENCE
+  test_surface: benchmark
+  file: tests/benchmark/benchmark_fused_infer_attention_sink.py
+  covered_contracts:
+  - operator.execution.benchmark_reference_check
+  - sparse.policy.sink_reference_mask
+  source: card_mapping
+risk_guards:
+- id: R-MM2-OWNER-COLLAPSE
+  description: Collapsing ComputeMm2 or alias-aware Vec stages across owners hides distinct GQA, MLA, and generic nonquant semantics.
+  verifier_ids:
+  - mla_nupdate_numeric_contract
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-GQA-V-L1-LIFETIME
+  description: Incorrect V_EVENT release can overwrite reusable V L1 tiles or deadlock the reuse path.
+  verifier_ids:
+  - lifetime_no_overlap
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-UB-ALIGNMENT-DRIFT
+  description: Removing Vec1 and Vec2 32B-safe rounding or mishandling headDimAlign can misalign UB accesses and leak padded garbage into outputs.
+  verifier_ids:
+  - forbidden_reorder_guard
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-INVALID-ROW-SEMANTIC-DRIFT
+  description: Skipping invalid-row correction changes the semantic meaning of softmaxLse output and masked rows.
+  verifier_ids:
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SPLITKV-PARTIAL-COLLISION
+  description: Collapsing current and previous vec2ResGm slots or merging partial and final-output paths can overwrite split-KV partials before
+    FD merge.
+  verifier_ids:
+  - fd_metadata_bridge_valid
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-FD-LSE-MERGE
+  description: Wrong LSE max/sum offsets or merge weights corrupt split-KV final output.
+  verifier_ids:
+  - offset_calculator_matches_layout
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-MLA-NUPDATE-TAIL-MISLOWERED
+  description: Lowering MLA nUpdate as a standalone GM tail instead of the observed normal.mm2 int32 alias can move atomic correction away from
+    the MM2 data it adjusts.
+  verifier_ids:
+  - mla_nupdate_numeric_contract
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-WORKSPACE-ABI-DRIFT
+  description: Reordering or resizing workspace regions without synchronized host and kernel ABI updates can redirect ring slots or FD scratch
+    to the wrong bytes.
+  verifier_ids:
+  - fd_metadata_bridge_valid
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SHAPE-LAYOUT-CONTRACT-DRIFT
+  description: Changing infer-shape or layout-specific exporters independently can mismatch attentionOut and softmaxLse tensor ranks or offsets
+    across BSH, BSND, BNSD, NBSD, TND, and NTD families.
+  verifier_ids:
+  - offset_calculator_matches_layout
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SPARSE-POLICY-DESYNC
+  description: Divergence between host maskParams packing and kernel sparse or invalid-row branches can invert sink-window or row-validity semantics.
+  verifier_ids:
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+dataflow_guards:
+  source: runtime_ir/dataflow_ir.fia_sink.yaml
+  required_when:
+  - fd
+  - workspace
+  - l1
+  - pipeline
+lifetime_guards: *id001
+knob_domain_checks:
+- name: s2BaseSize
+  type: integer
+  domain:
+    kind: positive_integer
+    minimum: 1
+    unit: kv_tokens_per_s2_tile
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    consumers:
+    - task creation and sparse-range builders
+    - GQA MM1/MM2 inner loops
+    - shared Vec1/Vec2 softmax and output tiles
+  default_behavior:
+    source: metadata S_INNER_SIZE_INDEX populated by host tilingData.innerSplitParams.s2BaseSize
+    fixed_or_derived: host_selected_per_tiling
+  coupled_constraints:
+  - C-EVENT-ORDER-RUNINFO
+  - C-INVALID-ROW-LSE-CORRECTION
+  searchable: true
+  source_evidence:
+  - id: SE-KNOB-S2-BASE-SIZE
+candidate_generation: *id002
+notes:
+- v0.9 resolves card_to_dsl_mapping before lowering; real AscendC patch.diff backend is still pending.

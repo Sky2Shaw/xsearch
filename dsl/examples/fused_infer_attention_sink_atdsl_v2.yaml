@@ -1,0 +1,936 @@
+version: 0.7-execution-closure
+kind: atdsl.instance
+name: fused_infer_attention_sink_atdsl_v2
+semantic_ir:
+  operator:
+    family: fused_infer_attention
+    canonical_name: ai_infra_fused_infer_attention_sink
+  profiles:
+  - flash_decode
+  - gqa_decode
+  - mla_decode
+  - sparse_sink_attention
+  interface:
+    inputs:
+    - query
+    - key
+    - value
+    - atten_mask?
+    - actual_seq_len?
+    - block_table?
+    - tilingData
+    outputs:
+    - attention_out
+    - softmax_lse?
+    workspace: required
+    side_effects:
+    - workspace_read_write
+    - event_synchronization
+  shape:
+    axes:
+    - B
+    - S1
+    - S2
+    - N
+    - G
+    - D
+    derived:
+      head_dim_align:
+        semantic_id: attention.shape.head_dim_align
+        policy: fixed
+  layout:
+    contract_ref: shape_layout.contract
+    canonical_axes:
+    - axis: B
+      meaning: batch index
+    - axis: S1
+      meaning: query sequence rows
+    - axis: S2
+      meaning: key/value sequence rows
+    - axis: N
+      meaning: query head count
+    - axis: G
+      meaning: per-head group span used by grouped-query layouts
+    - axis: D
+      meaning: value head dimension
+    - axis: T
+      meaning: flattened token rows for varlen TND-family layouts
+    query_layout_families:
+      dense_family:
+        layouts:
+        - BSH
+        - BSND
+        - BNSD
+        - NSD
+        source_evidence_ids:
+        - SE-SHAPE-LAYOUT-CONTRACT
+        - SE-TEST-INFER-SHAPE-LAYOUTS
+        axis_mappings:
+          BSH:
+          - B
+          - S1
+          - N*D
+          BSND:
+          - B
+          - S1
+          - N
+          - D
+          BNSD:
+          - B
+          - N
+          - S1
+          - D
+          NSD:
+          - N
+          - S1
+          - D
+      varlen_family:
+        layouts:
+        - TND
+        - NTD
+        source_evidence_ids:
+        - SE-SHAPE-LAYOUT-CONTRACT
+        - SE-TEST-INFER-SHAPE-LAYOUTS
+        axis_mappings:
+          TND:
+          - T
+          - N
+          - D
+          NTD:
+          - N
+          - T
+          - D
+    attention_out_layouts:
+      layouts:
+      - name: BSH
+        output_shape:
+        - B
+        - S1
+        - N*valueD
+      - name: BSND
+        output_shape:
+        - B
+        - S1
+        - N
+        - valueD
+      - name: BNSD
+        output_shape:
+        - B
+        - N
+        - S1
+        - valueD
+      - name: NBSD
+        output_shape:
+        - N
+        - B
+        - S1
+        - valueD
+      - name: TND
+        output_shape:
+        - T
+        - N
+        - valueD
+      - name: NTD
+        output_shape:
+        - N
+        - T
+        - valueD
+      - name: NSD
+        output_shape:
+        - N
+        - S1
+        - valueD
+      source_evidence_ids:
+      - SE-SHAPE-LAYOUT-CONTRACT
+      - SE-FD-OUTPUT-LAYOUTS
+      - SE-TEST-INFER-SHAPE-LAYOUTS
+    softmax_lse_layouts:
+      tnd_family:
+        layouts:
+        - TND
+        - NTD
+        - TND_NTD
+        - NTD_TND
+        output_shape:
+        - T
+        - N
+        - 1
+        source_evidence_ids:
+        - SE-SHAPE-LAYOUT-CONTRACT
+        - SE-MLA-LSE-LAYOUT-COPY
+        - SE-TEST-INFER-SHAPE-LAYOUTS
+      dense_family:
+        layouts:
+        - BSH
+        - BSND
+        - BNSD
+        output_shape:
+        - B
+        - N
+        - S1
+        - 1
+        source_evidence_ids:
+        - SE-SHAPE-LAYOUT-CONTRACT
+        - SE-MLA-LSE-LAYOUT-COPY
+        - SE-TEST-INFER-SHAPE-LAYOUTS
+    varlen_rules:
+    - name: tnd_query_prefix
+      rule: actualSeqLengthsGmQ contributes prefixBS1 when TND-family kernels export softmaxLse or final attention rows.
+      source_evidence_ids:
+      - SE-SHAPE-LAYOUT-CONTRACT
+      - SE-MLA-LSE-LAYOUT-COPY
+    - name: query_value_dim_coupling
+      rule: attentionOut keeps the query-side B/S1/N topology but replaces D with the value-side valueD.
+      source_evidence_ids:
+      - SE-SHAPE-LAYOUT-CONTRACT
+    common_backed_semantics:
+      supplement_sources:
+      - common_supplement/shape_layout_extraction.yaml
+      - common_supplement/common_dependency_inventory.yaml
+      source_evidence_ids:
+      - SE-COMMON-FIA-TILING-SHAPE-CPP
+      - SE-COMMON-FIA-TILING-SHAPE-H
+      - SE-COMMON-FIA-TILING-INFO-H
+      common_axis_map:
+        BSH:
+        - B
+        - S
+        - H
+        BSND:
+        - B
+        - S
+        - N
+        - D
+        BNSD:
+        - B
+        - N
+        - S
+        - D
+        NZ:
+        - Bn
+        - N
+        - D1
+        - Bs
+        - D0
+        TND:
+        - T
+        - N
+        - D
+        NBSD:
+        - N
+        - B
+        - S
+        - D
+        NTD:
+        - N
+        - T
+        - D
+        BS2:
+        - B
+        - S2
+        S1S2:
+        - S1
+        - S2
+        BnBsH:
+        - Bn
+        - Bs
+        - H
+        BnNBsD:
+        - Bn
+        - N
+        - Bs
+        - D
+        BnBsND:
+        - Bn
+        - Bs
+        - N
+        - D
+        BNS1S2:
+        - B
+        - N
+        - S1
+        - S2
+        INS1S2:
+        - CONST
+        - N
+        - S1
+        - S2
+        BNS11:
+        - B
+        - N
+        - S1
+        - CONST
+        TN1:
+        - T
+        - N
+        - CONST
+        BS1S2:
+        - B
+        - S1
+        - S2
+        B1S1S2:
+        - B
+        - CONST
+        - S1
+        - S2
+        IS1S2:
+        - CONST
+        - S1
+        - S2
+        I1S1S2:
+        - CONST
+        - CONST
+        - S1
+        - S2
+      derived_dimensions:
+        H: N * D
+        D_derivation:
+        - direct D axis when present
+        - H / N when H exists, N is nonzero, and H is divisible by N
+        - D1 * D0 for NZ-style storage axes
+      nz_layout_contract:
+        axis_order:
+        - Bn
+        - N
+        - D1
+        - Bs
+        - D0
+        expected_shape:
+        - Bn
+        - N
+        - D / D0
+        - Bs
+        - D0
+        d0_default: 16
+        d_from_storage_axes: D1 * D0
+      shape_compare_modes:
+        enum_values:
+          EQUAL: 0
+          GREATER: 1
+          GREATER_EQUAL: 2
+          LESS: 3
+          LESS_EQUAL: 4
+          NOT_EQUAL: 5
+          IGNORE_INPUT: 6
+        default_compare_type: EQUAL
+        ignore_input_behavior: valid compare function that always passes, although serialization falls through to UNKNOWN.
+      stage2_import_note: Stage-2 shape DSL should carry ordered axes, derived dimensions, NZ packing, and per-axis compare modes as first-class
+        validation fields.
+  numerical_contract:
+    softmax: online
+    lse_stable_merge: required_when_flash_decode_split_kv
+    invalid_row_correction: required_when_sparse_or_mask_marks_invalid_rows
+    precision_contract:
+    - accumulate_in_fp32_where_required
+    - do_not_reorder_fd_lse_weight_formula
+  semantic_invariants:
+  - same input/output semantics after schedule transforms
+  - stable_lse_merge_preserved
+  - workspace_region_identity_preserved
+  - shape_layout_contract_preserved
+kernel_ir:
+  loop_nest:
+    order: runinfo_ring_driven
+    split_core_range:
+      owner: split_core.range_contract
+      producer_status: external_producer_with_verified_host_bridge
+      input_contract:
+        base_info_fields:
+        - bSize
+        - n2Size
+        - gSize
+        - s1Size
+        - s2Size
+        - actualLenQDims
+        - actualLenKvDims
+        - preToken
+        - nextToken
+        - isS1G
+        - sparseMode
+        - attenMaskFlag
+        - sinkNumber
+        - keySinkNumber
+        - supportFD
+        split_param_fields:
+        - mBaseSize
+        - s2BaseSize
+        - gS1BaseSizeOfFd
+        source_evidence_ids:
+        - SE-SPLIT-CORE-INPUT-PARAMS
+        - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      output_contract:
+        outer_split_params:
+        - bN2End[]
+        - gS1End[]
+        - s2End[]
+        fd_params:
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - s2SplitStartIdxOfCore[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+        source_evidence_ids:
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE
+        - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+      range_assignments:
+        status: runtime_generated_by_split_core
+        fields:
+        - core_idx
+        - bn2_range
+        - gs1_range
+        - s2_range
+        - fd_task_count
+  tiles:
+    s2_base:
+      semantic_id: attention.tiling.s2_base
+      value: from_tiling
+      policy: searchable
+    m_base:
+      semantic_id: attention.tiling.m_base
+      value: from_tiling
+      policy: searchable
+    preload_slots:
+      value: from_preLoadNum
+      policy: fixed
+    fd_g_s1_base_size:
+      semantic_id: flash_decode.partition.g_s1_base
+      value: from_tiling
+      policy: configurable_guarded
+  pipeline:
+    kind: runinfo_three_stage_ring
+    stage_graph:
+      source_card: OC-RUNINFO-THREE-STAGE-RING
+      owner_qualified_stages: true
+    stages:
+    - mm1_qk
+    - vec1_softmax_lse
+    - mm2_pv
+    - vec2_store_or_fd_export
+    - mla_nupdate?
+    - fd_merge?
+    event_policy:
+      editable: false
+      forbidden_transform: FT-NO-RUNINFO-STAGE-REORDER
+    stage_aliases:
+    - id: ALIAS-GQA-VEC1-SHARED
+      alias_stage: gqa.vec1
+      critical_path_stage: gqa.vec1
+      dispatcher_owner: FiaKernelNonQuant<FIAT>
+      dispatcher_stage: ComputeVec1
+      shared_owner: FiaBlockVecNonQuant<FIAT>
+      shared_stage: ComputeVec1
+      canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec1
+      shared_stage_annotation: annotations/functions/deep/0126_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec1.yaml
+      inner_contract_annotation: annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+      producer_stages:
+      - gqa.mm1
+      consumer_stages:
+      - gqa.mm2
+      - flash_decode.merge
+      producer_consumer_link: FiaKernelNonQuant dispatches the GQA Vec1 slot into the shared vectorService ComputeVec1, which waits syncC1V1,
+        runs ProcessVec1SingleBuf, and signals syncV1C2 for downstream MM2 or FD consumers.
+      source_evidence_ids:
+      - SE-GQA-SHARED-VECTOR-OWNER
+      - SE-GQA-VEC1-DISPATCH
+      - SE-SHARED-VEC1-SYNC
+    - id: ALIAS-GQA-VEC2-SHARED
+      alias_stage: gqa.vec2.output
+      legacy_alias_stage: gqa.vec2
+      critical_path_stage: gqa.vec2.output
+      dispatcher_owner: FiaKernelNonQuant<FIAT>
+      dispatcher_stage: ComputeVec2
+      shared_owner: FiaBlockVecNonQuant<FIAT>
+      shared_stage: ComputeVec2
+      canonical_name: FiaBlockVecNonQuant<FIAT>::ComputeVec2
+      shared_stage_annotation: annotations/functions/deep/0127_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec2.yaml
+      inner_contract_annotation: annotations/functions/deep/0099_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec2SingleBuf.yaml
+      producer_stages:
+      - gqa.mm2
+      consumer_stages:
+      - output.final_attention
+      - flash_decode.merge
+      producer_consumer_link: FiaKernelNonQuant dispatches the GQA Vec2 slot into the shared vectorService ComputeVec2, which waits syncC2V2,
+        runs ProcessVec2SingleBuf, and signals syncV2C2 after final output or split-KV partial export.
+      source_evidence_ids:
+      - SE-GQA-SHARED-VECTOR-OWNER
+      - SE-GQA-VEC2-DISPATCH
+      - SE-SHARED-VEC2-SYNC
+  memory_plan:
+    spaces:
+    - GM
+    - UB
+    - L1
+    - L0A
+    - L0B
+    - L0C
+    l1_residency:
+      source_card: OC-GQA-MM2-L1-V-REUSE
+      objects:
+      - name: v_tile
+        memory: L1
+        scope: across_g
+        reuse_by:
+        - mm2
+        snapshot_signature:
+        - vCoord
+        eviction: explicit_event_release
+        event: V_EVENT
+    workspace:
+      normal_ring:
+        source_card: OC-WORKSPACE-NORMAL-RING
+        abi_locked: true
+        regions:
+        - normal.mm1
+        - normal.mm2
+        - normal.softmax_lse
+        - normal.tmp
+        offset_model: contiguous_abi_locked
+        binding_required: true
+      flash_decode_regions:
+        source_card: OC-WORKSPACE-FD-REGIONS
+        regions:
+        - fd_partial_o
+        - fd_partial_max
+        - fd_partial_sum
+        region_contracts:
+        - region_id: fd_partial_o
+          semantic_id: workspace.fd.partial_o
+          sized_by:
+          - aicNum
+          - mBaseSize
+          - headDimAlign
+          - split_task_count
+        - region_id: fd_partial_max
+          semantic_id: workspace.fd.partial_max
+          sized_by:
+          - aicNum
+          - mBaseSize
+          - fp32_block
+        - region_id: fd_partial_sum
+          semantic_id: workspace.fd.partial_sum
+          sized_by:
+          - aicNum
+          - mBaseSize
+          - fp32_block
+        alias_policy: must_not_overlap_normal_or_mla_budget_tail
+        offset_rules:
+        - scalar.offset_rules.fd_task_offset
+        - scalar.offset_rules.fd_partial_output_offset
+      mla_tail_regions:
+        source_cards:
+        - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+        - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+        binding_status_required: true
+        tail_regions:
+        - region_id: mla.nupdate
+          optimization_card_id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+          binding_status: host_budget_only_stub_with_normal_mm2_alias
+          kernel_binding_evidence:
+            source_evidence_ids:
+            - SE-WORKSPACE-MLA-ABI
+            - SE-WORKSPACE-MLA-INIT-ORDER
+            - SE-MLA-MM2-INT32-ALIAS
+          local_buffer_bridge:
+            producer: AmlaVecCompute writes the row-wise int32 vector into outputBuff2
+            consumer: ProcessAmlaNupdate broadcasts the vector and atomically adds it into mm2ResInt32Gm
+          validation_note: Do not lower this region as a standalone GM tensor until direct SetGlobalBuffer evidence appears.
+        - region_id: mla.softmax_sum
+          optimization_card_id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+          binding_status: host_budget_only_stub_with_local_ub_bridge
+          kernel_binding_evidence:
+            source_evidence_ids:
+            - SE-WORKSPACE-MLA-ABI
+            - SE-WORKSPACE-MLA-INIT-ORDER
+            - SE-MLA-AMLASUM-UB-ONLY
+          local_buffer_bridge:
+            producer: AmlaVecCompute materializes aMlaSumUb on the last S2 loop
+            consumer: DealBmm2ResBaseBlock broadcasts aMlaSumUb and divides the reloaded MM2 rows before copy-out
+          validation_note: Preserve this as a budget-only ABI field with explicit UB bridge metadata.
+  flash_decode:
+    route:
+      split_kv_enabled:
+        semantic_id: flash_decode.route.split_kv_enabled
+        source_knob: splitKVFlag
+        policy: configurable_guarded
+        value: from_tiling
+    metadata_bridge:
+      owner: flash_decode.metadata_bridge
+      source_card: OC-FD-METADATA-BRIDGE
+    merge:
+      method: stable_lse_merge
+      source_card: OC-FD-STABLE-MERGE
+      stages:
+      - col_max
+      - row_sub
+      - exp
+      - mul_lse_sum
+      - col_add
+      - div_sum
+    fdparams:
+      semantic_id: flash_decode.fdparams
+      bridge_status: imported_from_stage1
+      producer_boundary:
+        split_core_inputs:
+          functions:
+          - FiaTilingNonQuant::CreateSplitInput
+          - FiaTilingNonQuantMla::CreateSplitInput
+          source_evidence_ids:
+          - SE-SPLIT-CORE-INPUT-PARAMS
+          - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+          packaged_fields:
+          - mBaseSize
+          - s2BaseSize
+          - gS1BaseSizeOfFd
+          - preToken
+          - nextToken
+          - isS1G
+          - sparseMode
+          - attenMaskFlag
+          - sinkNumber
+          - keySinkNumber
+          - actualLenQDims
+          - actualLenKvDims
+        split_core_outputs:
+          functions:
+          - FiaTilingNonQuant::SetSplitOutput
+          - FiaTilingNonQuantMla::SetSplitOutput
+          source_evidence_ids:
+          - SE-SPLIT-CORE-OUTPUT-BRIDGE
+          - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+          copied_arrays:
+          - usedVecNumOfFd
+          - bN2IdxOfFdHead[]
+          - gS1IdxOfFdHead[]
+          - s2SplitNumOfFdHead[]
+          - s2SplitStartIdxOfCore[]
+          - gS1SplitNumOfFdHead[]
+          - gS1LastPartSizeOfFdHead[]
+          - gS1IdxEndOfFdHead[]
+          - gS1IdxEndOfFdHeadSplit[]
+      kernel_consumers:
+      - variant: nonquant_or_gqa
+        function: FiaKernelNonQuant<FIAT>::FlashDecode
+        source_evidence_ids:
+        - SE-FD-METADATA-PARTITION
+        consumed_fields:
+        - usedVecNumOfFd
+        - gS1BaseSizeOfFd
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+      - variant: mla
+        function: FiaKernelNonQuantMla<FIAT,CubeBlockType,VecBlockType,FdBlockType>::FlashDecode
+        source_evidence_ids:
+        - SE-FD-METADATA-PARTITION-MLA
+        consumed_fields:
+        - usedVecNumOfFd
+        - gS1BaseSizeOfFd
+        - bN2IdxOfFdHead[]
+        - gS1IdxOfFdHead[]
+        - s2SplitNumOfFdHead[]
+        - gS1SplitNumOfFdHead[]
+        - gS1LastPartSizeOfFdHead[]
+        - gS1IdxEndOfFdHead[]
+        - gS1IdxEndOfFdHeadSplit[]
+      fields:
+      - semantic_id: flash_decode.fdparams.used_vec_num
+        source_field: usedVecNumOfFd
+        type: uint32
+        contract: Bounds active AIV cores that may enter FD merge path.
+      - semantic_id: flash_decode.fdparams.bn2_idx_of_fd_head
+        source_field: bN2IdxOfFdHead[]
+        type: uint32[]
+        contract: Maps FD task to batch-head group.
+      - semantic_id: flash_decode.fdparams.gs1_idx_of_fd_head
+        source_field: gS1IdxOfFdHead[]
+        type: uint32[]
+        contract: Maps FD task to gS1 partition origin in mBaseSize units.
+      - semantic_id: flash_decode.fdparams.s2_split_num_of_fd_head
+        source_field: s2SplitNumOfFdHead[]
+        type: uint32[]
+        contract: Per-task number of split-KV partials; feeds fd_task_offset prefix sum.
+      - semantic_id: flash_decode.fdparams.gs1_split_num_of_fd_head
+        source_field: gS1SplitNumOfFdHead[]
+        type: uint32[]
+      - semantic_id: flash_decode.fdparams.gs1_last_part_size_of_fd_head
+        source_field: gS1LastPartSizeOfFdHead[]
+        type: uint32[]
+      - semantic_id: flash_decode.fdparams.gs1_idx_end_of_fd_head
+        source_field: gS1IdxEndOfFdHead[]
+        type: uint32[]
+      - semantic_id: flash_decode.fdparams.gs1_idx_end_of_fd_head_split
+        source_field: gS1IdxEndOfFdHeadSplit[]
+        type: uint32[]
+      validators:
+      - fd_metadata_bridge_valid
+      - split_core_range_contract_valid
+      - fd_used_vec_bounds
+  sparse_policy:
+    semantic_id: sparse.policy
+    source_card: OC-COMMON-SPARSE-SINK-S2-RANGE
+    mode:
+      semantic_id: sparse.policy.mode
+      enum_values:
+      - LEFT_UP_CAUSAL
+      - ALL_MASK
+      - BAND
+      - DEFAULT_MASK
+    invalid_row_rule:
+      semantic_id: sparse.policy.invalid_row_rule
+      producer: FiaTilingNonQuant::IsExistRowInvalid
+      consumers:
+      - Vec1SinkSoftmaxProc
+      - FlashDecode final LSE export
+    fd_pre_next_token_rule:
+      semantic_id: sparse.policy.fd_pre_next_token_rule
+      source: FlashDecode::CalaPreNextTokens
+      sink_adjustments: &id001
+      - applies_when: sinkNumber > 0 and sparseMode == SPARSE_MODE_2 on the generic host path
+        rule: nextToken is overwritten with sinkNumber before maskParams are finalized
+        source_evidence_ids:
+        - SE-SPARSE-MASK-PARAMS
+        - SE-TEST-TILING-SINK-CONSTRAINTS
+      - applies_when: sinkNumber > 0 in FlashDecode BAND or causal handling
+        rule: nextTokensPerBatch is reduced by sinkNumber before invalid-row handling
+        source_evidence_ids:
+        - SE-FD-SPARSE-POLICY
+        - SE-TEST-ST-EAGER-REFERENCE
+    sink_adjustments: *id001
+    s2_range_policy:
+      semantic_id: sparse.policy.s2_range
+      policy: configurable_guarded
+    validators:
+    - sparse_policy_contract
+    - invalid_row_lse_correction
+  compute:
+    scalar_offset_rules:
+      semantic_id: scalar.offset_rules
+      source_card: OC-SCALAR-RING-OFFSET-HOIST
+      patterns:
+      - id: fd_task_offset
+        formula: taskOffset = sum_{i < fdTaskId}(s2SplitNumOfFdHead[i]) * mBaseSize
+        lowering_hint: Hoist the prefix sum outside the per-gS1 partition loop and reuse it for both LSE and accumOut addressing.
+        source_evidence_ids:
+        - SE-FD-TASK-OFFSET-SCALARS
+      - id: fd_partial_output_offset
+        formula: combineAccumOutOffset = startRow * headDim + splitKVIndex * mBaseSize * headDim
+        lowering_hint: Preserve the split-KV-major ordering used by CopyAccumOutIn.
+        source_evidence_ids:
+        - SE-FD-WORKSPACE-OFFSETS
+        - SE-FD-TASK-OFFSET-SCALARS
+      - id: mla_nupdate_atomic_base
+        formula: baseoffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + (nBufferStartM + vecStartM + loop * mSplitSize) * headDim
+        lowering_hint: Keep the preload-slot modulus and headDim stride coupled to the atomic add target.
+        source_evidence_ids:
+        - SE-MLA-NUPDATE-ATOMIC-TARGET
+      - id: mla_mm2_reload_slot
+        formula: srcGmOffset = (bn2IdxInCurCore % preLoadNum) * bmm2ResUbSize + mStart * headDimAlign
+        lowering_hint: Preserve the preload-slot ring and padded stride when Vec2 rereads normal.mm2.
+        source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+        - SE-KNOB-HEADDIM-ALIGN
+      - id: mla_fd_partial_offset
+        formula: offset = accumTmpOutNum * kvHeadNum * mBaseSize * headDim + tndCoreStartKVSplitPos * kvHeadNum * mBaseSize * headDim + wsMStart
+          * actualColumnCount
+        lowering_hint: Do not collapse the task-prefix, split-index, and row-offset terms; each reflects a different stage boundary.
+        source_evidence_ids:
+        - SE-MLA-VEC2-NORMALIZE-COPY
+      validators:
+      - scalar_offset_consistency
+      - workspace_contiguous_abi
+      - fd_lse_merge_valid
+    mla_nupdate:
+      semantic_id: mla.nupdate.numeric_contract
+      source_cards:
+      - OC-MLA-MM2-NUPDATE-BARRIER
+      - OC-MLA-NUPDATE-SIDECHANNEL
+      compute_formula:
+        ordered_micro_steps:
+        - derive nUpdateTmp from softmax state
+        - materialize aMlaSumUb on final S2 loop
+        - broadcast nUpdate correction per row
+        - atomic-add correction into mm2ResInt32Gm
+        - MM2 waits on syncV1NupdateC2 before first fixpipe
+        do_not_reorder:
+        - atomic_add_before_mm2_fixpipe
+        - aMlaSumUb_producer_before_vec2_broadcast
+      broadcast_group: row_grouped_by_m_split_and_head_dim
+      atomic_target: mm2ResInt32Gm via preload-slot baseoffset
+      mm2_sync: syncV1NupdateC2
+      forbidden_transform: FT-NO-REORDER-MLA-NUPDATE-MICRO_STEPS
+  dataflow_links:
+    graphs_ref: runtime_ir/dataflow_ir.fia_sink.yaml
+  lifetime_links:
+    items_ref: runtime_ir/lifetime_ir.fia_sink.yaml
+  workspace_layout_links:
+    regions_ref: runtime_ir/workspace_ir.fia_sink.yaml
+hardware_contract_ir:
+  target:
+    soc: ascend
+    core_num: runtime
+    ub_size: runtime
+    l1_size: runtime
+  memory_spaces:
+    GM:
+      role: global_memory
+    UB:
+      role: vector_local_memory
+      capacity: target.ub_size
+    L1:
+      role: cube_input_cache
+      capacity: target.l1_size
+    L0A:
+      role: cube_matrix_a_fragment
+    L0B:
+      role: cube_matrix_b_fragment
+    L0C:
+      role: cube_accumulator
+  engines:
+    MTE2:
+      directions:
+      - GM_TO_UB
+      - GM_TO_L1
+    MTE3:
+      directions:
+      - UB_TO_GM
+    CUBE:
+      ops:
+      - bmm1_qk
+      - bmm2_pv
+      - fixpipe
+    VECTOR:
+      ops:
+      - softmax_lse
+      - fd_lse_merge
+      - invalid_row_correction
+      - tail_correction
+  alignment:
+    gm_copy_bytes: 32
+    ub_safe_bytes: 32
+    s2_range_align: 8
+    l1_region_align_bytes: backend_defined
+  event_model:
+    events:
+    - V_EVENT
+    - MTE3_MTE2
+    - syncV1C2
+    - syncC2V2
+    - syncV1NupdateC2
+    auto_reorder_allowed: false
+binding_ir:
+  required: true
+  status: fia_sink_reviewed_core_bindings_available
+  reviewed_binding_ref: bindings/reviewed_symbol_binding.fia_sink.yaml
+  coverage: core_tiling_fdmetadata_workspace_scalar_mla_shape_sparse_partial
+  remaining_review_required:
+  - memory.l1_residency.v_tile.scope
+  - workspace.mla.tail_regions lowering safety
+  - pipeline.stage_alias rewrite safety
+schedule_points_ref: schedule/schedule_points.yaml
+verifier_ref: verifier/verifier_pipeline.yaml
+backend_contracts:
+- backend_contracts/ascendc_patch/backend_contract.yaml
+- backend_contracts/mskpp_model/backend_contract.yaml
+- backend_contracts/static_cost_model/backend_contract.yaml
+lowering_ir:
+  required: true
+  status: patch_plan_plus_guarded_source_rewrite_scaffold
+  ref: ir/lowering_ir.schema.yaml
+  supported_lowering:
+  - tiling_assignment_patch_plan
+  - fd_metadata_contract_patch_plan
+  - semantic_policy_patch_plan
+  - scalar_offset_hoist_patch_plan_requires_review
+execution_ir:
+  required: true
+  status: schema_available
+  ref: ir/execution_ir.schema.yaml
+test_contract_ir:
+  source_ref: runtime_ir/test_contract_ir.fia_sink.yaml
+  contracts_count: 7
+  selection_policy: select_tests_by_changed_dsl_path
+  required_for_lowering: true
+dataflow_ir:
+  source_ref: runtime_ir/dataflow_ir.fia_sink.yaml
+  graphs:
+  - dataflow.gqa.shared_vec
+  - dataflow.mla.nupdate_and_fd
+  required_verifiers:
+  - dataflow_edge_preserved
+  - producer_consumer_link_valid
+  - fd_merge_dataflow_valid
+lifetime_ir:
+  source_ref: runtime_ir/lifetime_ir.fia_sink.yaml
+  items:
+  - lifetime.gqa.q_l1_snapshot
+  - lifetime.gqa.v_l1_snapshot
+  - lifetime.shared.vec2_partial_ring
+  - lifetime.mla.nupdate_atomic_alias
+  - lifetime.mla.amlasum_local_ub
+  - lifetime.fd.accum_out
+  - lifetime.fd.lse_sum_max
+  - lifetime.common.buffer_manager_policy_scope
+  - lifetime.common.nd_to_nz_copy_tile
+  - lifetime.common.cross_core_event_ids
+  required_verifiers:
+  - lifetime_no_overlap
+  - event_release_preserved
+  - reuse_scope_preserved
+workspace_ir:
+  source_ref: runtime_ir/workspace_ir.fia_sink.yaml
+  regions:
+  - normal.mm1
+  - normal.vec1
+  - normal.mm2
+  - normal.vec2
+  - mla.nupdate
+  - mla.softmax_sum
+  - flash_decode.accum_out
+  - flash_decode.lse_sum
+  - flash_decode.lse_max
+  required_verifiers:
+  - workspace_layout_abi_valid
+  - workspace_no_alias
+  - workspace_region_lifetime_valid
+memory_copy_ir:
+  source_ref: runtime_ir/memory_copy_ir.common_attention.yaml
+  gm_format_count: 3
+  required_verifiers:
+  - gm_format_supported
+  - offset_calculator_matches_layout
+  - nd_to_nz_tile_valid
+vector_semantics_ir:
+  source_ref: runtime_ir/vector_semantics_ir.common_attention.yaml
+  required_verifiers:
+  - invalid_row_lse_correction
+  - vector_repeat_stride_valid
+  - fd_merge_helper_semantics_valid
+split_core_planner_ir:
+  source_ref: runtime_ir/split_core_planner_ir.common_attention.yaml
+  required_verifiers:
+  - split_core_cost_model_valid
+  - planner_bounds_valid
+  - fd_metadata_bridge_valid
+learning_ir:
+  source_ref: runtime_ir/learning_ir.fia_sink.yaml
+  learned_patterns_count: 11
+  negative_lessons_count: 8
+  used_by:
+  - schedule_point_ranking
+  - graph_search_pruning
+  - strategy_reuse
+risk_ir:
+  source_ref: runtime_ir/risk_ir.fia_sink.yaml
+  risk_count: 23
+  required_for_lowering: true
+knob_ir:
+  source_ref: runtime_ir/knob_ir.fia_sink.yaml
+  knob_count: 7
+  schedule_points_consume_knobs: true

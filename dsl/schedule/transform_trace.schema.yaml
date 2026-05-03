@@ -1,0 +1,16 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.transform_trace.schema
+fields:
+  id: unique transform id
+  type: tiling|memory_reuse|flash_decode_route|workspace|sparse_policy|numerical_guard
+  reason: list[str]
+  preconditions: list[predicate]
+  schedule_points: list[schedule_point_id]
+  mutations: list[{path, old?, new}]
+  expected_effect: list[str]
+  risk: list[str]
+  validators: list[validator_id]
+  forbidden: list[forbidden_transform_id]
+  requires_review: bool
+  source_cards: list[card_id]
+rule: Agents should emit transform_trace, not raw complete DSL. Runtime applies mutations to base DSL, then runs layered verifiers and binding validation.

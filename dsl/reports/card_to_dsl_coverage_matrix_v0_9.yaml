@@ -1,0 +1,248 @@
+version: 0.9-card-driven-execution
+kind: atdsl.card_to_dsl_coverage_matrix
+summary:
+  cards: 28
+  mappings: 28
+  schedule_points: 24
+  planner_mappings: 7
+rows:
+- card_id: OC-GQA-MM2-L1-V-REUSE
+  flow_group: C2
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_l1_v_residency_scope
+  lowering_policy: guarded_patch_requires_review
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-MLA-MM2-NUPDATE-BARRIER
+  flow_group: C2
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_mla_nupdate_numeric_contract
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-MLA-NUPDATE-SIDECHANNEL
+  flow_group: V1
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_mla_nupdate_numeric_contract
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-FD-STABLE-MERGE
+  flow_group: FLASH_DECODE
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_fd_split_kv_route
+  - sp_fd_metadata_bridge_contract
+  lowering_policy: semantic_policy_to_patch_plan
+  required_tests_count: 3
+  has_candidate_generation: false
+- card_id: OC-WORKSPACE-NORMAL-RING
+  flow_group: WORKSPACE
+  dsl_paths_count: 4
+  schedule_points:
+  - sp_workspace_layout_abi_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  flow_group: WORKSPACE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_workspace_mla_tail_contract
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  flow_group: WORKSPACE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_workspace_mla_tail_contract
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-WORKSPACE-FD-REGIONS
+  flow_group: WORKSPACE
+  dsl_paths_count: 4
+  schedule_points:
+  - sp_workspace_fd_regions
+  - sp_workspace_layout_abi_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-RUNINFO-THREE-STAGE-RING
+  flow_group: PIPELINE
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_split_core_planner_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-FD-METADATA-BRIDGE
+  flow_group: FLASH_DECODE
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_fd_metadata_bridge_contract
+  - sp_fd_partition_g_s1_base
+  - sp_fd_split_kv_route
+  lowering_policy: semantic_policy_to_patch_plan
+  required_tests_count: 3
+  has_candidate_generation: false
+- card_id: OC-SCALAR-RING-OFFSET-HOIST
+  flow_group: SCALAR
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_scalar_fd_task_offset_hoist
+  - sp_scalar_mla_reload_slot_hoist
+  lowering_policy: review_required_patch
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-COMMON-SPLIT-CORE-BALANCING
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_split_core_planner_guard
+  - sp_tiling_s2_base
+  - sp_tiling_m_base
+  lowering_policy: planner_generated_candidate
+  required_tests_count: 3
+  has_candidate_generation: true
+- card_id: OC-COMMON-SPARSE-SINK-S2-RANGE
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_sparse_s2_policy
+  - sp_sparse_policy_mode
+  lowering_policy: semantic_policy_to_patch_plan
+  required_tests_count: 3
+  has_candidate_generation: true
+- card_id: OC-COMMON-GM-COPY-LOWERING
+  flow_group: COMMON_MEMORY_COPY
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_memory_copy_format_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-COMMON-BUFFER-POLICY-SELECTION
+  flow_group: COMMON_RUNTIME
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_split_core_planner_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  flow_group: V1
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_vector_invalid_row_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_fd_metadata_bridge_contract
+  - sp_fd_partition_g_s1_base
+  lowering_policy: planner_generated_candidate
+  required_tests_count: 3
+  has_candidate_generation: true
+- card_id: OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  flow_group: C1
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_gqa_c1_q_l1_snapshot_policy
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+  flow_group: C1
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_mla_mm1_rope_nope_packing_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+  flow_group: V1
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_vec1_sink_softmax_contract
+  - sp_vector_invalid_row_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+  flow_group: V2
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_v2_layout_aware_output_lse_copyout_guard
+  - sp_memory_copy_format_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-HOST-API-CONTIGUOUS-AND-INT4-VIEW-METADATA
+  flow_group: HOST_API
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_host_contiguous_int4_metadata_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-HOST-OPTIONAL-SOFTMAX-LSE-ZERO-PLACEHOLDER
+  flow_group: HOST_API
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_host_softmax_lse_zero_placeholder_guard
+  lowering_policy: contract_guard_only
+  required_tests_count: 2
+  has_candidate_generation: false
+- card_id: OC-FD-BLOCKIDX-TASK-MAPPING
+  flow_group: FLASH_DECODE
+  dsl_paths_count: 3
+  schedule_points:
+  - sp_fd_blockidx_task_mapping_guard
+  - sp_scalar_fd_task_offset_hoist
+  - sp_fd_partition_g_s1_base
+  lowering_policy: contract_guard_only
+  required_tests_count: 3
+  has_candidate_generation: false
+- card_id: OC-TILING-SPLIT-CORE-COST-TABLE
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_split_core_planner_guard
+  - sp_tiling_s2_base
+  - sp_tiling_m_base
+  lowering_policy: planner_generated_candidate
+  required_tests_count: 3
+  has_candidate_generation: true
+- card_id: OC-TILING-USED-CORE-SEARCH-BOUNDS
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_split_core_planner_guard
+  lowering_policy: planner_generated_candidate
+  required_tests_count: 3
+  has_candidate_generation: true
+- card_id: OC-TILING-FD-GS1-PARTITION-SEARCH
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_fd_partition_g_s1_base
+  lowering_policy: planner_generated_candidate
+  required_tests_count: 3
+  has_candidate_generation: true
+- card_id: OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  flow_group: TILING_SPLIT_CORE
+  dsl_paths_count: 2
+  schedule_points:
+  - sp_sparse_s2_policy
+  - sp_sparse_policy_mode
+  lowering_policy: planner_generated_candidate
+  required_tests_count: 3
+  has_candidate_generation: true

@@ -1,0 +1,18 @@
+version: 0.9-card-driven-execution
+kind: schema.atdsl.tiling_ir
+purpose: Formal schema for card-driven tiling/split-core planner interface.
+required_sections:
+  - split_core_planner
+  - fd_partition
+  - sparse_sink_ranges
+candidate_generation_rule_fields:
+  - target_schedule_point
+  - source_cards
+  - candidate_domain
+  - precheck
+  - ranking_features
+validation_rules:
+  - every target_schedule_point must exist in schedule/schedule_points.yaml
+  - every source_card must exist in optimization card catalog
+  - candidate_domain may be explicit values or planner_generated
+  - planner output must include precheck_results and required_tests before lowering

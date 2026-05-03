@@ -1,0 +1,19 @@
+version: 0.7-execution-closure
+status: PASS_EXECUTION_CLOSURE_SCAFFOLD
+checks:
+  test_contracts_ingested: 7
+  dataflow_graphs_ingested: 2
+  lifetime_items_ingested: 10
+  workspace_regions_ingested: 9
+  risks_ingested: 23
+  knobs_ingested: 7
+  new_ir_schemas: 10
+  guard_schedule_points_added: 4
+  real_ascendc_source_diff_generation_implemented: false
+  enriched_patch_plan_guards_added: true
+next_required_work:
+- Implement source rewrite backend for s2BaseSize/mBaseSize patches.
+- Run E2 real binding + patch lowering on sp_tiling_s2_base.
+- Add execution_ir writer for compile/correctness/benchmark runs.
+- Implement concrete static estimators for UB/L1/workspace sizes per shape bucket.
+- Turn selected verifier contracts into executable Python checks.

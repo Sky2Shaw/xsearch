@@ -1,0 +1,147 @@
+suggested_dsl_sections:
+- name: pipeline.stage_graph
+  purpose: Represent owner-qualified MM1, Vec1, MM2, Vec2/output, nUpdate, and FD merge stages without collapsing templates.
+  fields:
+  - path: pipeline.stages[].canonical_name
+    meaning: Full template-qualified stage identity.
+    evidence: reports/function_index.yaml
+    confidence: high
+  - path: pipeline.stages[].owner_template_args
+    meaning: Template owner args such as FIAT, Config, CubeBlockType.
+    evidence: reports/function_index.yaml
+    confidence: high
+  - path: pipeline.stages[].sync_edges
+    meaning: CrossCoreWait/Set dependencies between stages.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:506-522
+    confidence: high
+- name: memory.l1_residency
+  purpose: Model Q/K/V/P L1 buffer reuse, event release, and snapshot signatures.
+  fields:
+  - path: memory.l1.gqa.v_snapshot_signature
+    meaning: GQA V reuse keyed by batch/head/S2 coordinate.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1140-1176
+    confidence: high
+  - path: memory.l1.gqa.q_snapshot_signature
+    meaning: GQA Q reuse keyed by batch/head/gS1 coordinate.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:988-1050
+    confidence: high
+- name: mla.nupdate
+  purpose: Represent MLA row-wise correction side channel and its MM2 atomic accumulation.
+  fields:
+  - path: mla.nupdate.compute_formula
+    meaning: n/cof/eps/clamp/scale sequence.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    confidence: high
+  - path: mla.nupdate.atomic_target
+    meaning: mm2ResInt32Gm atomic-add destination.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:700-713
+    confidence: high
+  - path: mla.nupdate.mm2_sync
+    meaning: syncV1NupdateC2 before first MM2 fixpipe.
+    evidence: op_kernel/fia_block_cube_nonquant_mla_sink.h:1034-1037
+    confidence: high
+- name: flash_decode.merge
+  purpose: Represent split-KV partial O/LSE export, FD metadata partition, and stable final merge.
+  fields:
+  - path: flash_decode.fdparams.metadata_arrays
+    meaning: AIC/AIV metadata arrays passed to FD service.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:731-761
+    confidence: high
+  - path: flash_decode.merge.weight_formula
+    meaning: ColMax, RowSub, Exp, sum-weight, divide normalization.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:258-290
+    confidence: high
+  - path: flash_decode.merge.output_layouts
+    meaning: BSH/BNSD/NBSD/TND/NTD output copy choices.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:292-349
+    confidence: high
+- name: workspace.layout
+  purpose: Encode normal, MLA nUpdate, and FD workspace sizes and offsets.
+  fields:
+  - path: workspace.normal.mm1_vec1_mm2_vec2
+    meaning: Preload-scaled normal workspace regions.
+    evidence: op_host/fia_tiling_nonquant_sink.cpp:517-530
+    confidence: high
+  - path: workspace.mla.nupdate_softmax_sum
+    meaning: Extra MLA int32 nUpdate and softmax sum regions.
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:491-508
+    confidence: high
+  - path: workspace.flash_decode.accum_lse
+    meaning: FD accumOut and LSE sum/max sizing.
+    evidence: op_host/fia_tiling_nonquant_mla_sink.cpp:511-517
+    confidence: high
+- name: shape_layout.contract
+  purpose: Normalize query/layout families, attentionOut layouts, softmaxLse layouts, and varlen prefix rules into stable Stage-2 fields.
+  fields:
+  - path: shape_layout.query_layout_families
+    meaning: Canonical B/S1/N/D and T/N/D axis mappings for BSH, BSND, BNSD, NSD, TND, and NTD.
+    evidence: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp:120-296
+    confidence: high
+  - path: shape_layout.attention_out_layouts
+    meaning: Output rank and axis order for BSH, BSND, BNSD, NBSD, TND, NTD, and NSD.
+    evidence: op_host/ai_infra_fused_infer_attention_sink_infershape.cpp:200-256
+    confidence: high
+  - path: shape_layout.softmax_lse_layouts
+    meaning: T,N,1 versus B,N,S1,1 LSE layouts and the TND-family prefixBS1 offset rule.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:751-774
+    confidence: high
+- name: sparse.policy
+  purpose: Capture sparseMode, pre/next token, sink, and invalid-row semantics as reusable validators instead of scattered helper logic.
+  fields:
+  - path: sparse.policy.mode
+    meaning: LEFT_UP_CAUSAL, ALL_MASK, BAND, and DEFAULT_MASK behavior families.
+    evidence: op_host/fia_tiling_nonquant_sink.cpp:591-639
+    confidence: high
+  - path: sparse.policy.invalid_row_rule
+    meaning: Host invalid-row detection and kernel-side correction/export preconditions.
+    evidence: op_host/fia_tiling_nonquant_sink.cpp:461-475
+    confidence: high
+  - path: sparse.policy.fd_pre_next_token_rule
+    meaning: FlashDecode preTokensPerBatch and nextTokensPerBatch reconstruction from sparseMode, sinkNumber, and actual sequence lengths.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:390-438
+    confidence: high
+- name: flash_decode.metadata_bridge
+  purpose: Make the split-core producer, host fdRes bridge, and kernel FD consumers explicit even though the planner implementation remains external.
+  fields:
+  - path: flash_decode.fdparams.used_vec_num
+    meaning: AIV bound for active FD merge cores.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:731-761
+    confidence: high
+  - path: flash_decode.fdparams.metadata_arrays
+    meaning: AIC/AIV arrays copied by SetSplitOutput and reconstructed by FlashDecode.
+    evidence: reports/external_dependencies.yaml
+    confidence: high
+  - path: flash_decode.fdparams.bridge_status
+    meaning: External producer note plus verified host-writer and kernel-consumer surfaces.
+    evidence: dsl/flash_decode_metadata_bridge.yaml
+    confidence: high
+- name: workspace.mla_tail
+  purpose: Separate host-budget-only MLA tail regions from explicit GM bindings and record any UB or alias bridge.
+  fields:
+  - path: workspace.mla.tail_regions[].binding_status
+    meaning: Alias, local-UB bridge, or host-budget-only stub classification.
+    evidence: auxiliary/workspace_cross_reference.yaml
+    confidence: high
+  - path: workspace.mla.tail_regions[].kernel_binding_evidence
+    meaning: Direct SetGlobalBuffer or alias evidence for each tail region.
+    evidence: dsl/mla_workspace_tail_contract.yaml
+    confidence: high
+  - path: workspace.mla.tail_regions[].validation_note
+    meaning: Guardrail text that blocks lowering a budget stub as a standalone GM tensor.
+    evidence: dsl/mla_workspace_tail_contract.yaml
+    confidence: high
+- name: scalar.offset_rules
+  purpose: Turn prefix sums, preload-slot addressing, padded headDim strides, and FD partial-output offsets into reusable lowering rules.
+  fields:
+  - path: scalar.offset_rules.fd_task_offset
+    meaning: Prefix-summed split-KV task offset used by FlashDecode LSE and accumOut reloads.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:438-491
+    confidence: high
+  - path: scalar.offset_rules.mla_mm2_reload_slot
+    meaning: Preload-slot ring offset for MLA Vec2 mm2Res reloads.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:1120-1163
+    confidence: high
+  - path: scalar.offset_rules.mla_nupdate_atomic_base
+    meaning: Atomic target base offset for MLA nUpdate apply.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    confidence: high

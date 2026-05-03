@@ -1,0 +1,21 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: dataflow_ir
+purpose: Represent producer/consumer memory dataflow edges for alias/lifetime and transform safety checks.
+required_sections:
+- graphs
+node_schema:
+  id: string
+  memory_space: enum(GM.workspace,UB,L1,L0A,L0B,L0C,GM)
+  role: string
+edge_schema:
+  from: node.id
+  to: node.id
+  kind: string
+  producer: stage_or_function
+  consumer: stage_or_function
+  source_evidence_ids: list[string]
+verifier_hooks:
+- dataflow_edge_preserved
+- producer_consumer_link_valid
+- fd_merge_dataflow_valid

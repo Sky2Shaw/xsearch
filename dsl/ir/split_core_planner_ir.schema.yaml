@@ -1,0 +1,15 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: split_core_planner_ir
+purpose: Host split-core planner cost model, assignment phases, sparse/sink handling, and FD metadata generation.
+required_sections:
+- cost_model
+- core_search
+- sparse_and_sink_handling
+- assignment_phases
+- fd_metadata
+verifier_hooks:
+- split_core_cost_model_valid
+- split_core_range_contract_valid
+- fd_metadata_bridge_valid
+- planner_bounds_valid

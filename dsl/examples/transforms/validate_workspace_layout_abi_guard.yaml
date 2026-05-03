@@ -1,0 +1,9 @@
+version: 0.7-execution-closure
+kind: atdsl.transform_trace
+id: validate_workspace_layout_abi_guard
+schedule_point: sp_workspace_layout_abi_guard
+reason: Guard-only validation of concrete workspace layout and alias/lifetime contracts before workspace-affecting patches.
+mutations: []
+expected_effect:
+- no source rewrite; selects workspace UT/API smoke tests and attaches workspace risks
+requires_review: false

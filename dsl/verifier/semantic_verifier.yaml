@@ -1,0 +1,47 @@
+version: 0.7-execution-closure
+layer: semantic_verifier
+validators:
+- id: v-invalid-row-lse-correction
+  constraint_id: C-INVALID-ROW-LSE-CORRECTION
+  module: sparse.policy
+  severity: hard
+  predicate_draft: invalid rows trigger AdjustSoftMaxRes before final softmaxLse export on last S2 loop
+  source_evidence_ids:
+  - SE-VEC1-SINK-SOFTMAX
+- id: v-shape-layout-contract
+  constraint_id: C-SHAPE-LAYOUT-CONTRACT
+  module: shape_layout.contract
+  severity: hard
+  predicate_draft: host infer-shape and kernel exporters use the same canonical layout-family mapping and offset rules
+  source_evidence_ids:
+  - SE-SHAPE-LAYOUT-CONTRACT
+  - SE-MLA-LSE-LAYOUT-COPY
+  - SE-FD-OUTPUT-LAYOUTS
+  - SE-TEST-INFER-SHAPE-LAYOUTS
+- id: v-sparse-policy-contract
+  constraint_id: C-SPARSE-POLICY-CONTRACT
+  module: sparse.policy
+  severity: hard
+  predicate_draft: host maskParams packing equals kernel sparse/invalid-row interpretation for mode, preToken, nextToken and sink rules
+  source_evidence_ids:
+  - SE-SPARSE-MASK-PARAMS
+  - SE-SPARSE-LEFTUP-INVALID-ROW
+  - SE-FD-SPARSE-POLICY
+  - SE-VEC1-SINK-SOFTMAX
+  - SE-TEST-TILING-SINK-CONSTRAINTS
+  - SE-TEST-ST-EAGER-REFERENCE
+- id: v-common-shape-layout-validation
+  constraint_id: C-COMMON-SHAPE-LAYOUT-VALIDATION
+  module: shape_layout.contract
+  severity: hard
+  predicate_draft: common axis maps, H=N*D/D derivation, NZ packing, and compare modes are validated before lowering
+  source_evidence_ids:
+  - SE-COMMON-FIA-TILING-SHAPE-CPP
+  - SE-COMMON-FIA-TILING-SHAPE-H
+  - SE-COMMON-FIA-TILING-INFO-H
+- id: shape_layout_contract_preserved
+  scope: semantic_ir.layout
+  predicate: Output and LSE layout rules must match shape_layout.contract.
+- id: sparse_invalid_row_semantics_preserved
+  scope: kernel_ir.sparse_policy
+  predicate: Invalid-row replacement and FD pre/next token rules must not diverge.

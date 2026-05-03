@@ -1,0 +1,16 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: risk_ir
+purpose: Map code risks to forbidden transforms, DSL paths, verifier guards, and lowering guardrails.
+required_sections:
+- risks
+- risk_to_verifier_map
+risk_schema:
+  id: string
+  description: string
+  evidence: string
+  related_forbidden_transform_ids: list[string]
+  affected_dsl_paths: list[string]
+  verifier_ids: list[string]
+  lowering_guard: string
+lowering_use: patch_plan must include risk_guards for any touched semantic_field with mapped risks.

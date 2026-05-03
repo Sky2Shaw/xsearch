@@ -1,0 +1,49 @@
+version: 0.8-card-flow-taxonomy
+kind: atdsl.card_ir.schema
+required_card_fields:
+- id
+- canonical_name
+- title
+- flow_group
+- card_type
+- pipeline_position
+- granularity
+- applies_to
+- pattern_summary
+- optimization_intent
+- preconditions
+- constraints
+- risks
+- possible_dsl_fields
+- lowering_hint
+- source_evidence
+- confidence
+- agent_usage
+flow_group_enum:
+- HOST_API
+- TILING_SPLIT_CORE
+- C1
+- V1
+- C2
+- V2
+- FLASH_DECODE
+- WORKSPACE
+- PIPELINE
+- SCALAR
+- COMMON_MEMORY_COPY
+- COMMON_RUNTIME
+card_type_policy:
+  optimization_pattern: may propose search candidates when binding and validators are available
+  planner_cost_model: generates/prunes tiling candidates; should not directly rewrite source alone
+  planner_search_bounds: validates planner bounds and usedCoreNum derivation
+  fd_partition_planner: planner-generated FD partition candidate plus metadata bridge checks
+  sparse_range_planner: sparse/sink S2-range and invalid-row guard
+  host_guard: guard-only by default
+  layout_copy_contract: guard or rewrite only with shape/layout verifier
+  semantic_vector_contract: guard or rewrite only with numerical/vector verifier
+validation_rules:
+- every card id must be unique
+- every card must belong to one known flow_group
+- TILING_SPLIT_CORE must contain at least cost_model/search_bounds/FD_partition/sparse_range cards
+- HOST_API guard cards must be guard-only unless explicitly reviewed
+- C1/V1/C2/V2 cards should map to pipeline_position beginning with their group id

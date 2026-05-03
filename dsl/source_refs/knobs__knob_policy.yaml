@@ -1,0 +1,69 @@
+knob_policy:
+  status: ready_for_stage2_ingestion
+  policy_classes:
+    searchable_tiling_knob:
+      meaning: May be exposed directly in search.searchable_fields after validator wiring.
+      members:
+      - s2BaseSize
+      - mBaseSize
+    compile_time_constant:
+      meaning: Must be represented in DSL/lowering, but not searched in early ATDSL versions.
+      members:
+      - nBufferMBaseSize
+      - preLoadNum
+    derived_shape_field:
+      meaning: Derived deterministically from shape/layout; illegal as independent search dimension.
+      members:
+      - headDimAlign
+    route_flag:
+      meaning: Describes path selection or feature activation; set by host route logic, not free-form search.
+      members:
+      - splitKVFlag
+    fd_partition_field:
+      meaning: Belongs to FlashDecode metadata/partition contract; searchable only after split-core planner support exists.
+      members:
+      - gS1BaseSizeOfFd
+  field_mapping:
+    s2BaseSize:
+      class: searchable_tiling_knob
+      stage2_searchable: true
+      dsl_target_path: tiling.s2_base
+      stage2_note: Stage-2 may expose as tiling.s2_base candidates/range, subject to workspace, sparse-window, and event-order
+        validators.
+    mBaseSize:
+      class: searchable_tiling_knob
+      stage2_searchable: true
+      dsl_target_path: tiling.m_base
+      stage2_note: Stage-2 may expose as tiling.m_base / decode.m_base candidates/range, subject to workspace and FD bounds
+        validators.
+    nBufferMBaseSize:
+      class: compile_time_constant
+      stage2_searchable: false
+      dsl_target_path: mla.nbuffer.m_base_size
+      stage2_note: Do not search automatically in v0.x; lower as template/constInfo contract only.
+    preLoadNum:
+      class: compile_time_constant
+      stage2_searchable: false
+      dsl_target_path: pipeline.scheduler.preload_slots
+      stage2_note: Do not search automatically; coupled to ring-slot workspace addressing and event ordering.
+    headDimAlign:
+      class: derived_shape_field
+      stage2_searchable: false
+      dsl_target_path: shape_layout.derived.head_dim_align
+      stage2_note: Lower from headDim and byte-block alignment; never treat as independent knob.
+    splitKVFlag:
+      class: route_flag
+      stage2_searchable: false
+      dsl_target_path: flash_decode.route.split_kv_enabled
+      stage2_note: Derived from host split/FD route; Stage-2 may model it as a route predicate, not a free search knob.
+    gS1BaseSizeOfFd:
+      class: fd_partition_field
+      stage2_searchable: false
+      dsl_target_path: flash_decode.metadata_bridge.partition.g_s1_base_size_of_fd
+      stage2_note: Model as FlashDecode partition metadata field; promote to searchable only after split-core planner/lowering
+        is implemented.
+  search_exposure_rules:
+  - rule: Only members of searchable_tiling_knob are directly exposed in ATDSL v0.1 search space.
+  - rule: route_flag and fd_partition_field may appear as DSL fields but should be guarded by route/planner validators.
+  - rule: compile_time_constant and derived_shape_field are read-only unless a later template-specialization pass explicitly
+      opts in.

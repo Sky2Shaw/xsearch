@@ -1,0 +1,17 @@
+version: 0.5-performance-dsl-mvp
+backend: mskpp_model
+kind: performance_model_backend
+consumes:
+- kernel_ir
+- hardware_contract_ir
+- feature_schema
+emits:
+- pipe_stat
+- instruction_stat
+- trace_json
+- model_score
+use: Pre-rank validated candidates before expensive AscendC compile/benchmark.
+limitations:
+- model_result_is_not_final_performance
+- must_not_replace_real_benchmark
+- requires_adapter_for_fused_attention_dataflow

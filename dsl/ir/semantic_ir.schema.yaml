@@ -1,0 +1,88 @@
+version: 0.7-execution-closure
+kind: atdsl.semantic_ir.schema
+purpose: Describe what the operator means, independent of schedule/lowering details.
+required_sections:
+- operator
+- profiles
+- interface
+- shape
+- layout
+- numerical_contract
+- semantic_invariants
+operator:
+  family: fused_infer_attention
+  canonical_name: ai_infra_fused_infer_attention_sink
+  source_cards:
+  - OC-FD-STABLE-MERGE
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+profiles:
+  type: list[enum]
+  values:
+  - fa_forward
+  - sparse_sink_attention
+  - flash_decode
+  - gqa_decode
+  - mla_decode
+  profile_requirements_ref: profiles/profiles.yaml
+interface:
+  inputs:
+  - query
+  - key
+  - value
+  - atten_mask?
+  - actual_seq_len?
+  - block_table?
+  - tilingData
+  outputs:
+  - attention_out
+  - softmax_lse?
+  workspace: required
+  side_effects:
+  - workspace_read_write
+  - event_synchronization
+shape:
+  axes:
+  - B
+  - S1
+  - S2
+  - N
+  - G
+  - D
+  symbolic: true
+  derived_fields:
+    head_dim_align:
+      semantic_id: attention.shape.head_dim_align
+      policy: fixed
+      source_knob: headDimAlign
+layout:
+  tracked_entities:
+  - query
+  - key
+  - value
+  - attention_out
+  - softmax_lse
+  - workspace_regions
+  layout_contract_ref: shape_layout.contract
+numerical_contract:
+  softmax: online
+  lse_stable_merge: required_when_flash_decode_split_kv
+  invalid_row_correction: required_when_sparse_or_mask_marks_invalid_rows
+  precision_contract:
+  - accumulate_in_fp32_where_required
+  - do_not_reorder_fd_lse_weight_formula
+semantic_invariants:
+- same input/output semantics after schedule transforms
+- stable_lse_merge_preserved
+- workspace_region_identity_preserved
+- shape_layout_contract_preserved
+shape_layout_contract:
+  purpose: First-class contract for FIA Sink query/output/LSE layouts and varlen prefix rules.
+  fields:
+  - query_layout_families
+  - attention_out_layouts
+  - softmax_lse_layouts
+  - varlen.q_prefix_offset_rule
+  - canonical_axes
+  - derived_dimensions
+  imported_from: source_refs/stage1_shape_layout_contract.yaml

@@ -1,0 +1,96 @@
+version: 0.8-card-flow-taxonomy
+kind: atdsl.card_coverage_matrix
+summary:
+  total_cards: 28
+  new_cards_added_in_v0_8: 11
+  flow_group_counts:
+    C2: 2
+    V1: 3
+    FLASH_DECODE: 3
+    WORKSPACE: 4
+    PIPELINE: 1
+    SCALAR: 1
+    TILING_SPLIT_CORE: 7
+    COMMON_MEMORY_COPY: 1
+    COMMON_RUNTIME: 1
+    C1: 2
+    V2: 1
+    HOST_API: 2
+  card_type_counts:
+    optimization_pattern: 2
+    correctness_guard: 1
+    numeric_side_channel: 1
+    numeric_merge: 1
+    workspace_abi: 2
+    workspace_budget: 2
+    pipeline_scheduler: 1
+    host_kernel_bridge: 1
+    scalar_offset: 1
+    planner_cost_model: 2
+    range_assignment: 1
+    copy_lowering: 1
+    buffer_event_policy: 1
+    vector_correctness_guard: 1
+    fd_partition_planner: 2
+    layout_packing_contract: 1
+    semantic_vector_contract: 1
+    layout_copy_contract: 1
+    host_guard: 1
+    host_semantic_guard: 1
+    task_mapping_contract: 1
+    planner_search_bounds: 1
+    sparse_range_planner: 1
+  tiling_split_core_card_count: 7
+coverage_by_flow_group:
+- flow_group: HOST_API
+  cards:
+  - OC-HOST-API-CONTIGUOUS-AND-INT4-VIEW-METADATA
+  - OC-HOST-OPTIONAL-SOFTMAX-LSE-ZERO-PLACEHOLDER
+- flow_group: TILING_SPLIT_CORE
+  cards:
+  - OC-COMMON-SPLIT-CORE-BALANCING
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  - OC-TILING-SPLIT-CORE-COST-TABLE
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+  - OC-TILING-FD-GS1-PARTITION-SEARCH
+  - OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+- flow_group: C1
+  cards:
+  - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  - OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+- flow_group: V1
+  cards:
+  - OC-MLA-NUPDATE-SIDECHANNEL
+  - OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  - OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+- flow_group: C2
+  cards:
+  - OC-GQA-MM2-L1-V-REUSE
+  - OC-MLA-MM2-NUPDATE-BARRIER
+- flow_group: V2
+  cards:
+  - OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+- flow_group: FLASH_DECODE
+  cards:
+  - OC-FD-STABLE-MERGE
+  - OC-FD-METADATA-BRIDGE
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+- flow_group: WORKSPACE
+  cards:
+  - OC-WORKSPACE-NORMAL-RING
+  - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  - OC-WORKSPACE-FD-REGIONS
+- flow_group: PIPELINE
+  cards:
+  - OC-RUNINFO-THREE-STAGE-RING
+- flow_group: SCALAR
+  cards:
+  - OC-SCALAR-RING-OFFSET-HOIST
+- flow_group: COMMON_MEMORY_COPY
+  cards:
+  - OC-COMMON-GM-COPY-LOWERING
+- flow_group: COMMON_RUNTIME
+  cards:
+  - OC-COMMON-BUFFER-POLICY-SELECTION

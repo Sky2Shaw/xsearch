@@ -1,0 +1,105 @@
+version: 0.7-execution-closure
+layer: kernel_verifier
+validators:
+- id: v-template-identity
+  constraint_id: C-TEMPLATE-IDENTITY
+  module: pipeline.stage_graph
+  severity: hard
+  predicate_draft: same_named_stage implies same(canonical_name, owner, owner_qualified, template_identity) unless represented by explicit stage_alias
+  source_evidence_ids: []
+- id: v-gqa-mm2-sync
+  constraint_id: C-GQA-MM2-SYNC
+  module: memory.l1_residency
+  severity: hard
+  predicate_draft: gqa.mm2 waits syncV1C2 and sets syncC2V2 and releases V_EVENT only after last consumer
+  source_evidence_ids:
+  - SE-GQA-V-L1-RELEASE
+- id: v-event-order-runinfo
+  constraint_id: C-EVENT-ORDER-RUNINFO
+  module: pipeline.scheduler
+  severity: hard
+  predicate_draft: ExecuteTask preserves current MM1, older Vec1/MM2, previous Vec2 slot ordering; slot invalidation happens only after all consumers
+    finish
+  source_evidence_ids:
+  - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+  - SE-RUNINFO-THREE-STAGE-RING-MLA
+- id: v-vev-ub-alignment
+  constraint_id: C-VEC-UB-ALIGNMENT
+  module: memory.ub_alignment
+  severity: hard
+  predicate_draft: mSplitSize and headDimAlign keep 32B-safe UB accesses and copy-out strides
+  source_evidence_ids:
+  - SE-VEC1-UB-ALIGNMENT
+  - SE-VEC2-UB-ALIGNMENT
+  - SE-KNOB-HEADDIM-ALIGN
+- id: v-split-core-range-order
+  constraint_id: C-SPLIT-CORE-RANGE-ORDER
+  module: split_core.range_assignment
+  severity: hard
+  predicate_draft: producer output order == host copied order == kernel FD consumer order for bn2/gs1/s2 ranges
+  source_evidence_ids:
+  - SE-SPLIT-CORE-INPUT-PARAMS
+  - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+  - SE-SPLIT-CORE-OUTPUT-BRIDGE
+  - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+  - SE-FD-METADATA-PARTITION
+  - SE-FD-METADATA-PARTITION-MLA
+- id: v-scalar-offset-consistency
+  constraint_id: C-SCALAR-OFFSET-CONSISTENCY
+  module: scalar.offset_rules
+  severity: hard
+  predicate_draft: FD taskOffset, partial output offsets, preload slot reload bases, and atomic MM2 bases use the same task/split/row/headDimAlign
+    strides
+  source_evidence_ids:
+  - SE-FD-TASK-OFFSET-SCALARS
+  - SE-MLA-NUPDATE-ATOMIC-TARGET
+  - SE-MLA-VEC2-NORMALIZE-COPY
+  - SE-KNOB-HEADDIM-ALIGN
+- id: v-common-split-core-cost-range
+  constraint_id: C-COMMON-SPLIT-CORE-COST-RANGE
+  module: split_core.planner_contract
+  severity: hard
+  predicate_draft: Stage-2 preserves common split-core cost/tolerance/core-search/sparse-sink/key-sink/assignment semantics
+  source_evidence_ids:
+  - SE-COMMON-SPLIT-CORE-CPP
+  - SE-COMMON-SPLIT-CORE-H
+- id: v-common-gm-format-offset-copy
+  constraint_id: C-COMMON-GM-FORMAT-OFFSET-COPY
+  module: memory.gm_copy
+  severity: hard
+  predicate_draft: GM copy lowering derives GmFormat from layout/page-attention state and preserves FormatCategory-specific offset/copy rules
+  source_evidence_ids:
+  - SE-COMMON-MEMORY-COPY-H
+- id: v-common-buffer-event-legality
+  constraint_id: C-COMMON-BUFFER-EVENT-LEGALITY
+  module: pipeline.events
+  severity: hard
+  predicate_draft: buffer/event scheduling preserves BufferType-position mappings, hard event pairs, and inner-core wait/set rules
+  source_evidence_ids:
+  - SE-COMMON-BUFFER-H
+  - SE-COMMON-BUFFER-MANAGER-H
+  - SE-COMMON-BUFFERS-POLICY-H
+  - SE-COMMON-MATMUL-H
+- id: v-common-matmul-unitflag
+  constraint_id: C-COMMON-MATMUL-UNITFLAG
+  module: compute.matmul
+  severity: hard
+  predicate_draft: matmul lowering preserves UNITFLAG constants and final-K/out-last semantics
+  source_evidence_ids:
+  - SE-COMMON-MATMUL-H
+- id: dataflow_edge_preserved
+  type: static_contract
+  checks:
+  - all referenced dataflow nodes exist
+  - transform does not remove required producer-consumer edge
+  source: runtime_ir/dataflow_ir.fia_sink.yaml
+- id: fd_merge_dataflow_valid
+  type: static_contract
+  checks:
+  - FD accum_out/lse_sum/lse_max edges remain connected to flash_decode.merge
+  source: runtime_ir/dataflow_ir.fia_sink.yaml
+- id: vector_repeat_stride_valid
+  type: static_contract
+  checks:
+  - repeat stride constraints from vector_common are preserved
+  source: runtime_ir/vector_semantics_ir.common_attention.yaml

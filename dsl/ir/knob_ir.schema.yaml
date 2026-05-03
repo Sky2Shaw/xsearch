@@ -1,0 +1,20 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: knob_ir
+purpose: Separate tunable knob domains from schedule points; schedule points consume knobs but do not own all domain knowledge.
+required_sections:
+- knobs
+- schedule_point_links
+knob_schema:
+  name: string
+  type: string
+  domain: dict
+  applies_to: dict
+  default_behavior: dict
+  coupled_constraints: list[string]
+  searchable: bool
+  source_evidence: list[dict]
+verifier_hooks:
+- knob_domain_valid
+- coupled_constraints_satisfied
+- candidate_in_domain

@@ -1,0 +1,115 @@
+forbidden_transforms_artifact: constraints/forbidden_transforms.yaml
+risks:
+  - id: R-MM2-OWNER-COLLAPSE
+    description: Collapsing ComputeMm2 or alias-aware Vec stages across owners hides distinct GQA, MLA, and generic nonquant semantics.
+    evidence: reports/function_index.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-MM2-OWNER-COLLAPSE
+  - id: R-GQA-V-L1-LIFETIME
+    description: Incorrect V_EVENT release can overwrite reusable V L1 tiles or deadlock the reuse path.
+    evidence: op_kernel/fia_block_cube_nonquant_gqa_sink.h:1140-1222
+    related_forbidden_transform_ids:
+      - FT-NO-ELIDE-GQA-V-L1-RELEASE
+  - id: R-RUNINFO-STAGE-REORDER-DEADLOCK
+    description: Reordering RunInfo slot responsibilities or invalidating a slot too early can make Vec stages observe stale ring data or deadlock the overlapped pipeline.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:882-909
+    related_forbidden_transform_ids:
+      - FT-NO-RUNINFO-STAGE-REORDER
+  - id: R-UB-ALIGNMENT-DRIFT
+    description: Removing Vec1 and Vec2 32B-safe rounding or mishandling headDimAlign can misalign UB accesses and leak padded garbage into outputs.
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:305-318
+    related_forbidden_transform_ids:
+      - FT-NO-VEC-TILE-ALIGNMENT-DRIFT
+  - id: R-INVALID-ROW-SEMANTIC-DRIFT
+    description: Skipping invalid-row correction changes the semantic meaning of softmaxLse output and masked rows.
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:356-394
+    related_forbidden_transform_ids:
+      - FT-NO-INVALID-ROW-CORRECTION-BYPASS
+  - id: R-SPLITKV-PARTIAL-COLLISION
+    description: Collapsing current and previous vec2ResGm slots or merging partial and final-output paths can overwrite split-KV partials before FD merge.
+    evidence: op_kernel/fia_block_vec_nonquant_sink.h:601-662
+    related_forbidden_transform_ids:
+      - FT-NO-VEC2-RING-SLOT-COLLAPSE
+  - id: R-MLA-NUPDATE-NUMERIC
+    description: Changing AmlaVecCompute order can alter nUpdate correction numerics.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:470-561
+    related_forbidden_transform_ids:
+      - FT-NO-REORDER-MLA-NUPDATE-BARRIER
+  - id: R-MLA-MM2-ATOMIC
+    description: Missing SetAtomicNone or wrong broadcast stride can corrupt MLA MM2 accumulation.
+    evidence: op_kernel/fia_block_vec_nonquant_mla_sink.h:657-717
+    related_forbidden_transform_ids:
+      - FT-NO-REORDER-MLA-NUPDATE-BARRIER
+  - id: R-FD-LSE-MERGE
+    description: Wrong LSE max/sum offsets or merge weights corrupt split-KV final output.
+    evidence: op_kernel/fia_block_vec_flashdecode_sink.h:241-290
+    related_forbidden_transform_ids:
+      - FT-NO-REORDER-FD-MERGE-WEIGHT-FORMULA
+  - id: R-FD-METADATA-DESYNC
+    description: Producer/consumer disagreement on fdParams arrays or usedVecNumOfFd bounds can send FlashDecode to the wrong partial ranges.
+    evidence: reports/external_dependencies.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: R-MLA-TAIL-BUDGET-MISMODELED
+    description: Treating MLA host-budget-only tail bytes as dedicated GM tensors invents nonexistent producer/consumer paths and corrupts Stage-2 validation and lowering.
+    evidence: auxiliary/workspace_cross_reference.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+  - id: R-MLA-NUPDATE-TAIL-MISLOWERED
+    description: Lowering MLA nUpdate as a standalone GM tail instead of the observed normal.mm2 int32 alias can move atomic correction away from the MM2 data it adjusts.
+    evidence: dsl/mla_workspace_tail_contract.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+  - id: R-MLA-SOFTMAX-SUM-GM-INVENTED
+    description: Inventing a GM producer or consumer for MLA softmaxSum hides the observed aMlaSumUb local-buffer bridge and can mis-specify Vec2 normalization ordering.
+    evidence: dsl/mla_workspace_tail_contract.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+  - id: R-WORKSPACE-ABI-DRIFT
+    description: Reordering or resizing workspace regions without synchronized host and kernel ABI updates can redirect ring slots or FD scratch to the wrong bytes.
+    evidence: op_kernel/fia_kernel_nonquant_sink.h:373-409
+    related_forbidden_transform_ids:
+      - FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+  - id: R-SHAPE-LAYOUT-CONTRACT-DRIFT
+    description: Changing infer-shape or layout-specific exporters independently can mismatch attentionOut and softmaxLse tensor ranks or offsets across BSH, BSND, BNSD, NBSD, TND, and NTD families.
+    evidence: dsl/shape_layout_contract.yaml
+    related_forbidden_transform_ids: []
+  - id: R-SPARSE-POLICY-DESYNC
+    description: Divergence between host maskParams packing and kernel sparse or invalid-row branches can invert sink-window or row-validity semantics.
+    evidence: dsl/sparse_policy.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-INVALID-ROW-CORRECTION-BYPASS
+  - id: R-SPLIT-CORE-RANGE-DESYNC
+    description: Divergence in split_core range packing silently reassigns BN2, GS1, or S2 work across FD tasks and makes host fdParams disagree with kernel FlashDecode consumers.
+    evidence: dsl/split_core_range_contract.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: R-COMMON-SPLIT-CORE-MODEL-OMITTED
+    description: Omitting common split-core cost, tolerance, core-search, sparse/sink/key-sink, or assignment semantics can produce a Stage-2 planner that preserves array names while assigning different BN2/GS1/S2 ranges and FD work.
+    evidence: common_supplement/split_core_extraction.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS
+  - id: R-COMMON-SHAPE-LAYOUT-VALIDATION-OMITTED
+    description: Omitting common axis maps, derived dimensions, NZ packing, or compare modes can make Stage-2 accept layouts that host validation rejects or reject valid TND/NZ/dense families.
+    evidence: common_supplement/shape_layout_extraction.yaml
+    related_forbidden_transform_ids: []
+  - id: R-COMMON-GM-OFFSET-COPY-MISLOWERED
+    description: Omitting common GmFormat, FormatCategory, OffsetCalculator, and ND-to-NZ lowering semantics can address the wrong GM rows or copy invalid packed tiles into L1/UB.
+    evidence: common_supplement/memory_copy_extraction.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+  - id: R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+    description: Omitting common buffer hard-event pairs, cross-core event ID rules, or policy lifetimes can introduce deadlocks, double-use live buffers, or illegal AIC/AIV producer-consumer ordering.
+    evidence: common_supplement/buffer_matmul_extraction.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-RUNINFO-STAGE-REORDER
+  - id: R-COMMON-INVALID-ROW-HANDLING-LOST
+    description: Omitting common safe-token clamping and invalid-row helpers can lose sparse-mode-specific zeroing or PIPE_V barriers, changing masked rows and softmax outputs.
+    evidence: common_supplement/vector_common_extraction.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-INVALID-ROW-CORRECTION-BYPASS
+  - id: R-COMMON-FD-METADATA-MISMATCH
+    description: Omitting common FD RecordFDInfo and SplitFD balancing semantics can make generated fdParams structurally valid but inconsistent with split-KV vector merge boundaries.
+    evidence: common_supplement/split_core_extraction.yaml
+    related_forbidden_transform_ids:
+      - FT-NO-FD-METADATA-PARTITION-LOSS

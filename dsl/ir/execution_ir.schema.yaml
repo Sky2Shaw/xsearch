@@ -1,0 +1,28 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.execution_ir.schema
+purpose: Record replayable schedule/search candidates and feedback for graph search and learning.
+record_fields:
+  candidate_id: string
+  parent_id: string|null
+  shape_bucket: string
+  applied_transforms: list[transform_id]
+  schedule_trace: list[action]
+  validation: layered_verifier_results
+  binding: binding_validation_summary
+  lowering: backend_outputs
+  compile: status/duration/log_digest
+  correctness: status/error_metrics
+  benchmark: latency_p50/latency_p90/variance/speedup
+  profile: mte2/mte3/cube/vector/scalar ratios
+  failure: type/message/culprit_transform
+replay_requirements:
+- base_dsl_hash
+- transform_trace_hashes
+- reviewed_binding_hash
+- backend_contract_version
+- source_commit
+archive_use:
+- nearest_shape_bucket_retrieval
+- negative_example_filtering
+- transform_success_prior
+- cost_model_training

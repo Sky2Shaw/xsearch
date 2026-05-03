@@ -1,0 +1,22 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.extension.attention.schema
+purpose: Keep attention-specific concepts outside the base performance DSL kernel layer.
+extension_fields:
+  attention.tiling:
+  - s2_base
+  - m_base
+  - fd_g_s1_base_size
+  flash_decode:
+  - route.split_kv_enabled
+  - metadata_bridge
+  - stable_lse_merge
+  - partition.g_s1_base
+  sparse_sink:
+  - s2_range_policy
+  - invalid_row_rule
+  - sink_range
+  mla_decode:
+  - nupdate_barrier
+  - softmax_sum_state
+  - tail_budget_policy
+migration_rule: kernel_ir may keep these fields for v0.5 compatibility; new operator families should put family-specific semantics under extensions/<family> and expose only schedulable base fields in kernel_ir.

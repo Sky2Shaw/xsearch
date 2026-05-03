@@ -1,0 +1,37 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.transform_trace
+id: transform_enable_l1_v_reuse_across_g
+type: memory_reuse
+source_cards:
+- OC-GQA-MM2-L1-V-REUSE
+reason:
+- GQA/FlashDecode can reuse V tile across groups when loop order and V snapshot signature are stable.
+- Expected to reduce repeated GM->L1 V traffic and MTE2 pressure.
+preconditions:
+- profile includes gqa_decode
+- G > 1
+- v_tile fits L1
+- V_EVENT release is preserved
+- vCoord snapshot signature is unchanged
+schedule_points:
+- sp_l1_v_residency_scope
+mutations:
+- path: kernel_ir.memory_plan.l1_residency.objects[v_tile].scope
+  new: across_g
+- path: kernel_ir.memory_plan.l1_residency.objects[v_tile].eviction
+  new: explicit_event_release
+expected_effect:
+- reduce_v_gm_load
+- improve_l1_reuse
+- possibly reduce MTE2 bottleneck
+risk:
+- l1_overflow
+- stale_v_tile
+- event_deadlock_if_release_condition_changed
+validators:
+- l1_residency_lifetime_valid
+- event_dependency_valid
+- l1_capacity
+forbidden:
+- FT-NO-ELIDE-GQA-V-L1-RELEASE
+requires_review: true

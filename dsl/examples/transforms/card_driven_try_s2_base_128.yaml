@@ -1,0 +1,18 @@
+version: 0.9-card-driven-execution
+kind: atdsl.transform_trace
+id: card_driven_try_s2_base_128
+card_id: OC-TILING-SPLIT-CORE-COST-TABLE
+schedule_point: sp_tiling_s2_base
+reason: Use tiling/split-core cost card to try a planner-backed S2 tile candidate.
+preconditions:
+- reviewed binding exists for attention.tiling.s2_base
+- candidate passes tiling_ir precheck
+mutations:
+- path: kernel_ir.tiles.s2_base.value
+  old_value: 64
+  new_value: 128
+expected_effect:
+- improve core balance and reduce per-core S2 tail cost for selected shape bucket
+risk:
+- workspace size and sparse/sink S2 range must remain valid
+requires_review: false

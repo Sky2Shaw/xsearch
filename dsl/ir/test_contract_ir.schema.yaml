@@ -1,0 +1,23 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: test_contract_ir
+purpose: Map DSL field changes to required UT/ST/benchmark surfaces so the optimization agent can select tests automatically.
+required_sections:
+- contracts
+- selection_rules
+- coverage_matrix
+contract_schema:
+  id: string
+  test_surface: enum(unit_test_infershape,unit_test_tiling,unit_test_op_api,system_test,benchmark)
+  file: string
+  line_range: '{start:int,end:int}'
+  covered_contracts: list[dsl_path_or_contract_id]
+  observed_behavior: string
+  source_evidence_ids: list[string]
+selection_rule_schema:
+  changed_dsl_path: glob_or_prefix
+  required_contract_ids: list[test_contract.id]
+  required_test_surfaces: list[enum]
+  benchmark_required: bool
+  minimum_gate: enum(static,unit,system,benchmark)
+lowering_use: lower_patch_plan must emit required_tests for every transform touching a covered DSL path.

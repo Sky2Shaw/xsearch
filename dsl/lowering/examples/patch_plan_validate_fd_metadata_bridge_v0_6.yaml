@@ -1,0 +1,32 @@
+version: 0.7-execution-closure
+kind: atdsl.patch_plan
+patch_plan_id: patch_plan_validate_fd_metadata_bridge
+base_dsl_hash: e55e9fa6ad0a526a
+source_root: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink
+source_commit: unknown
+transforms:
+- validate_fd_metadata_bridge
+rewrite_units: []
+contract_guards:
+- id: guard_sp_fd_metadata_bridge_contract
+  schedule_point: sp_fd_metadata_bridge_contract
+  semantic_id: flash_decode.fdparams.used_vec_num
+  dsl_path: kernel_ir.flash_decode.fdparams
+  verifiers:
+  - fd_metadata_bridge_valid
+  - split_core_range_contract_valid
+  - fd_used_vec_bounds
+  source_evidence:
+  - op_host/ai_infra_fused_infer_attention_sink_tiling.h:113
+  - op_kernel/fia_kernel_nonquant_sink.h:728 usedAivCoreNum / FD active core guard
+  - op_kernel/fia_kernel_nonquant_mla_sink.h:654 usedVecNumOfFd
+  status: no_source_rewrite
+blocked_units: []
+validators:
+- fd_metadata_bridge_valid
+- split_core_range_contract_valid
+- fd_used_vec_bounds
+rollback:
+  strategy: git_reverse_patch
+  must_emit_original_snippet: true
+status: contract_guards_only

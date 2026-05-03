@@ -1,0 +1,28 @@
+version: 0.5-performance-dsl-mvp
+from: flat Stage2/Stage3 MVP schema
+to: four-layer ATDSL compiler protocol
+mapping:
+- old: shape_layout
+  new: semantic_ir.shape + semantic_ir.layout
+  note: derived fields such as head_dim_align are fixed semantic fields.
+- old: tiling
+  new: kernel_ir.tiles + schedule_points
+  note: searchable knobs become explicit schedule points.
+- old: pipeline
+  new: kernel_ir.pipeline + hardware_contract_ir.event_model
+  note: event reordering remains forbidden unless a verified pipeline variant exists.
+- old: memory.l1_residency
+  new: kernel_ir.memory_plan.l1_residency + hardware_contract_ir.memory_spaces.L1
+  note: residency scope must be validated against L1 capacity and lifetime.
+- old: workspace.layout
+  new: kernel_ir.memory_plan.workspace + lowering_verifier.workspace_abi_consistent
+  note: binding_status remains mandatory for MLA tail regions.
+- old: flash_decode.metadata_bridge
+  new: kernel_ir.flash_decode.metadata_bridge + binding_ir + LowerFlashDecodeMetadata
+  note: canonical owner remains flash_decode.metadata_bridge.
+- old: validators_spec
+  new: verifier/* layered verifier specs
+  note: validator seeds are classified by semantic/kernel/hardware/lowering/numerical layer.
+- old: lowering_spec
+  new: backend_contracts/ascendc_patch + binding_ir
+  note: real lowering requires reviewed symbol binding.

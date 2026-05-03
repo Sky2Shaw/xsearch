@@ -1,0 +1,208 @@
+artifact: split_core_extraction
+scope: "Host common split-core semantics used by attention operators."
+allowed_sources:
+  - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp"
+  - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h"
+
+cost_model:
+  block_cost_formula:
+    expression: "6 * ceil(M / 16) + 10 * ceil(S2 / 64)"
+    implementation_notes:
+      - "M is aligned upward with (basicM + 16 - 1) >> 4."
+      - "S2 is aligned upward with (basicS2 + 64 - 1) >> 6."
+      - "The returned scalar combines M and S2 terms with coefficients 6 and 10."
+    evidence:
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:86"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:90"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:91"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:92"
+  block_type_table:
+    semantics:
+      - "Cost table records normal/normal, tail/normal, normal/tail, and tail/tail block costs."
+      - "Tail entries become zero when the corresponding tail size is zero."
+    evidence:
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:95"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:99"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:100"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:101"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:102"
+  tolerance:
+    fa_tolerance_ratio: 2
+    fd_tolerance_ratio: 2
+    tolerance_predicate: "limit + tolerance >= value"
+    evidence:
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:25"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:26"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:61"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:64"
+
+core_search:
+  preprocessing:
+    - "SplitCore first builds per-batch split metadata and exits the all-empty KV case with one used core."
+    - "CalcCostInfo accumulates total cost and total block count from per-batch costs multiplied by n2Size."
+  search_bounds:
+    max_core: "min(requested coreNum, totalBlockNum)"
+    min_core: "min(rounding expression sqrt(totalBlockNum + 0.25) + 0.5, maxCore)"
+  selection:
+    - "The search evaluates candidate core counts from minCore through maxCore."
+    - "A candidate replaces the result when its maxCost is lower than the current best."
+    - "The final usedCoreNum is clamped to at least one core."
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:739"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:742"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:750"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:753"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:754"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:762"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:764"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:774"
+
+sparse_and_sink_handling:
+  sparse_modes:
+    enum_values:
+      DEFAULT_MASK: 0
+      ALL_MASK: 1
+      LEFT_UP_CAUSAL: 2
+      RIGHT_DOWN_CAUSAL: 3
+      BAND: 4
+      SPARSE_BUTT: 5
+    sentinel_modes:
+      - "SPARSE_BUTT is a sentinel enum value, not a runtime sparse mode."
+    evidence:
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:34"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:35"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:36"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:37"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:38"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:39"
+      - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:40"
+  s2_range:
+    - "Without an attention mask, S2 covers all S2 base blocks."
+    - "With a mask, S2 token bounds are derived from the S1G token range plus pre/next token offsets, clipped to valid S2 tokens, then converted to a right-open S2 block range."
+    - "No valid token range returns an empty S2 range."
+  band_cache_behavior:
+    - "BAND mode shifts preToken by s1Size - s2Size."
+    - "BAND mode shifts nextToken by s2Size - s1Size."
+  key_sink_handling:
+    - "BaseInfo carries both sinkNumber and keySinkNumber plus supportFD."
+    - "When keySinkNumber and supportFD are set, split info and batch cache add keySinkNumber to the effective S2 size."
+    - "Sink-aware handling chooses keySinkNumber when keySinkNumber and supportFD are set, otherwise sinkNumber."
+    - "Sink block accounting applies only when the selected sinkNumber is positive and sparseMode is 4."
+  sink_gap_cursor_update:
+    - "UpdateCurS2IdxWithSinkNumber skips the masked gap between sink blocks and firstTokenWithSinkNumber when needed."
+    - "AssignByBlock and ForceAssign use the sink-aware cursor update only for positive sinkNumber under sparseMode 4."
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:86"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:87"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:88"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:60"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:63"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:69"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:79"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:117"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:120"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:146"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:151"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:158"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:160"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:174"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:198"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:253"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:284"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:285"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:495"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:507"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:515"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:530"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:536"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:563"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:564"
+
+assignment_phases:
+  order:
+    - "AssignByBatch"
+    - "AssignByRow"
+    - "AssignByBlock, only when supportFD is true"
+    - "ForceAssign, only when supportFD is true and the current core received no block"
+  cost_limit:
+    - "Each core uses unassignedCost divided by remaining cores as its current cost limit."
+    - "Batch and row phases allow FA tolerance by adding last-block-cost / FA_TOLERANCE_RATIO."
+    - "Block phase allows FA tolerance by adding current-block-cost / FA_TOLERANCE_RATIO."
+  outputs:
+    - "Each core records bN2End, gS1End, s2End, and maxCost."
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:656"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:658"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:660"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:662"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:664"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:667"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:670"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:673"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:440"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:475"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:531"
+
+fd_metadata:
+  base_fields:
+    - "FlashDecodeResult records FD head indices, S2 split counts, G/S1 split counts, last part sizes, vector end indices, vector split indices, and per-core S2 split start index."
+    - "SplitResult records numOfFdHead, maxS2SplitNum, usedVecNumOfFd, and fdRes."
+  record_conditions:
+    - "FD info is not recorded for core 0."
+    - "FD info is not recorded when curKvSplitPart is <= 1."
+    - "FD info is delayed when the row needing reduction has not been processed past the previous core endpoint."
+  record_payload:
+    - "RecordFDInfo stores previous-core bN2 and gS1 endpoints, S2 split count, G/S1 split count, G/S1 last part size, updates maxS2SplitNum, and increments numOfFdHead."
+  fd_balancing:
+    - "SplitFD totals FD load as s2SplitNumOfFdHead * gS1SplitNumOfFdHead."
+    - "Max vector count is min(totalFDHeadSplit, usedCoreNum * vecCubeRatio)."
+    - "A vector boundary is emitted when current FD KV split count exceeds remaining vector space multiplied by FD_TOLERANCE_RATIO."
+  evidence:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:99"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:102"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:111"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:132"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:135"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:578"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:582"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:586"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:590"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:597"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:607"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:613"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:615"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:620"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:693"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:698"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:705"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:716"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:730"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:732"
+
+dsl_implications:
+  - "A DSL model of split-core behavior needs explicit base block sizes for M/S1G and S2 because they drive block counts, tail blocks, and the cost table."
+  - "The cost model is discrete and aligned; DSL formulas should use ceil-div by 16 for M and by 64 for S2, then coefficients 6 and 10."
+  - "FA assignment uses a tolerance ratio of 2 at batch, row, and block granularity; FD balancing independently uses ratio 2."
+  - "Sparse BAND and sink/key-sink behavior can alter effective S2 range, block count, cursor progression, and FD reduction metadata."
+  - "supportFD gates block-level assignment, force assignment, FD metadata recording, and post-FA FD vector balancing."
+
+source_evidence:
+  evidence_commands:
+    - command: "rg -n \"CalcCost|FA_TOLERANCE_RATIO|FD_TOLERANCE_RATIO|CalcS2Range|keySinkNumber|supportFD|CalcS1GCacheWithSinkNumber|UpdateCurS2IdxWithSinkNumber|AssignByBatch|AssignByRow|AssignByBlock|ForceAssign|RecordFDInfo|SplitFD|sqrt\" inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h"
+      result: "matched required split-core concepts"
+  primary_references:
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:25"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:26"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:67"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h:99"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:86"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:106"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:211"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:431"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:469"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:496"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:520"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:550"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:597"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:693"
+    - "inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp:735"

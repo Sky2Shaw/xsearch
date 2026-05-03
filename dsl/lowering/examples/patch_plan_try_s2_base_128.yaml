@@ -1,0 +1,30 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.patch_plan
+patch_plan_id: patch_plan_try_s2_base_128_example
+base_dsl_hash: example-only
+source_commit: example-only
+transforms:
+- transform_try_s2_base_128
+rewrite_units:
+- id: rewrite_s2_base_128
+  schedule_point: sp_tiling_s2_base
+  semantic_id: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  binding_role: host_tiling_field
+  target_file: training/ascendc/.../tiling.cpp
+  anchor: ASSIGN:s2BaseSize
+  rewrite_kind: replace_expr
+  old_value: from_tiling
+  new_value: 128
+  safety_guards:
+  - schedule_point_candidate_valid
+  - binding_resolved
+  - s2_alignment
+  - ub_capacity_or_cost_precheck
+validators:
+- workspace_contiguous_abi
+- sparse_policy_contract
+- binding_resolved
+rollback:
+  strategy: git_reverse_patch
+  must_emit_original_snippet: true

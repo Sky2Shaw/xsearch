@@ -1,0 +1,103 @@
+memory_lifetime:
+  schema_version: 1
+  items:
+  - id: lifetime.gqa.q_l1_snapshot
+    resource: qL1Snapshot
+    memory_space: L1
+    owner: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    live_from: CopyQToL1 on a qCoord miss or when the cached slice count is insufficient.
+    live_until: qCoord changes or the required mL1 slice count exceeds the cached snapshot width.
+    reuse_scope: across mL1 slices for the same batch/head/gS1 coordinate.
+    source_evidence_ids:
+    - SE-GQA-Q-L1-SNAPSHOT
+  - id: lifetime.gqa.v_l1_snapshot
+    resource: vL1Snapshot
+    memory_space: L1
+    owner: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2
+    live_from: CopyVToL1 when reuseVBuf is false for the current KL1 slice.
+    live_until: canFullLoadV becomes false or the current mL1 slice is the tail, at which point V_EVENT is released.
+    reuse_scope: across mL1 slices for the same batch/head/S2 coordinate.
+    source_evidence_ids:
+    - SE-GQA-V-L1-RELEASE
+  - id: lifetime.shared.vec2_partial_ring
+    resource: vec2ResGm
+    memory_space: GM.workspace
+    owner: FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf
+    live_from: non-final S2 loops write the current preload-slot partial into vec2ResGm.
+    live_until: the next S2 loop rereads the previous slot or FD final export consumes the accumulated result.
+    reuse_scope: across adjacent preload slots and S2 loops.
+    source_evidence_ids:
+    - SE-SHARED-VEC2-CONTRACT
+    - SE-KNOB-PRELOAD-NUM
+  - id: lifetime.mla.nupdate_atomic_alias
+    resource: mm2ResInt32Gm
+    memory_space: GM.workspace.alias
+    owner: FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate
+    live_from: syncC2V1 fires and the current nUpdate correction is broadcast into the MM2 int32 alias.
+    live_until: MLA MM2 observes syncV1NupdateC2 and the first fixpipe consumes the corrected slot.
+    reuse_scope: current preload slot within the normal.mm2 workspace ring.
+    source_evidence_ids:
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-NUPDATE-BARRIER
+    - SE-MLA-MM2-INT32-ALIAS
+  - id: lifetime.mla.amlasum_local_ub
+    resource: aMlaSumUb
+    memory_space: UB
+    owner: FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute / DealBmm2ResBaseBlock
+    live_from: on the last S2 loop AmlaVecCompute multiplies softmaxSumUb by the nUpdate scaling term and stores the result into aMlaSumUb.
+    live_until: Vec2 row-wise division consumes the same preload-slot aMlaSumUb slice during final normalization.
+    reuse_scope: local preload-slot buffer only; no dedicated GM tail binding is observed.
+    source_evidence_ids:
+    - SE-MLA-SOFTMAX-SUM-GEN
+    - SE-MLA-SOFTMAX-SUM-CONSUME
+    - SE-MLA-AMLASUM-UB-ONLY
+  - id: lifetime.fd.accum_out
+    resource: accumOutGm
+    memory_space: GM.workspace
+    owner: FiaBlockVecNonQuant<FIAT>::ProcessVec2SingleBuf / FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L / FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    live_from: final split-KV partial export writes normalized partial O into accumOutGm.
+    live_until: FlashDecode merge reduces all partials and copies the final result to attentionOut.
+    reuse_scope: per split-KV task and per FD head partition.
+    source_evidence_ids:
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-FD-WORKSPACE-OFFSETS
+  - id: lifetime.fd.lse_sum_max
+    resource: lseSumFdGm / lseMaxFdGm
+    memory_space: GM.workspace
+    owner: shared Vec1 / MLA Vec1 / FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    live_from: final Vec1 split-core export writes per-partial lseSum and lseMax slices.
+    live_until: FlashDecode merge reads all partials and computes stable merge weights.
+    reuse_scope: per split-KV task and per FD head partition.
+    source_evidence_ids:
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-FD-WORKSPACE-OFFSETS
+  - id: lifetime.common.buffer_manager_policy_scope
+    resource: common BufferManager allocations
+    memory_space: L1/L0A/L0B/L0C/UB/GM
+    owner: common BufferManager and buffer policy helpers
+    live_from: policy Init allocates buffers from a monotonic BufferManager offset.
+    live_until: owning buffer policy Uninit releases event state; FreeBuffer is empty, so individual allocation offsets are not reclaimed.
+    reuse_scope: policy-scoped buffer lifetime selected by single, double, triple, four-buffer, or matrix-2x2 policy.
+    source_evidence_ids:
+    - SE-COMMON-BUFFER-MANAGER-H
+    - SE-COMMON-BUFFERS-POLICY-H
+  - id: lifetime.common.nd_to_nz_copy_tile
+    resource: common GM-to-L1 copy tile
+    memory_space: L1
+    owner: common memory_copy CopyQueryGmToL1 / CopyKvGmToL1 helpers
+    live_from: GM layout and FormatCategory select an offset and copy helper, then ND-like rows are lowered into NZ L1 layout.
+    live_until: downstream cube stage consumes the copied NZ tile or the selected buffer policy rotates/reuses the L1 slot.
+    reuse_scope: per query/KV tile, with page-attention and continuous/tensor-list formats selecting distinct offset rules.
+    source_evidence_ids:
+    - SE-COMMON-MEMORY-COPY-H
+  - id: lifetime.common.cross_core_event_ids
+    resource: common cross-core event IDs id0/id1
+    memory_space: event_state
+    owner: common Buffer<bufferType, syncType>
+    live_from: Buffer Init assigns id0/id1 according to CROSS_CORE_SYNC_FORWARD or CROSS_CORE_SYNC_BOTH.
+    live_until: Buffer Uninit releases the event IDs associated with the policy-owned buffer instance.
+    reuse_scope: per Buffer instance; CROSS_CORE_SYNC_BOTH owns two IDs while CROSS_CORE_SYNC_FORWARD owns id0 only.
+    source_evidence_ids:
+    - SE-COMMON-BUFFER-H

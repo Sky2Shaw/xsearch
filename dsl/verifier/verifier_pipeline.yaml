@@ -1,0 +1,72 @@
+version: 0.7-execution-closure
+kind: atdsl.layered_verifier_pipeline
+layers:
+- name: semantic_verifier
+  purpose: op/profile/interface/shape/layout/numerical invariant checks
+  validators:
+  - profile_required_modules_present
+  - shape_layout_contract_valid
+  - stable_lse_merge_declared_when_fd_split_kv
+- name: kernel_verifier
+  purpose: loop/tile/pipeline/memory/workspace structure checks
+  validators:
+  - schedule_point_candidate_valid
+  - runinfo_ring_order_valid
+  - l1_residency_lifetime_valid
+  - workspace_region_identity_valid
+- name: hardware_verifier
+  purpose: Ascend memory/engine/alignment/event contract checks
+  validators:
+  - ub_capacity
+  - l1_capacity
+  - s2_alignment
+  - event_model_valid
+  - engine_supported
+- name: lowering_verifier
+  purpose: binding and patch-point checks before real lowering
+  validators:
+  - binding_resolved
+  - patch_point_exists
+  - forbidden_field_not_modified
+  - workspace_abi_consistent
+- name: numerical_verifier
+  purpose: online softmax/LSE/tail/sparse correctness checks
+  validators:
+  - split_kv_lse_merge_valid
+  - invalid_row_lse_correction
+  - mla_nupdate_barrier_valid
+  - tail_mask_valid
+existing_validator_seed_count: 25
+promotion_rule: Every Stage1 validator_seed entry is assigned to one verifier layer before implementation.
+required_v0_6_checks:
+- shape_layout_contract_valid
+- fd_metadata_bridge_valid
+- split_core_range_contract_valid
+- scalar_offset_consistency
+- mla_nupdate_numeric_contract
+- mla_tail_budget_stub_valid
+- reviewed_binding_required_for_source_diff
+execution_closure_layers:
+- name: test_contract_selection
+  validators:
+  - test_contract_coverage_selected
+- name: dataflow_lifetime
+  validators:
+  - dataflow_edge_preserved
+  - lifetime_no_overlap
+  - reuse_scope_preserved
+- name: workspace_layout
+  validators:
+  - workspace_layout_abi_valid
+  - workspace_region_lifetime_valid
+- name: common_memory_vector
+  validators:
+  - gm_format_supported
+  - offset_calculator_matches_layout
+  - vector_repeat_stride_valid
+  - invalid_row_lse_correction
+- name: learning_risk_knob
+  validators:
+  - risk_guard_attached
+  - negative_lesson_not_violated
+  - knob_domain_valid

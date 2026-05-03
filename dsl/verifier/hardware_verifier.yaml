@@ -1,0 +1,126 @@
+version: 0.7-execution-closure
+layer: hardware_verifier
+validators:
+- id: ub_capacity
+  severity: hard
+  module: memory.UB
+  implemented_as: scripts/validate_performance_dsl.py::check_hardware_contract_presence
+  predicate: UB capacity must be declared and every schedule point mutating UB-dependent tile sizes must list ub_capacity_or_cost_precheck or
+    ub_capacity.
+  inputs:
+  - hardware_contract_ir.memory_spaces.UB.capacity
+  - schedule_points
+- id: l1_capacity
+  severity: hard
+  module: memory.L1
+  implemented_as: scripts/validate_performance_dsl.py::check_hardware_contract_presence
+  predicate: L1 capacity must be declared; L1 residency transforms must list l1_capacity.
+  inputs:
+  - hardware_contract_ir.memory_spaces.L1.capacity
+  - transform_trace.validators
+- id: s2_alignment
+  severity: hard
+  module: alignment.s2_range_align
+  implemented_as: scripts/validate_performance_dsl.py::check_schedule_candidates
+  predicate: Integer S2 candidates must be multiples of declared s2_range_align when static candidate list is used.
+  inputs:
+  - hardware_contract_ir.alignment.s2_range_align
+  - schedule_points.sp_tiling_s2_base.candidates
+- id: event_model_valid
+  severity: hard
+  module: event_model
+  implemented_as: static_rule
+  predicate: event_model.auto_reorder_allowed must remain false unless backend supports formal event rewrite proof.
+  inputs:
+  - hardware_contract_ir.event_model.auto_reorder_allowed
+- id: engine_supported
+  severity: hard
+  module: engines
+  implemented_as: static_rule
+  predicate: MTE2/MTE3/CUBE/VECTOR engines required by kernel_ir must exist in hardware_contract_ir.engines.
+  inputs:
+  - hardware_contract_ir.engines
+  - kernel_ir.compute
+  - kernel_ir.memory_plan
+- id: fd_metadata_bridge_valid
+  scope: flash_decode.fdparams
+  predicate: usedVecNumOfFd bounds active vector cores; host split_core output arrays and kernel local arrays preserve identical order and sizes.
+  requires:
+  - split_core.range_assignments
+  - flash_decode.fdparams.*
+  failure_class: metadata_desync
+- id: split_core_range_contract_valid
+  scope: split_core.range_assignments
+  predicate: BN2/GS1/S2 half-open ranges remain monotonic and FD task arrays are synchronized with split_core output.
+  requires:
+  - stage1_split_core_range_contract
+  failure_class: range_assignment_desync
+- id: scalar_offset_consistency
+  scope: scalar.offset_rules
+  predicate: Offset formula preserves task-prefix, split-index, preload-slot, and row-origin terms exactly unless a verified algebraic equivalence
+    proof is attached.
+  requires:
+  - workspace_contiguous_abi
+  - fd_lse_merge_valid
+  failure_class: workspace_addressing_error
+- id: mla_nupdate_numeric_contract
+  scope: mla.nupdate.numeric_contract
+  predicate: AmlaVecCompute -> ProcessAmlaNupdate -> syncV1NupdateC2 order is preserved before MM2 fixpipe commit.
+  requires:
+  - event_dependency_valid
+  failure_class: numeric_semantics_drift
+- id: mla_tail_budget_stub_valid
+  scope: workspace.mla.tail_regions
+  predicate: MLA nUpdate and softmaxSum tail budgets remain budget-only/alias/UB bridge regions unless direct GM binding evidence is reviewed.
+  requires:
+  - workspace_no_alias
+  failure_class: workspace_abi_drift
+- id: shape_layout_contract_valid
+  scope: semantic_ir.layout
+  predicate: Query/output/LSE layout families and varlen q-prefix offsets remain consistent between infershape and kernel copy-out.
+  requires:
+  - shape_layout.contract
+  failure_class: layout_semantics_drift
+- id: lifetime_no_overlap
+  type: static_contract
+  checks:
+  - live ranges do not overlap when resources share GM/UB/L1 storage
+  - event release remains after last consumer
+  source: runtime_ir/lifetime_ir.fia_sink.yaml
+- id: workspace_layout_abi_valid
+  type: static_contract
+  checks:
+  - region base offsets follow concrete layout
+  - region size formula remains ABI compatible
+  source: runtime_ir/workspace_ir.fia_sink.yaml
+- id: workspace_region_lifetime_valid
+  type: static_contract
+  checks:
+  - workspace producer/consumer functions match region lifetime
+  source: runtime_ir/workspace_ir.fia_sink.yaml
+- id: gm_format_supported
+  type: static_contract
+  checks:
+  - GM format is in memory_copy_ir.gm_formats
+  - format category mapping exists
+  source: runtime_ir/memory_copy_ir.common_attention.yaml
+- id: offset_calculator_matches_layout
+  type: static_contract
+  checks:
+  - offset calculator specialization matches selected FormatCategory
+  source: runtime_ir/memory_copy_ir.common_attention.yaml
+- id: nd_to_nz_tile_valid
+  type: static_contract
+  checks:
+  - ND-to-NZ lowering respects supported tile and D0 rules
+  source: runtime_ir/memory_copy_ir.common_attention.yaml
+- id: split_core_cost_model_valid
+  type: static_contract
+  checks:
+  - candidate split respects planner cost model invariants
+  source: runtime_ir/split_core_planner_ir.common_attention.yaml
+- id: planner_bounds_valid
+  type: static_contract
+  checks:
+  - used core count remains within split-core search bounds
+  source: runtime_ir/split_core_planner_ir.common_attention.yaml

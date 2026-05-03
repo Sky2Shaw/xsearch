@@ -1,0 +1,132 @@
+version: 0.3-stage3-mvp
+field_policy:
+  tiling.s2_base:
+    source_knob: s2BaseSize
+    knob_class: searchable_tiling_knob
+    policy: searchable
+    stage2_searchable: true
+    note: Stage-2 may expose as tiling.s2_base candidates/range, subject to workspace,
+      sparse-window, and event-order validators.
+  tiling.m_base:
+    source_knob: mBaseSize
+    knob_class: searchable_tiling_knob
+    policy: searchable
+    stage2_searchable: true
+    note: Stage-2 may expose as tiling.m_base / decode.m_base candidates/range, subject
+      to workspace and FD bounds validators.
+  mla.nbuffer.m_base_size:
+    source_knob: nBufferMBaseSize
+    knob_class: compile_time_constant
+    policy: fixed
+    stage2_searchable: false
+    note: Do not search automatically in v0.x; lower as template/constInfo contract
+      only.
+  pipeline.scheduler.preload_slots:
+    source_knob: preLoadNum
+    knob_class: compile_time_constant
+    policy: fixed
+    stage2_searchable: false
+    note: Do not search automatically; coupled to ring-slot workspace addressing and
+      event ordering.
+  shape_layout.derived.head_dim_align:
+    source_knob: headDimAlign
+    knob_class: derived_shape_field
+    policy: fixed
+    stage2_searchable: false
+    note: Lower from headDim and byte-block alignment; never treat as independent
+      knob.
+  flash_decode.route.split_kv_enabled:
+    source_knob: splitKVFlag
+    knob_class: route_flag
+    policy: configurable_guarded
+    stage2_searchable: false
+    note: Derived from host split/FD route; Stage-2 may model it as a route predicate,
+      not a free search knob.
+  flash_decode.metadata_bridge.partition.g_s1_base_size_of_fd:
+    source_knob: gS1BaseSizeOfFd
+    knob_class: fd_partition_field
+    policy: configurable_guarded
+    stage2_searchable: false
+    note: Model as FlashDecode partition metadata field; promote to searchable only
+      after split-core planner/lowering is implemented.
+  stage_dispatch.owner_identity:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-MM2-OWNER-COLLAPSE
+    why: GQA, MLA, and shared generic Vec stages have different synchronization, cache
+      reuse, and split-KV contracts even when their stage names look similar.
+    forbidden_change: Do not collapse owner-specific MM2 or alias-aware Vec dispatch
+      paths into a single generic stage without preserving shared-Vec alias metadata
+      and owner identity.
+  pipeline.scheduler.runinfo_ring:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-RUNINFO-STAGE-REORDER
+    why: The overlap pattern is the scheduler-level contract that keeps MM1, Vec1/MM2,
+      and Vec2 from reading stale or prematurely recycled ring slots.
+    forbidden_change: Do not swap current, older, and previous RunInfo slot responsibilities
+      and do not invalidate a slot before Vec2 completes.
+  mla.mm2_first_fixpipe:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-REORDER-MLA-NUPDATE-BARRIER
+    why: MLA MM2 correctness depends on Vec1 nUpdate correction being visible before
+      the first fixpipe writes or accumulates MM2 results.
+    forbidden_change: Do not move the syncV1NupdateC2 wait past the first MLA MM2
+      fixpipe and do not reschedule the ProcessAmlaNupdate correction to occur after
+      MM2 starts consuming corrected data.
+  gqa.mm2.v_l1_reuse:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-ELIDE-GQA-V-L1-RELEASE
+    why: Premature or missing V release can either overwrite live V_L1 tiles or deadlock
+      the MTE1/MTE2 handoff.
+    forbidden_change: Do not remove or weaken the !canFullLoadV || mL1.IsTailOf(m)
+      release condition, and do not reuse V snapshot state across a changed vCoord
+      signature.
+  vector_tiling.alignment:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-VEC-TILE-ALIGNMENT-DRIFT
+    why: The aligned tile width is part of the UB access contract and the final output
+      copy-out strips padding only at the outer boundary.
+    forbidden_change: Do not remove the 32B-safe mSplitSize rounding in Vec1 and Vec2,
+      and do not reinterpret headDimAlign as the logical output width.
+  softmax.invalid_row_guard:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-INVALID-ROW-CORRECTION-BYPASS
+    why: Invalid-row correction is part of the semantic contract for LSE output and
+      split-KV masking; skipping it changes output meaning rather than only performance.
+    forbidden_change: Do not bypass AdjustSoftMaxRes before final softmaxLse export
+      when sparse or mask rules mark rows invalid.
+  workspace.vec2_partial_ring:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-VEC2-RING-SLOT-COLLAPSE
+    why: Split-KV accumulation depends on distinct prior-slot reads and current-slot
+      writes before the last-loop normalization or FD export.
+    forbidden_change: Do not collapse current and previous vec2ResGm slots into one
+      buffer and do not merge non-final partial write-back with the final output path.
+  flash_decode.merge.lse_weights:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-REORDER-FD-MERGE-WEIGHT-FORMULA
+    why: The final FD output depends on these exact max/sum normalization weights;
+      changing the order corrupts both LSE and accumulated attention output.
+    forbidden_change: Do not change the merge order colmax -> rowsub -> exp -> mul(lseSum)
+      -> coladd -> matdiv when combining split-KV partial outputs.
+  flash_decode.fdparams_bridge:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-FD-METADATA-PARTITION-LOSS
+    why: FD task reconstruction depends on a precise producer/consumer agreement for
+      per-core split-KV ranges and usedVecNumOfFd bounds.
+    forbidden_change: Do not drop, reorder, or resize fdParams metadata arrays without
+      updating both host SetSplitOutput writers and kernel FlashDecode readers.
+  workspace.mla_tail.binding_status:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+    why: Current evidence shows host budget reservation plus normal.mm2 aliasing and
+      local UB state, not a standalone GM producer/consumer tail contract.
+    forbidden_change: Do not lower MLA host-budget tail bytes as dedicated GM tensors
+      unless new kernel SetGlobalBuffer or explicit tail readers are found.
+  workspace.abi.layout:
+    policy: forbidden
+    source_forbidden_transform: FT-NO-WORKSPACE-REGION-REORDER-WITHOUT-ABI-UPDATE
+    why: Producer and consumer stages address workspace through fixed contiguous offsets;
+      unilateral layout drift redirects ring slots or FD scratch to the wrong bytes.
+    forbidden_change: Do not reorder, resize, or repurpose workspace regions unless
+      both host-side Calc*Workspace* formulas and kernel InitWorkspace offset bindings
+      are updated together.

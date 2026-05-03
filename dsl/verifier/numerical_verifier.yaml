@@ -1,0 +1,30 @@
+version: 0.7-execution-closure
+layer: numerical_verifier
+validators:
+- id: v-mla-mm2-nupdate
+  constraint_id: C-MLA-MM2-NUPDATE
+  module: mla.nupdate
+  severity: hard
+  predicate_draft: mla.mm2 first fixpipe waits syncV1NupdateC2 before consuming corrected data
+  source_evidence_ids:
+  - SE-MLA-NUPDATE-BARRIER
+- id: v-mla-nupdate-first-loop
+  constraint_id: C-MLA-NUPDATE-FIRST-LOOP
+  module: mla.nupdate
+  severity: hard
+  predicate_draft: ProcessAmlaNupdate is skipped on first S-inner loop and only runs for non_empty_m partitions on later loops
+  source_evidence_ids:
+  - SE-MLA-NUPDATE-ATOMIC-TARGET
+- id: v-common-vector-repeat-and-invalid-rows
+  constraint_id: C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS
+  module: compute.vector_common
+  severity: hard
+  predicate_draft: vector lowering preserves repeat-stride thresholds, MAX_VALID_LENGTH split reductions, PIPE_V barriers, and invalid-row helpers
+  source_evidence_ids:
+  - SE-COMMON-VECTOR-COMMON-H
+- id: mla_nupdate_order_preserved
+  scope: kernel_ir.compute.mla_nupdate
+  predicate: Do not reorder MLA nUpdate micro-steps or remove syncV1NupdateC2.
+- id: fd_lse_weight_formula_preserved
+  scope: kernel_ir.flash_decode.merge
+  predicate: Stable LSE merge col_max/row_sub/exp/mul/add/div order must remain mathematically equivalent.

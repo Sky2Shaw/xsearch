@@ -1,0 +1,28 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.transform_trace
+id: transform_try_s2_base_128
+type: tiling
+source_knob: s2BaseSize
+schedule_points:
+- sp_tiling_s2_base
+reason:
+- Try larger S2 tile to reduce loop overhead and improve memory transfer granularity.
+preconditions:
+- candidate in schedule point candidates
+- binding attention.tiling.s2_base is reviewed before real lowering
+mutations:
+- path: kernel_ir.tiles.s2_base.value
+  old: from_tiling
+  new: 128
+expected_effect:
+- fewer S2 blocks
+- possible better MTE continuity
+risk:
+- workspace_growth
+- tail_waste
+- sparse_policy_drift
+validators:
+- workspace_contiguous_abi
+- sparse_policy_contract
+- binding_resolved
+requires_review: false

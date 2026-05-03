@@ -1,0 +1,20 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: learning_ir
+purpose: Store learned positive patterns and negative lessons as search priors and pruning rules.
+required_sections:
+- learned_patterns
+- negative_lessons
+learned_pattern_schema:
+  id: string
+  dsl_field_path: string
+  optimization_intent: string
+  confidence: enum(high,medium,low)
+negative_lesson_schema:
+  id: string
+  avoid_when: string
+  affected_dsl_paths: optional[list[string]]
+search_use:
+- seed_candidate_generation
+- rank_schedule_points
+- prune_known_bad_transforms

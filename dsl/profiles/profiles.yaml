@@ -1,0 +1,50 @@
+version: 0.5-performance-dsl-mvp
+profiles:
+  fa_forward:
+    required_modules:
+    - semantic_ir
+    - kernel_ir.pipeline
+    - kernel_ir.tiles
+    - workspace.normal_ring
+    primary_cards:
+    - OC-RUNINFO-THREE-STAGE-RING
+    - OC-WORKSPACE-NORMAL-RING
+  sparse_sink_attention:
+    extends:
+    - fa_forward
+    required_modules:
+    - sparse_policy
+    - compute.invalid_row_correction
+    primary_cards:
+    - OC-COMMON-SPARSE-SINK-S2-RANGE
+    - OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  flash_decode:
+    required_modules:
+    - flash_decode.metadata_bridge
+    - flash_decode.merge
+    - workspace.flash_decode_regions
+    primary_cards:
+    - OC-FD-METADATA-BRIDGE
+    - OC-FD-STABLE-MERGE
+    - OC-WORKSPACE-FD-REGIONS
+  gqa_decode:
+    extends:
+    - flash_decode
+    required_modules:
+    - l1_residency
+    - l1_partition
+    - pipeline.sync_edges
+    primary_cards:
+    - OC-GQA-MM2-L1-V-REUSE
+  mla_decode:
+    extends:
+    - flash_decode
+    required_modules:
+    - mla.nupdate
+    - workspace.mla_tail_regions
+    primary_cards:
+    - OC-MLA-MM2-NUPDATE-BARRIER
+    - OC-MLA-NUPDATE-SIDECHANNEL
+    - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+    - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+profile_rule: A DSL instance declares profiles; schema_checker expands required modules and validators from profiles.

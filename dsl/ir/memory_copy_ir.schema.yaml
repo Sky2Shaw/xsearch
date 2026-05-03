@@ -1,0 +1,16 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: memory_copy_ir
+purpose: Common GM layout/format/copy semantics used by query/KV/output copy and offset calculators.
+required_sections:
+- gm_formats
+- format_categories
+- layout_params
+- offset_calculators
+- copy_helpers
+- nd_to_nz_lowering
+verifier_hooks:
+- gm_format_supported
+- offset_calculator_matches_layout
+- nd_to_nz_tile_valid
+- copy_helper_format_guard

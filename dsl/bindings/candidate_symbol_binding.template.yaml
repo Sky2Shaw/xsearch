@@ -1,0 +1,23 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.candidate_symbol_binding
+status: template
+records:
+- semantic_id: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  state: candidate_llm_generated
+  confidence: medium
+  evidence:
+  - 'grep: s2BaseSize appears in host tiling and kernel tiling consumer'
+  roles:
+    host_tiling_field:
+      symbol: s2BaseSize
+      file: <repo-relative-host-tiling-file>
+      anchor: <AST-or-text-anchor>
+    kernel_tiling_consumer:
+      symbol: s2BaseSize
+      file: <repo-relative-kernel-file>
+      anchor: <AST-or-text-anchor>
+  patch_points:
+  - kind: update_tiling_assignment
+    file: <repo-relative-host-tiling-file>
+    anchor: <assignment-anchor>

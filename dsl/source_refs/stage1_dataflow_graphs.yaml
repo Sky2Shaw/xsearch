@@ -1,0 +1,195 @@
+dataflow_graphs:
+  schema_version: 1
+  graphs:
+  - id: dataflow.gqa.shared_vec
+    variant: gqa
+    nodes:
+    - id: ws.normal.mm1
+      memory_space: GM.workspace
+      role: MM1 output ring
+    - id: ub.shared_vec1_softmax
+      memory_space: UB
+      role: shared Vec1 softmax max/sum/exp state
+    - id: ws.normal.vec1
+      memory_space: GM.workspace
+      role: Vec1 output ring
+    - id: l1.gqa.v_snapshot
+      memory_space: L1
+      role: GQA V snapshot cache
+    - id: ws.normal.mm2
+      memory_space: GM.workspace
+      role: MM2 output ring
+    - id: ws.normal.vec2
+      memory_space: GM.workspace
+      role: Vec2 split-KV partial ring
+    - id: ws.fd.accum_out
+      memory_space: GM.workspace
+      role: FD partial output buffer
+    - id: ws.fd.lse_sum
+      memory_space: GM.workspace
+      role: FD LSE sum scratch
+    - id: ws.fd.lse_max
+      memory_space: GM.workspace
+      role: FD LSE max scratch
+    edges:
+    - from: ws.normal.mm1
+      to: ub.shared_vec1_softmax
+      kind: read_then_update
+      producer: gqa.mm1
+      consumer: gqa.vec1
+      source_evidence_ids:
+      - SE-SHARED-VEC1-CONTRACT
+    - from: ub.shared_vec1_softmax
+      to: ws.normal.vec1
+      kind: write
+      producer: gqa.vec1
+      consumer: gqa.mm2
+      source_evidence_ids:
+      - SE-SHARED-VEC1-CONTRACT
+    - from: l1.gqa.v_snapshot
+      to: ws.normal.mm2
+      kind: reuse_then_write
+      producer: gqa.mm2
+      consumer: gqa.vec2.output
+      source_evidence_ids:
+      - SE-GQA-V-L1-RELEASE
+    - from: ws.normal.mm2
+      to: ws.normal.vec2
+      kind: partial_merge_or_final_output
+      producer: gqa.vec2.output
+      consumer: gqa.vec2.output
+      source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+    - from: ub.shared_vec1_softmax
+      to: ws.fd.lse_sum
+      kind: conditional_write
+      producer: gqa.vec1
+      consumer: flash_decode.merge
+      source_evidence_ids:
+      - SE-SHARED-VEC1-CONTRACT
+      - SE-FD-WORKSPACE-OFFSETS
+    - from: ub.shared_vec1_softmax
+      to: ws.fd.lse_max
+      kind: conditional_write
+      producer: gqa.vec1
+      consumer: flash_decode.merge
+      source_evidence_ids:
+      - SE-SHARED-VEC1-CONTRACT
+      - SE-FD-WORKSPACE-OFFSETS
+    - from: ws.normal.vec2
+      to: ws.fd.accum_out
+      kind: conditional_write
+      producer: gqa.vec2.output
+      consumer: flash_decode.merge
+      source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+      - SE-FD-WORKSPACE-OFFSETS
+  - id: dataflow.mla.nupdate_and_fd
+    variant: mla
+    nodes:
+    - id: ws.normal.mm1
+      memory_space: GM.workspace
+      role: MM1 output ring
+    - id: ws.normal.vec1
+      memory_space: GM.workspace
+      role: Vec1 output ring
+    - id: ws.normal.mm2.int32_alias
+      memory_space: GM.workspace.alias
+      role: int32 alias over the MM2 ring used by nUpdate atomic apply
+    - id: ub.local.aMlaSum
+      memory_space: UB
+      role: local MLA normalization buffer
+    - id: ws.mla.nupdate_budget
+      memory_space: GM.workspace.stub
+      role: host-budget-only MLA nUpdate tail stub
+    - id: ws.mla.softmax_sum_budget
+      memory_space: GM.workspace.stub
+      role: host-budget-only MLA softmaxSum tail stub
+    - id: ws.normal.mm2
+      memory_space: GM.workspace
+      role: MM2 output ring
+    - id: ws.normal.vec2
+      memory_space: GM.workspace
+      role: Vec2 split-KV partial ring
+    - id: ws.fd.accum_out
+      memory_space: GM.workspace
+      role: FD partial output buffer
+    - id: ws.fd.lse_sum
+      memory_space: GM.workspace
+      role: FD LSE sum scratch
+    - id: ws.fd.lse_max
+      memory_space: GM.workspace
+      role: FD LSE max scratch
+    edges:
+    - from: ws.normal.mm1
+      to: ws.normal.vec1
+      kind: write
+      producer: mla.vec1
+      consumer: mla.mm2.process
+      source_evidence_ids:
+      - SE-MLA-VEC1-NUPDATE-SYNC
+    - from: ws.normal.vec1
+      to: ws.normal.mm2.int32_alias
+      kind: atomic_alias_write
+      producer: mla.nupdate.apply
+      consumer: mla.mm2.process
+      source_evidence_ids:
+      - SE-MLA-NUPDATE-ATOMIC-TARGET
+      - SE-MLA-MM2-INT32-ALIAS
+    - from: ws.mla.nupdate_budget
+      to: ws.normal.mm2.int32_alias
+      kind: no_direct_edge_observed
+      producer: host_budget_formula
+      consumer: none
+      source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+    - from: ub.local.aMlaSum
+      to: ws.normal.mm2
+      kind: local_normalization_input
+      producer: mla.nupdate.compute
+      consumer: mla.vec2.output
+      source_evidence_ids:
+      - SE-MLA-SOFTMAX-SUM-GEN
+      - SE-MLA-SOFTMAX-SUM-CONSUME
+      - SE-MLA-AMLASUM-UB-ONLY
+    - from: ws.mla.softmax_sum_budget
+      to: ub.local.aMlaSum
+      kind: no_direct_edge_observed
+      producer: host_budget_formula
+      consumer: none
+      source_evidence_ids:
+      - SE-WORKSPACE-MLA-ABI
+      - SE-WORKSPACE-MLA-INIT-ORDER
+    - from: ws.normal.mm2
+      to: ws.normal.vec2
+      kind: partial_merge_or_final_output
+      producer: mla.vec2.output
+      consumer: mla.vec2.output
+      source_evidence_ids:
+      - SE-SHARED-VEC2-CONTRACT
+      - SE-MLA-SOFTMAX-SUM-CONSUME
+    - from: ws.normal.vec2
+      to: ws.fd.accum_out
+      kind: conditional_write
+      producer: mla.vec2.output
+      consumer: flash_decode.merge
+      source_evidence_ids:
+      - SE-WORKSPACE-FD-SIZE-MLA
+      - SE-FD-WORKSPACE-OFFSETS
+    - from: ws.normal.vec1
+      to: ws.fd.lse_sum
+      kind: conditional_write
+      producer: mla.vec1
+      consumer: flash_decode.merge
+      source_evidence_ids:
+      - SE-WORKSPACE-FD-SIZE-MLA
+      - SE-FD-WORKSPACE-OFFSETS
+    - from: ws.normal.vec1
+      to: ws.fd.lse_max
+      kind: conditional_write
+      producer: mla.vec1
+      consumer: flash_decode.merge
+      source_evidence_ids:
+      - SE-WORKSPACE-FD-SIZE-MLA
+      - SE-FD-WORKSPACE-OFFSETS

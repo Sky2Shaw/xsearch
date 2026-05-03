@@ -1,0 +1,14 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: vector_semantics_ir
+purpose: 'Common vector semantics: invalid-row correction, safe active token, repeat stride, FD merge helpers.'
+required_sections:
+- invalid_row_handling
+- safe_active_token
+- vector_helpers
+- repeat_stride_constraints
+- fd_merge_helpers
+verifier_hooks:
+- invalid_row_lse_correction
+- vector_repeat_stride_valid
+- fd_merge_helper_semantics_valid

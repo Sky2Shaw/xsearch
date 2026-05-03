@@ -1,0 +1,951 @@
+version: 0.9-card-driven-execution
+kind: atdsl.card_to_dsl_mapping
+purpose: Make every optimization card executable by binding it to DSL paths, schedule points, verifiers, tests, risk/dataflow/lifetime guards,
+  and lowering policy.
+mapping_policy:
+  all_cards_must_have_mapping: true
+  schedule_points_must_exist: true
+  contract_guard_cards_must_not_emit_source_diff: true
+  planner_cards_generate_candidates_before_transform_trace: true
+  source_rewrite_requires_reviewed_binding: true
+mappings:
+- card_id: OC-GQA-MM2-L1-V-REUSE
+  flow_group: C2
+  card_type: optimization_pattern
+  pipeline_position: C2.GQA.MM2
+  dsl_paths:
+  - kernel_ir.memory_plan.l1_residency.objects[v_tile]
+  - lifetime_ir.items.gqa.v_l1_snapshot
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  schedule_points:
+  - sp_l1_v_residency_scope
+  verifier_ids:
+  - verify_v_l1_snapshot_lifetime
+  - verify_syncV1C2_order
+  lowering_policy: guarded_patch_requires_review
+  required_tests: &id001
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: C2
+    use_when_evidence_mentions:
+    - id: SE-GQA-V-L1-RELEASE
+      role: V snapshot reuse and release condition inside GQA ComputeMm2.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-MLA-MM2-NUPDATE-BARRIER
+  flow_group: C2
+  card_type: correctness_guard
+  pipeline_position: C2.MLA.MM2
+  dsl_paths:
+  - kernel_ir.compute.mla_nupdate
+  - dataflow_ir.graphs[dataflow.mla.nupdate_and_fd]
+  - lifetime_ir.items.mla.nupdate_atomic_alias
+  schedule_points:
+  - sp_mla_nupdate_numeric_contract
+  verifier_ids:
+  - verify_mla_nupdate_barrier
+  - verify_mm2_sync_after_nupdate
+  lowering_policy: contract_guard_only
+  required_tests: *id001
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: C2
+    use_when_evidence_mentions:
+    - id: SE-MLA-NUPDATE-BARRIER
+      role: MM2 wait condition before the first fixpipe.
+    - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+      role: Vec1-side atomic add target and row-group broadcast behavior.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-MLA-NUPDATE-SIDECHANNEL
+  flow_group: V1
+  card_type: numeric_side_channel
+  pipeline_position: V1.MLA.nUpdate
+  dsl_paths:
+  - kernel_ir.compute.mla_nupdate.numeric_contract
+  - lifetime_ir.items.mla.amlasum_local_ub
+  schedule_points:
+  - sp_mla_nupdate_numeric_contract
+  verifier_ids:
+  - verify_mla_nupdate_formula
+  - verify_atomic_target_consistency
+  lowering_policy: contract_guard_only
+  required_tests: &id005
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  - TEST-SPARSE-SINK-TILING-GUARDS
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: V1
+    use_when_evidence_mentions:
+    - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+      role: Atomic-add path and 128-lane broadcast contract.
+    - id: SE-MLA-SOFTMAX-SUM-GEN
+      role: Last-loop generation of the aMlaSum normalization state.
+    - id: SE-MLA-AMLASUM-UB-ONLY
+      role: aMlaSum is retained in local UB state rather than a dedicated GM tail binding.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-FD-STABLE-MERGE
+  flow_group: FLASH_DECODE
+  card_type: numeric_merge
+  pipeline_position: FD.merge
+  dsl_paths:
+  - kernel_ir.flash_decode.merge
+  - dataflow_ir.graphs[dataflow.mla.nupdate_and_fd]
+  - kernel_ir.flash_decode.fdparams
+  schedule_points:
+  - sp_fd_split_kv_route
+  - sp_fd_metadata_bridge_contract
+  verifier_ids:
+  - verify_fd_lse_weighted_merge
+  - verify_fd_partial_output_accumulation
+  lowering_policy: semantic_policy_to_patch_plan
+  required_tests: &id003
+  - TEST-FD-WORKSPACE-TILING
+  - TEST-API-WORKSPACE-SMOKE
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.mla.nupdate_and_fd]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: FLASH_DECODE
+    use_when_evidence_mentions:
+    - id: SE-FD-MERGE-WEIGHT-FORMULA
+      role: Stable merge formula over lseMax/lseSum and accumOut.
+    - id: SE-FD-METADATA-PARTITION
+      role: Construction of fdParams from metadata arrays.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-WORKSPACE-NORMAL-RING
+  flow_group: WORKSPACE
+  card_type: workspace_abi
+  pipeline_position: Workspace.normal_ring
+  dsl_paths:
+  - workspace_ir.regions[normal.mm1]
+  - workspace_ir.regions[normal.vec1]
+  - workspace_ir.regions[normal.mm2]
+  - workspace_ir.regions[normal.vec2]
+  schedule_points:
+  - sp_workspace_layout_abi_guard
+  verifier_ids:
+  - verify_workspace_region_order
+  - verify_workspace_no_alias
+  lowering_policy: contract_guard_only
+  required_tests: &id002
+  - TEST-FD-WORKSPACE-TILING
+  - TEST-API-WORKSPACE-SMOKE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: WORKSPACE
+    use_when_evidence_mentions:
+    - id: SE-WORKSPACE-NORMAL-SIZE
+      role: Host-side size formula for the four-region ring.
+    - id: SE-WORKSPACE-NORMAL-ABI
+      role: Kernel-side contiguous SetGlobalBuffer order.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  flow_group: WORKSPACE
+  card_type: workspace_budget
+  pipeline_position: Workspace.MLA.nUpdate_stub
+  dsl_paths:
+  - kernel_ir.memory_plan.workspace.mla_tail_regions.tail_regions
+  - workspace_ir.regions[mla.nupdate]
+  schedule_points:
+  - sp_workspace_mla_tail_contract
+  verifier_ids:
+  - verify_mla_nupdate_budget_stub
+  lowering_policy: contract_guard_only
+  required_tests: *id002
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: WORKSPACE
+    use_when_evidence_mentions:
+    - id: SE-WORKSPACE-MLA-ABI
+      role: Host formula adds the nUpdate budget bytes.
+    - id: SE-WORKSPACE-MLA-INIT-ORDER
+      role: Kernel InitWorkspace does not bind an extra nUpdate GM tensor before FD scratch.
+    - id: SE-MLA-MM2-INT32-ALIAS
+      role: nUpdate correction aliases normal.mm2 through mm2ResInt32Gm.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  flow_group: WORKSPACE
+  card_type: workspace_budget
+  pipeline_position: Workspace.MLA.softmax_sum_stub
+  dsl_paths:
+  - workspace_ir.regions[mla.softmax_sum]
+  - kernel_ir.memory_plan.workspace.mla_tail_regions.tail_regions
+  schedule_points:
+  - sp_workspace_mla_tail_contract
+  verifier_ids:
+  - verify_mla_softmax_sum_budget_stub
+  lowering_policy: contract_guard_only
+  required_tests: *id002
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: WORKSPACE
+    use_when_evidence_mentions:
+    - id: SE-WORKSPACE-MLA-ABI
+      role: Host formula adds the softmaxSum budget bytes.
+    - id: SE-WORKSPACE-MLA-INIT-ORDER
+      role: Kernel InitWorkspace does not bind an extra softmaxSum GM tensor before FD scratch.
+    - id: SE-MLA-AMLASUM-UB-ONLY
+      role: aMlaSum state is retained in local UB storage, not a dedicated GM tail.
+    - id: SE-MLA-SOFTMAX-SUM-GEN
+      role: Vec1 generates aMlaSumUb on the last S2 loop.
+    - id: SE-MLA-SOFTMAX-SUM-CONSUME
+      role: Vec2 consumes aMlaSumUb during final normalization.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-WORKSPACE-FD-REGIONS
+  flow_group: WORKSPACE
+  card_type: workspace_abi
+  pipeline_position: Workspace.flash_decode_regions
+  dsl_paths:
+  - kernel_ir.memory_plan.workspace.flash_decode_regions
+  - workspace_ir.regions[flash_decode.accum_out]
+  - workspace_ir.regions[flash_decode.lse_sum]
+  - workspace_ir.regions[flash_decode.lse_max]
+  schedule_points:
+  - sp_workspace_fd_regions
+  - sp_workspace_layout_abi_guard
+  verifier_ids:
+  - verify_fd_workspace_regions_no_alias
+  - verify_fd_lse_region_sizes
+  lowering_policy: contract_guard_only
+  required_tests: *id002
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: WORKSPACE
+    use_when_evidence_mentions:
+    - id: SE-WORKSPACE-FD-SIZE-NONQUANT
+      role: Generic host-side FD workspace formula.
+    - id: SE-WORKSPACE-FD-SIZE-MLA
+      role: MLA host-side FD workspace formula.
+    - id: SE-FD-WORKSPACE-OFFSETS
+      role: Kernel-side split-LSE offset contract.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-RUNINFO-THREE-STAGE-RING
+  flow_group: PIPELINE
+  card_type: pipeline_scheduler
+  pipeline_position: Pipeline.RunInfo.C1V1C2V2
+  dsl_paths:
+  - kernel_ir.pipeline.stage_graph
+  - runtime_ir/lifetime_ir.fia_sink.yaml
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  schedule_points:
+  - sp_split_core_planner_guard
+  verifier_ids:
+  - verify_runinfo_stage_aliases
+  - verify_event_order
+  lowering_policy: contract_guard_only
+  required_tests:
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: PIPELINE
+    use_when_evidence_mentions:
+    - id: SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+      role: Nonquant/GQA ExecuteTask overlap pattern.
+    - id: SE-RUNINFO-THREE-STAGE-RING-MLA
+      role: MLA ExecuteTask overlap pattern.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-FD-METADATA-BRIDGE
+  flow_group: FLASH_DECODE
+  card_type: host_kernel_bridge
+  pipeline_position: FD.metadata_bridge
+  dsl_paths:
+  - kernel_ir.flash_decode.fdparams
+  - kernel_ir.flash_decode.route.split_kv_enabled.value
+  - kernel_ir.tiles.fd_g_s1_base_size.value
+  schedule_points:
+  - sp_fd_metadata_bridge_contract
+  - sp_fd_partition_g_s1_base
+  - sp_fd_split_kv_route
+  verifier_ids:
+  - verify_fd_metadata_host_kernel_bridge
+  - verify_split_kv_consumer_consistency
+  lowering_policy: semantic_policy_to_patch_plan
+  required_tests: *id003
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.mla.nupdate_and_fd]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: FLASH_DECODE
+    use_when_evidence_mentions:
+    - id: SE-SPLIT-CORE-INPUT-PARAMS
+      role: Host split-core input package.
+    - id: SE-SPLIT-CORE-OUTPUT-BRIDGE
+      role: Host fdRes bridge into tilingData.
+    - id: SE-FD-METADATA-PARTITION
+      role: Generic kernel consumer reconstruction.
+    - id: SE-FD-METADATA-PARTITION-MLA
+      role: MLA kernel consumer reconstruction.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-SCALAR-RING-OFFSET-HOIST
+  flow_group: SCALAR
+  card_type: scalar_offset
+  pipeline_position: Scalar.offset_rules
+  dsl_paths:
+  - kernel_ir.compute.scalar_offset_rules.patterns[fd_task_offset]
+  - kernel_ir.compute.scalar_offset_rules.patterns[mla_mm2_reload_slot]
+  schedule_points:
+  - sp_scalar_fd_task_offset_hoist
+  - sp_scalar_mla_reload_slot_hoist
+  verifier_ids:
+  - verify_scalar_offset_equivalence
+  - verify_workspace_index_bounds
+  lowering_policy: review_required_patch
+  required_tests:
+  - TEST-FD-WORKSPACE-TILING
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: SCALAR
+    use_when_evidence_mentions:
+    - id: SE-FD-TASK-OFFSET-SCALARS
+      role: FD task prefix-sum and taskOffset contract.
+    - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+      role: MLA nUpdate atomic base and stride contract.
+    - id: SE-MLA-VEC2-NORMALIZE-COPY
+      role: MLA Vec2 reload and FD partial-output offset contract.
+    - id: SE-KNOB-HEADDIM-ALIGN
+      role: Padded stride source for MM2 and Vec2 addressing.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-COMMON-SPLIT-CORE-BALANCING
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_cost_model
+  pipeline_position: Tiling.split_core.balance
+  dsl_paths:
+  - split_core_planner_ir.cost_model
+  - tiling_ir.split_core_planner.cost_model
+  schedule_points:
+  - sp_split_core_planner_guard
+  - sp_tiling_s2_base
+  - sp_tiling_m_base
+  verifier_ids:
+  - verify_split_core_cost_model
+  - verify_used_core_balance
+  lowering_policy: planner_generated_candidate
+  required_tests: &id004
+  - TEST-SPARSE-SINK-TILING-GUARDS
+  - TEST-FD-WORKSPACE-TILING
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-COMMON-SPLIT-CORE-CPP
+      role: Common split-core implementation.
+    - id: SE-COMMON-SPLIT-CORE-H
+      role: Common split-core structs and tolerance constants.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-COMMON-SPARSE-SINK-S2-RANGE
+  flow_group: TILING_SPLIT_CORE
+  card_type: range_assignment
+  pipeline_position: Tiling.sparse_sink.s2_range
+  dsl_paths:
+  - kernel_ir.sparse_policy.s2_range_policy
+  - tiling_ir.sparse_sink_ranges
+  schedule_points:
+  - sp_sparse_s2_policy
+  - sp_sparse_policy_mode
+  verifier_ids:
+  - verify_sparse_sink_range_assignment
+  - verify_invalid_row_rule
+  lowering_policy: semantic_policy_to_patch_plan
+  required_tests: *id004
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-COMMON-SPLIT-CORE-CPP
+      role: S2 range, BAND, sink, and key-sink behavior.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-COMMON-GM-COPY-LOWERING
+  flow_group: COMMON_MEMORY_COPY
+  card_type: copy_lowering
+  pipeline_position: Common.copy.gm_format
+  dsl_paths:
+  - memory_copy_ir.gm_formats
+  - memory_copy_ir.offset_calculators
+  - memory_copy_ir.nd_to_nz_lowering
+  schedule_points:
+  - sp_memory_copy_format_guard
+  verifier_ids:
+  - verify_gm_format_offset_mapping
+  - verify_nd_to_nz_copy_tile
+  lowering_policy: contract_guard_only
+  required_tests:
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  - TEST-API-WORKSPACE-SMOKE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: COMMON_MEMORY_COPY
+    use_when_evidence_mentions:
+    - id: SE-COMMON-MEMORY-COPY-H
+      role: Common GM format, offset, and copy helper definitions.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-COMMON-BUFFER-POLICY-SELECTION
+  flow_group: COMMON_RUNTIME
+  card_type: buffer_event_policy
+  pipeline_position: Common.buffer_policy.events
+  dsl_paths:
+  - lifetime_ir.items.common.buffer_manager_policy_scope
+  - lifetime_ir.items.common.cross_core_event_ids
+  schedule_points:
+  - sp_split_core_planner_guard
+  verifier_ids:
+  - verify_buffer_policy_scope
+  - verify_cross_core_event_ids
+  lowering_policy: contract_guard_only
+  required_tests:
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  - TEST-BENCHMARK-CACHED-REFERENCE
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: COMMON_RUNTIME
+    use_when_evidence_mentions:
+    - id: SE-COMMON-BUFFER-H
+      role: BufferType mappings, hard-event pairs, sync modes, and cross-core event ID behavior.
+    - id: SE-COMMON-BUFFERS-POLICY-H
+      role: Buffer policy allocation counts, Init/Uninit ownership, traversal, reuse, and free-cursor behavior.
+    - id: SE-COMMON-MATMUL-H
+      role: Matmul usage of common buffer policy and unitFlag behavior.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  flow_group: V1
+  card_type: vector_correctness_guard
+  pipeline_position: V1.common.invalid_rows
+  dsl_paths:
+  - vector_semantics_ir.invalid_row_handling
+  - kernel_ir.sparse_policy.invalid_row_rule
+  schedule_points:
+  - sp_vector_invalid_row_guard
+  verifier_ids:
+  - verify_invalid_row_correction
+  - verify_safe_active_token
+  lowering_policy: contract_guard_only
+  required_tests: *id005
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: V1
+    use_when_evidence_mentions:
+    - id: SE-COMMON-VECTOR-COMMON-H
+      role: Safe active-token, invalid-row, and repeat-stride helper definitions.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  flow_group: TILING_SPLIT_CORE
+  card_type: fd_partition_planner
+  pipeline_position: Tiling.FD.metadata_merge_partitioning
+  dsl_paths:
+  - split_core_planner_ir.fd_metadata
+  - kernel_ir.flash_decode.fdparams
+  - tiling_ir.fd_partition
+  schedule_points:
+  - sp_fd_metadata_bridge_contract
+  - sp_fd_partition_g_s1_base
+  verifier_ids:
+  - verify_fd_metadata_record_merge
+  - verify_fd_partition_balance
+  lowering_policy: planner_generated_candidate
+  required_tests: *id004
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-COMMON-SPLIT-CORE-CPP
+      role: RecordFDInfo and SplitFD behavior.
+    - id: SE-COMMON-SPLIT-CORE-H
+      role: FlashDecodeResult and SplitResult fields.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  flow_group: C1
+  card_type: optimization_pattern
+  pipeline_position: C1.GQA.MM1
+  dsl_paths:
+  - kernel_ir.memory_plan.l1_residency.objects[q_tile]
+  - lifetime_ir.items.gqa.q_l1_snapshot
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  schedule_points:
+  - sp_gqa_c1_q_l1_snapshot_policy
+  verifier_ids:
+  - verify_q_l1_snapshot_lifetime
+  - verify_sparse_skip_l1_snapshot
+  lowering_policy: contract_guard_only
+  required_tests: &id006
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: C1
+    use_when_evidence_mentions:
+    - id: SE-GQA-Q-L1-SNAPSHOT
+      role: Q L1 snapshot evidence.
+    - id: SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+      role: Sparse-aware MM1 L1 snapshot behavior.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+  flow_group: C1
+  card_type: layout_packing_contract
+  pipeline_position: C1.MLA.MM1
+  dsl_paths:
+  - kernel_ir.compute.mla_mm1.rope_nope_packing
+  - memory_copy_ir.layout_params
+  - lifetime_ir.items.mla.mm1_l1_packing
+  schedule_points:
+  - sp_mla_mm1_rope_nope_packing_guard
+  verifier_ids:
+  - verify_mla_rope_nope_layout
+  - verify_l1_packing_pass_order
+  lowering_policy: contract_guard_only
+  required_tests: *id006
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: C1
+    use_when_evidence_mentions:
+    - id: SE-MLA-MM1-ROPE-NOPE-PACKING
+      role: MLA MM1 RoPE/NoPE packing.
+    - id: SE-MLA-MM1-NBUFFER-WRAPPER
+      role: n-buffer MM1 wrapper behavior.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+  flow_group: V1
+  card_type: semantic_vector_contract
+  pipeline_position: V1.shared.softmax
+  dsl_paths:
+  - kernel_ir.compute.vec1.sink_softmax
+  - vector_semantics_ir.invalid_row_handling
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  schedule_points:
+  - sp_vec1_sink_softmax_contract
+  - sp_vector_invalid_row_guard
+  verifier_ids:
+  - verify_sink_row_injection
+  - verify_lse_update
+  - verify_vec1_to_c2_sync
+  lowering_policy: contract_guard_only
+  required_tests: *id005
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.gqa.shared_vec]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: V1
+    use_when_evidence_mentions:
+    - id: SE-SHARED-VEC1-CONTRACT
+      role: Shared Vec1 dataflow contract.
+    - id: SE-VEC1-SINK-SOFTMAX
+      role: Sink softmax behavior.
+    - id: SE-SHARED-VEC1-SYNC
+      role: Vec1/C2 synchronization.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+  flow_group: V2
+  card_type: layout_copy_contract
+  pipeline_position: V2.output.copyout
+  dsl_paths:
+  - memory_copy_ir.output_copy.layout_sensitive_copyout
+  - memory_copy_ir.gm_formats
+  - semantic_ir.layout_contract.attention_out
+  schedule_points:
+  - sp_v2_layout_aware_output_lse_copyout_guard
+  - sp_memory_copy_format_guard
+  verifier_ids:
+  - verify_attention_out_layout_copy
+  - verify_softmax_lse_layout_copy
+  lowering_policy: contract_guard_only
+  required_tests:
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  - TEST-ST-GRAPH-CAPTURE-MLA-GQA
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.mla.nupdate_and_fd]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: V2
+    use_when_evidence_mentions:
+    - id: SE-FD-OUTPUT-LAYOUTS
+      role: FD output layout evidence.
+    - id: SE-MLA-LSE-LAYOUT-COPY
+      role: MLA LSE layout copy evidence.
+    - id: SE-SHAPE-LAYOUT-CONTRACT
+      role: Host shape/layout contract.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-HOST-API-CONTIGUOUS-AND-INT4-VIEW-METADATA
+  flow_group: HOST_API
+  card_type: host_guard
+  pipeline_position: Host.preprocess
+  dsl_paths:
+  - semantic_ir.host_api.contiguous_int4_view_metadata
+  - test_contract_ir.contracts[TEST-API-WORKSPACE-SMOKE]
+  schedule_points:
+  - sp_host_contiguous_int4_metadata_guard
+  verifier_ids:
+  - verify_contiguous_view_metadata
+  - verify_int4_metadata_rewrite
+  lowering_policy: contract_guard_only
+  required_tests: &id007
+  - TEST-API-WORKSPACE-SMOKE
+  - TEST-SHAPE-LAYOUT-FAMILIES
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: HOST_API
+    use_when_evidence_mentions:
+    - id: SE-HOST-TENSOR-PREPROCESS
+      role: Host tensor preprocessing.
+    - id: SE-HOST-PREFIX-TENSOR-PREPROCESS
+      role: Prefix tensor preprocessing.
+    - id: SE-HOST-PROCESS-TENSOR-CONTIGUOUS
+      role: Contiguous tensor conversion.
+    - id: SE-HOST-PROCESS-TENSOR-LIST-CONTIGUOUS
+      role: Tensor-list contiguous conversion.
+    - id: SE-HOST-CONTIGUOUS-INPUT
+      role: Contiguous input evidence.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-HOST-OPTIONAL-SOFTMAX-LSE-ZERO-PLACEHOLDER
+  flow_group: HOST_API
+  card_type: host_semantic_guard
+  pipeline_position: Host.optional_outputs
+  dsl_paths:
+  - semantic_ir.host_api.optional_outputs.softmax_lse_zero_placeholder
+  - semantic_ir.output_contract.softmax_lse
+  schedule_points:
+  - sp_host_softmax_lse_zero_placeholder_guard
+  verifier_ids:
+  - verify_softmax_lse_zero_placeholder
+  - verify_optional_output_flag
+  lowering_policy: contract_guard_only
+  required_tests: *id007
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: HOST_API
+    use_when_evidence_mentions:
+    - id: SE-HOST-PROCESS-SOFTMAX-LSE
+      role: Host softmaxLse processing and placeholder behavior.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-FD-BLOCKIDX-TASK-MAPPING
+  flow_group: FLASH_DECODE
+  card_type: task_mapping_contract
+  pipeline_position: FD.kernel.task_mapping
+  dsl_paths:
+  - kernel_ir.flash_decode.task_mapping.blockidx_to_task
+  - kernel_ir.compute.scalar_offset_rules.patterns[fd_task_offset]
+  - split_core_planner_ir.fd_metadata
+  schedule_points:
+  - sp_fd_blockidx_task_mapping_guard
+  - sp_scalar_fd_task_offset_hoist
+  - sp_fd_partition_g_s1_base
+  verifier_ids:
+  - verify_fd_blockidx_task_mapping
+  - verify_fd_task_offset_bounds
+  lowering_policy: contract_guard_only
+  required_tests: *id003
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards:
+  - dataflow_ir.graphs[dataflow.mla.nupdate_and_fd]
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation: null
+  agent_selection_hint:
+    use_when_profile_stage_matches: FLASH_DECODE
+    use_when_evidence_mentions:
+    - id: SE-FD-INIT-BLOCKIDX
+      role: FD blockIdx/init parameter mapping.
+    - id: SE-FD-TASK-OFFSET-SCALARS
+      role: FD taskOffset scalar evidence.
+    - id: SE-FD-METADATA-PARTITION
+      role: Host metadata partition evidence.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-TILING-SPLIT-CORE-COST-TABLE
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_cost_model
+  pipeline_position: Tiling.split_core.cost_model
+  dsl_paths:
+  - tiling_ir.split_core_planner.cost_model
+  - split_core_planner_ir.cost_model
+  schedule_points:
+  - sp_split_core_planner_guard
+  - sp_tiling_s2_base
+  - sp_tiling_m_base
+  verifier_ids:
+  - verify_split_core_cost_table
+  - verify_candidate_cost_monotonicity
+  lowering_policy: planner_generated_candidate
+  required_tests: *id004
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-COMMON-SPLIT-CORE-CPP
+      role: SplitCore cost model implementation.
+    - id: SE-COMMON-SPLIT-CORE-H
+      role: SplitCore constants and tolerance predicates.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-TILING-USED-CORE-SEARCH-BOUNDS
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_search_bounds
+  pipeline_position: Tiling.split_core.used_core_search
+  dsl_paths:
+  - tiling_ir.split_core_planner.search_bounds
+  - split_core_planner_ir.core_search.search_bounds
+  schedule_points:
+  - sp_split_core_planner_guard
+  verifier_ids:
+  - verify_used_core_search_bounds
+  lowering_policy: planner_generated_candidate
+  required_tests: *id004
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-COMMON-SPLIT-CORE-CPP
+      role: Core search implementation.
+    - id: SE-SPLIT-CORE-INPUT-PARAMS
+      role: FIA split-core input parameters.
+    - id: SE-SPLIT-CORE-INPUT-PARAMS-MLA
+      role: MLA split-core input parameters.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-TILING-FD-GS1-PARTITION-SEARCH
+  flow_group: TILING_SPLIT_CORE
+  card_type: fd_partition_planner
+  pipeline_position: Tiling.FD.gS1_partition
+  dsl_paths:
+  - tiling_ir.fd_partition.g_s1_base_size
+  - kernel_ir.tiles.fd_g_s1_base_size.value
+  schedule_points:
+  - sp_fd_partition_g_s1_base
+  verifier_ids:
+  - verify_fd_gs1_partition_bounds
+  - verify_fd_metadata_partition_consistency
+  lowering_policy: planner_generated_candidate
+  required_tests: *id004
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks:
+  - runtime_ir/knob_ir.fia_sink.yaml
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-FD-METADATA-PARTITION
+      role: FD metadata partition evidence.
+    - id: SE-FD-METADATA-PARTITION-MLA
+      role: MLA FD metadata partition evidence.
+    - id: SE-SPLIT-CORE-OUTPUT-BRIDGE
+      role: Split output bridge.
+    - id: SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+      role: MLA split output bridge.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point
+- card_id: OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  flow_group: TILING_SPLIT_CORE
+  card_type: sparse_range_planner
+  pipeline_position: Tiling.sparse_sink.range_assignment
+  dsl_paths:
+  - tiling_ir.sparse_sink_ranges.pre_next_token
+  - kernel_ir.sparse_policy.fd_pre_next_token_rule
+  schedule_points:
+  - sp_sparse_s2_policy
+  - sp_sparse_policy_mode
+  verifier_ids:
+  - verify_pre_next_token_range
+  - verify_sparse_sink_policy_mode
+  lowering_policy: planner_generated_candidate
+  required_tests: *id004
+  risk_guard_policy: attach_related_risks_from runtime_ir/risk_ir.fia_sink.yaml
+  dataflow_guards: []
+  lifetime_guards:
+  - lifetime_ir.items.* related to card dsl_paths
+  knob_checks: []
+  candidate_generation:
+    mode: planner_guided
+    planner_ir: runtime_ir/tiling_ir.fia_sink.yaml
+    candidate_budget: small_grid_then_profile
+    filters:
+    - knob_domain_valid
+    - workspace_capacity_precheck
+    - split_core_balance_precheck
+  agent_selection_hint:
+    use_when_profile_stage_matches: TILING_SPLIT_CORE
+    use_when_evidence_mentions:
+    - id: SE-FD-SPARSE-POLICY
+      role: FD sparse policy evidence.
+    - id: SE-SPARSE-MASK-PARAMS
+      role: Sparse mask parameter evidence.
+    - id: SE-SPARSE-LEFTUP-INVALID-ROW
+      role: Invalid-row evidence.
+    do_not_use_for_direct_patch_when: lowering_policy is contract_guard_only without an explicit paired source_rewrite schedule point

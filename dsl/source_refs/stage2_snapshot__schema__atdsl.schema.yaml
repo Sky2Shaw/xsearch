@@ -1,0 +1,23 @@
+version: 0.3-stage3-mvp
+source: generated_from_stage2_ready_inputs
+modules:
+- name: shape_layout
+  role: shape/layout contracts and derived fields such as head_dim_align
+- name: tiling
+  role: searchable host-selected tiling knobs
+- name: pipeline
+  role: RunInfo ring, stage graph, stage aliases and synchronization edges
+- name: memory
+  role: GM/UB/L1/L0 memory behavior and lifetimes
+- name: l1_residency
+  role: L1-resident Q/K/V/P objects, snapshot signatures, reuse scope and eviction
+- name: workspace
+  role: normal ring, FD partial regions, MLA tail binding status and ABI lock
+- name: flash_decode
+  role: metadata bridge, split-KV route, stable LSE merge and FD output layout
+- name: sparse_policy
+  role: sparse mode/range/correction contracts
+- name: compute
+  role: online softmax/LSE/scalar offset/nUpdate correctness contracts
+- name: lowering
+  role: template backend, patch points and pass boundaries

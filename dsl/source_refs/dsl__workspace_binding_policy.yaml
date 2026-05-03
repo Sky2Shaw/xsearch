@@ -1,0 +1,54 @@
+workspace_binding_policy:
+  status: ready_for_stage2_ingestion
+  binding_status_values:
+    explicit_kernel_gm: A distinct GM workspace region with direct kernel SetGlobalBuffer or equivalent binding evidence.
+    host_budget_only_stub: Host reserves bytes, but Stage-1 found no direct standalone GM region binding in kernel.
+    alias: Runtime state is stored through another explicitly bound workspace region, such as normal.mm2.
+    local_ub_state: Runtime state lives in local UB/local tensor bridge and must not be lowered as standalone GM.
+  regions:
+  - path: workspace.normal.mm1
+    binding_status: explicit_kernel_gm
+    lowering_policy: May be lowered as explicit workspace region if host/kernel ABI order is preserved.
+    validators:
+    - V-workspace-contiguous-abi
+  - path: workspace.normal.vec1
+    binding_status: explicit_kernel_gm
+    lowering_policy: May be lowered as explicit workspace region if host/kernel ABI order is preserved.
+    validators:
+    - V-workspace-contiguous-abi
+  - path: workspace.normal.mm2
+    binding_status: explicit_kernel_gm
+    lowering_policy: May be lowered as explicit workspace region; also serves as observed MLA nUpdate int32 alias target.
+    validators:
+    - V-workspace-contiguous-abi
+    - V-workspace-mla-nupdate-stub
+  - path: workspace.normal.vec2
+    binding_status: explicit_kernel_gm
+    lowering_policy: May be lowered as explicit workspace region if ring slot separation is preserved.
+    validators:
+    - V-workspace-contiguous-abi
+    - V-vec2-partial-ring-separation
+  - path: workspace.flash_decode.partial_lse_and_accum
+    binding_status: explicit_kernel_gm
+    lowering_policy: May be lowered as FD workspace regions only when splitKVFlag/FD route is active and fdparams bounds agree.
+    validators:
+    - V-fd-metadata
+    - V-fd-used-vec-bounds
+  - path: workspace.mla.nupdate
+    binding_status:
+    - host_budget_only_stub
+    - alias
+    lowering_policy: Do not lower as standalone GM region; represent host budget and normal.mm2 alias.
+    validators:
+    - V-workspace-mla-nupdate-stub
+  - path: workspace.mla.softmax_sum
+    binding_status:
+    - host_budget_only_stub
+    - local_ub_state
+    lowering_policy: Do not lower as standalone GM region; represent host budget plus local UB bridge.
+    validators:
+    - V-workspace-mla-softmax-sum-ub
+  global_rules:
+  - Stage-2 lowering must check binding_status before emitting GM region code.
+  - Host-budget-only stubs are allowed in schema but forbidden as standalone kernel GM bindings without new source evidence.
+  - Alias and local_ub_state regions must name their runtime bridge target.

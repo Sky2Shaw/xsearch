@@ -1,0 +1,658 @@
+version: 0.9-card-driven-execution
+kind: atdsl.schedule_points
+schedule_points:
+- id: sp_tiling_s2_base
+  semantic_field: attention.tiling.s2_base
+  dsl_path: kernel_ir.tiles.s2_base.value
+  action_type: set_int
+  candidates:
+  - 64
+  - 128
+  - 256
+  policy: searchable
+  validators:
+  - workspace_contiguous_abi
+  - sparse_policy_contract
+  - ub_capacity_or_cost_precheck
+  - risk_guard_attached
+  - workspace_layout_abi_valid
+  binding_required: true
+  source_knob: s2BaseSize
+  value_constraints:
+  - candidate_must_be_int
+  - candidate_must_be_in_declared_candidates_or_planner_generated
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  knob_ir_link:
+    knob_name: s2BaseSize
+    domain_source: runtime_ir/knob_ir.fia_sink.yaml
+    validator: knob_domain_valid
+  flow_group: TILING_SPLIT_CORE
+  source_cards:
+  - OC-TILING-SPLIT-CORE-COST-TABLE
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+  - OC-COMMON-SPLIT-CORE-BALANCING
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+  lowering_mode: source_rewrite
+- id: sp_tiling_m_base
+  semantic_field: attention.tiling.m_base
+  dsl_path: kernel_ir.tiles.m_base.value
+  action_type: set_int
+  candidates:
+  - 32
+  - 64
+  - 128
+  policy: searchable
+  validators:
+  - workspace_contiguous_abi
+  - fd_bounds_valid
+  - risk_guard_attached
+  - workspace_layout_abi_valid
+  binding_required: true
+  source_knob: mBaseSize
+  value_constraints:
+  - candidate_must_be_int
+  - candidate_must_be_in_declared_candidates_or_planner_generated
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  knob_ir_link:
+    knob_name: mBaseSize
+    domain_source: runtime_ir/knob_ir.fia_sink.yaml
+    validator: knob_domain_valid
+  flow_group: TILING_SPLIT_CORE
+  source_cards:
+  - OC-TILING-SPLIT-CORE-COST-TABLE
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+  - OC-COMMON-SPLIT-CORE-BALANCING
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+  lowering_mode: source_rewrite
+- id: sp_fd_split_kv_route
+  semantic_field: flash_decode.route.split_kv_enabled
+  dsl_path: kernel_ir.flash_decode.route.split_kv_enabled.value
+  action_type: set_bool
+  candidates:
+  - false
+  - true
+  policy: configurable_guarded
+  validators:
+  - fd_metadata_bridge_valid
+  - split_kv_lse_merge_valid
+  - workspace_no_alias
+  - risk_guard_attached
+  - fd_merge_dataflow_valid
+  binding_required: true
+  source_knob: splitKVFlag
+  value_constraints:
+  - candidate_must_be_bool
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  knob_ir_link:
+    knob_name: splitKVFlag
+    domain_source: runtime_ir/knob_ir.fia_sink.yaml
+    validator: knob_domain_valid
+  flow_group: FLASH_DECODE
+  source_cards:
+  - OC-FD-METADATA-BRIDGE
+  - OC-FD-STABLE-MERGE
+  - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+  lowering_mode: source_rewrite
+- id: sp_fd_partition_g_s1_base
+  semantic_field: flash_decode.partition.g_s1_base
+  dsl_path: kernel_ir.tiles.fd_g_s1_base_size.value
+  action_type: set_int
+  candidates: planner_generated
+  policy: configurable_guarded
+  validators:
+  - fd_metadata_bridge_valid
+  - split_core_range_contract_valid
+  - risk_guard_attached
+  - fd_merge_dataflow_valid
+  binding_required: true
+  source_knob: gS1BaseSizeOfFd
+  value_constraints:
+  - candidate_must_be_int
+  - candidate_must_be_in_declared_candidates_or_planner_generated
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  knob_ir_link:
+    knob_name: gS1BaseSizeOfFd
+    domain_source: runtime_ir/knob_ir.fia_sink.yaml
+    validator: knob_domain_valid
+  flow_group: TILING_SPLIT_CORE
+  source_cards:
+  - OC-TILING-FD-GS1-PARTITION-SEARCH
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+  - OC-FD-METADATA-BRIDGE
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+  lowering_mode: source_rewrite
+- id: sp_l1_v_residency_scope
+  semantic_field: memory.l1_residency.v_tile.scope
+  dsl_path: kernel_ir.memory_plan.l1_residency.objects[v_tile].scope
+  action_type: set_enum
+  candidates:
+  - per_tile
+  - across_g
+  policy: configurable_guarded_review_required
+  validators:
+  - l1_residency_lifetime_valid
+  - event_dependency_valid
+  - risk_guard_attached
+  - lifetime_no_overlap
+  binding_required: true
+  source_card: OC-GQA-MM2-L1-V-REUSE
+  value_constraints:
+  - candidate_must_be_declared_enum
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: C2
+  source_cards:
+  - OC-GQA-MM2-L1-V-REUSE
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+  lowering_mode: review_required_guarded_patch
+- id: sp_sparse_s2_policy
+  semantic_field: sparse.policy.s2_range
+  dsl_path: kernel_ir.sparse_policy.s2_range_policy
+  action_type: select_policy
+  candidates:
+  - baseline
+  - sink_range_aligned
+  - invalid_row_guarded
+  policy: configurable_guarded
+  validators:
+  - sparse_policy_contract
+  - invalid_row_lse_correction
+  - risk_guard_attached
+  source_card: OC-COMMON-SPARSE-SINK-S2-RANGE
+  binding_required: false
+  lowering_mode: semantic_policy_to_patch_plan
+  value_constraints: []
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: TILING_SPLIT_CORE
+  source_cards:
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  - OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_workspace_fd_regions
+  semantic_field: workspace.flash_decode_regions
+  dsl_path: kernel_ir.memory_plan.workspace.flash_decode_regions
+  action_type: configure_region_indexing
+  candidates:
+  - split_id_indexed
+  policy: fixed_or_guarded
+  validators:
+  - workspace_contiguous_abi
+  - workspace_no_alias
+  - fd_metadata_bridge_valid
+  - risk_guard_attached
+  - workspace_layout_abi_valid
+  - fd_merge_dataflow_valid
+  source_card: OC-WORKSPACE-FD-REGIONS
+  binding_required: true
+  lowering_mode: workspace_indexing_patch
+  value_constraints: []
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: WORKSPACE
+  source_cards:
+  - OC-WORKSPACE-FD-REGIONS
+  - OC-FD-METADATA-BRIDGE
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_fd_metadata_bridge_contract
+  semantic_field: flash_decode.fdparams.used_vec_num
+  dsl_path: kernel_ir.flash_decode.fdparams
+  action_type: validate_contract
+  candidates:
+  - preserve_split_core_bridge
+  policy: fixed_contract
+  validators:
+  - fd_metadata_bridge_valid
+  - split_core_range_contract_valid
+  - fd_used_vec_bounds
+  - risk_guard_attached
+  - fd_merge_dataflow_valid
+  binding_required: true
+  lowering_mode: contract_guard_only
+  value_constraints:
+  - no_source_rewrite_without_split_core_model
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: FLASH_DECODE
+  source_cards:
+  - OC-FD-METADATA-BRIDGE
+  - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_scalar_fd_task_offset_hoist
+  semantic_field: scalar.offset_rules.fd_task_offset
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[fd_task_offset]
+  action_type: enable_pattern
+  candidates:
+  - baseline
+  - hoist_prefix_sum
+  policy: configurable_guarded_review_required
+  validators:
+  - scalar_offset_consistency
+  - workspace_contiguous_abi
+  - fd_lse_merge_valid
+  - risk_guard_attached
+  - fd_merge_dataflow_valid
+  binding_required: true
+  lowering_mode: scalar_formula_patch_requires_review
+  value_constraints:
+  - must_preserve_task_prefix_sum_semantics
+  - must_preserve_split_kv_major_ordering
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: SCALAR
+  source_cards:
+  - OC-SCALAR-RING-OFFSET-HOIST
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_scalar_mla_reload_slot_hoist
+  semantic_field: scalar.offset_rules.mla_mm2_reload_slot
+  dsl_path: kernel_ir.compute.scalar_offset_rules.patterns[mla_mm2_reload_slot]
+  action_type: enable_pattern
+  candidates:
+  - baseline
+  - hoist_preload_slot_offset
+  policy: configurable_guarded_review_required
+  validators:
+  - scalar_offset_consistency
+  - mla_nupdate_numeric_contract
+  - workspace_contiguous_abi
+  - risk_guard_attached
+  binding_required: true
+  lowering_mode: scalar_formula_patch_requires_review
+  value_constraints:
+  - must_preserve_preload_slot_modulus
+  - must_preserve_padded_stride
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: SCALAR
+  source_cards:
+  - OC-SCALAR-RING-OFFSET-HOIST
+  - OC-MLA-MM2-NUPDATE-BARRIER
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_mla_nupdate_numeric_contract
+  semantic_field: mla.nupdate.numeric_contract
+  dsl_path: kernel_ir.compute.mla_nupdate
+  action_type: validate_contract
+  candidates:
+  - preserve_ordered_micro_steps
+  policy: fixed_contract
+  validators:
+  - mla_nupdate_numeric_contract
+  - event_dependency_valid
+  - forbidden_reorder_guard
+  - risk_guard_attached
+  binding_required: true
+  lowering_mode: contract_guard_only
+  value_constraints:
+  - no_reorder_atomic_before_mm2_sync
+  - no_remove_syncV1NupdateC2
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: V1
+  source_cards:
+  - OC-MLA-NUPDATE-SIDECHANNEL
+  - OC-MLA-MM2-NUPDATE-BARRIER
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_sparse_policy_mode
+  semantic_field: sparse.policy.mode
+  dsl_path: kernel_ir.sparse_policy.mode
+  action_type: select_policy
+  candidates:
+  - LEFT_UP_CAUSAL
+  - ALL_MASK
+  - BAND
+  - DEFAULT_MASK
+  policy: configurable_guarded_review_required
+  validators:
+  - sparse_policy_contract
+  - invalid_row_lse_correction
+  - shape_layout_contract_valid
+  - risk_guard_attached
+  binding_required: true
+  lowering_mode: semantic_policy_to_patch_plan
+  value_constraints:
+  - must_preserve_host_and_fd_pre_next_consistency
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: TILING_SPLIT_CORE
+  source_cards:
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  - OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_workspace_mla_tail_contract
+  semantic_field: workspace.mla.tail_regions
+  dsl_path: kernel_ir.memory_plan.workspace.mla_tail_regions.tail_regions
+  action_type: validate_contract
+  candidates:
+  - budget_only_alias_preserved
+  policy: fixed_contract
+  validators:
+  - workspace_contiguous_abi
+  - mla_tail_budget_stub_valid
+  - workspace_no_alias
+  - risk_guard_attached
+  - workspace_layout_abi_valid
+  binding_required: true
+  lowering_mode: contract_guard_only
+  value_constraints:
+  - must_not_lower_budget_tail_as_standalone_gm
+  test_selection:
+    mode: by_changed_dsl_path
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  flow_group: WORKSPACE
+  source_cards:
+  - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_workspace_layout_abi_guard
+  semantic_field: workspace.layout.regions
+  dsl_path: workspace_ir.regions
+  action_type: validate_contract
+  candidates:
+  - preserve_concrete_workspace_layout
+  policy: fixed_contract
+  validators:
+  - workspace_layout_abi_valid
+  - workspace_no_alias
+  - lifetime_no_overlap
+  binding_required: true
+  lowering_mode: contract_guard_only
+  test_selection:
+    required_contract_ids:
+    - TEST-FD-WORKSPACE-TILING
+    - TEST-API-WORKSPACE-SMOKE
+  flow_group: WORKSPACE
+  source_cards:
+  - OC-WORKSPACE-NORMAL-RING
+  - OC-WORKSPACE-FD-REGIONS
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_memory_copy_format_guard
+  semantic_field: memory_copy.format_offset
+  dsl_path: memory_copy_ir
+  action_type: validate_contract
+  candidates:
+  - preserve_gm_format_offset_semantics
+  policy: fixed_contract
+  validators:
+  - gm_format_supported
+  - offset_calculator_matches_layout
+  - nd_to_nz_tile_valid
+  binding_required: false
+  lowering_mode: contract_guard_only
+  test_selection:
+    required_contract_ids:
+    - TEST-SHAPE-LAYOUT-FAMILIES
+  flow_group: COMMON_MEMORY_COPY
+  source_cards:
+  - OC-COMMON-GM-COPY-LOWERING
+  - OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_vector_invalid_row_guard
+  semantic_field: vector.invalid_row_semantics
+  dsl_path: vector_semantics_ir.invalid_row_handling
+  action_type: validate_contract
+  candidates:
+  - preserve_invalid_row_lse_correction
+  policy: fixed_contract
+  validators:
+  - invalid_row_lse_correction
+  - vector_repeat_stride_valid
+  binding_required: false
+  lowering_mode: contract_guard_only
+  test_selection:
+    required_contract_ids:
+    - TEST-SPARSE-SINK-TILING-GUARDS
+  flow_group: V1
+  source_cards:
+  - OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  - OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_split_core_planner_guard
+  semantic_field: split_core.planner.cost_model
+  dsl_path: split_core_planner_ir
+  action_type: validate_contract
+  candidates:
+  - preserve_split_core_planner_contract
+  policy: fixed_contract
+  validators:
+  - split_core_cost_model_valid
+  - planner_bounds_valid
+  - fd_metadata_bridge_valid
+  binding_required: false
+  lowering_mode: contract_guard_only
+  test_selection:
+    required_contract_ids:
+    - TEST-FD-WORKSPACE-TILING
+  flow_group: TILING_SPLIT_CORE
+  source_cards:
+  - OC-COMMON-SPLIT-CORE-BALANCING
+  - OC-TILING-SPLIT-CORE-COST-TABLE
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_gqa_c1_q_l1_snapshot_policy
+  flow_group: C1
+  source_cards:
+  - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  semantic_field: memory.l1_residency.q_tile.scope
+  dsl_path: kernel_ir.memory_plan.l1_residency.objects[q_tile].scope
+  action_type: select_policy
+  candidates:
+  - keep_l1_snapshot
+  - disable_snapshot
+  policy: configurable_guarded_review_required
+  lowering_mode: contract_guard_only
+  validators:
+  - q_l1_snapshot_lifetime_valid
+  - sparse_skip_q_snapshot_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints: []
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_mla_mm1_rope_nope_packing_guard
+  flow_group: C1
+  source_cards:
+  - OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+  semantic_field: mla.mm1.rope_nope_packing
+  dsl_path: kernel_ir.compute.mla_mm1.rope_nope_packing
+  action_type: validate_contract
+  candidates: contract_only
+  policy: fixed_contract
+  lowering_mode: contract_guard_only
+  validators:
+  - mla_rope_nope_layout_valid
+  - l1_packing_pass_order_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints:
+  - contract_only_no_source_rewrite
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_vec1_sink_softmax_contract
+  flow_group: V1
+  source_cards:
+  - OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+  semantic_field: vec1.sink_softmax.contract
+  dsl_path: kernel_ir.compute.vec1.sink_softmax
+  action_type: validate_contract
+  candidates: contract_only
+  policy: fixed_contract
+  lowering_mode: contract_guard_only
+  validators:
+  - sink_row_injection_valid
+  - invalid_row_zeroing_valid
+  - lse_update_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints:
+  - contract_only_no_source_rewrite
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_v2_layout_aware_output_lse_copyout_guard
+  flow_group: V2
+  source_cards:
+  - OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+  semantic_field: v2.output_lse.layout_copyout
+  dsl_path: memory_copy_ir.output_copy.layout_sensitive_copyout
+  action_type: validate_contract
+  candidates: contract_only
+  policy: fixed_contract
+  lowering_mode: contract_guard_only
+  validators:
+  - attention_out_layout_copy_valid
+  - softmax_lse_layout_copy_valid
+  - prefix_offset_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints:
+  - contract_only_no_source_rewrite
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_host_contiguous_int4_metadata_guard
+  flow_group: HOST_API
+  source_cards:
+  - OC-HOST-API-CONTIGUOUS-AND-INT4-VIEW-METADATA
+  semantic_field: host_api.contiguous_int4_view_metadata
+  dsl_path: semantic_ir.host_api.contiguous_int4_view_metadata
+  action_type: validate_contract
+  candidates: contract_only
+  policy: fixed_contract
+  lowering_mode: contract_guard_only
+  validators:
+  - contiguous_view_metadata_valid
+  - int4_metadata_rewrite_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints:
+  - contract_only_no_source_rewrite
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_host_softmax_lse_zero_placeholder_guard
+  flow_group: HOST_API
+  source_cards:
+  - OC-HOST-OPTIONAL-SOFTMAX-LSE-ZERO-PLACEHOLDER
+  semantic_field: host_api.optional_softmax_lse_zero_placeholder
+  dsl_path: semantic_ir.host_api.optional_outputs.softmax_lse_zero_placeholder
+  action_type: validate_contract
+  candidates: contract_only
+  policy: fixed_contract
+  lowering_mode: contract_guard_only
+  validators:
+  - softmax_lse_zero_placeholder_valid
+  - optional_output_flag_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints:
+  - contract_only_no_source_rewrite
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- id: sp_fd_blockidx_task_mapping_guard
+  flow_group: FLASH_DECODE
+  source_cards:
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+  semantic_field: flash_decode.task_mapping.blockidx_to_task
+  dsl_path: kernel_ir.flash_decode.task_mapping.blockidx_to_task
+  action_type: validate_contract
+  candidates: contract_only
+  policy: fixed_contract
+  lowering_mode: contract_guard_only
+  validators:
+  - fd_blockidx_task_mapping_valid
+  - fd_task_offset_bounds_valid
+  - risk_guard_attached
+  binding_required: false
+  test_selection:
+    mode: by_source_card
+    test_contract_ir: runtime_ir/test_contract_ir.fia_sink.yaml
+  value_constraints:
+  - contract_only_no_source_rewrite
+  card_driven_selection:
+    enabled: true
+    mapping_source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+forbidden_schedule_points:
+- id: fsp_pipeline_event_reorder
+  forbidden_transform: FT-NO-RUNINFO-STAGE-REORDER
+- id: fsp_fd_lse_formula_reorder
+  forbidden_transform: FT-NO-REORDER-FD-MERGE-WEIGHT-FORMULA
+- id: fsp_mla_tail_standalone_gm
+  forbidden_transform: FT-NO-LOWER-MLA-BUDGET-TAIL-AS-BOUND-GM
+path_conventions:
+  rule: Every schedule_point.dsl_path must resolve in an atdsl.instance and, when binding_required=true, must equal binding_ir.semantic_fields[semantic_field].dsl_path.
+  list_selector: objects[v_tile] selects the list item whose name/id equals v_tile.
+  v0_6_note: List selectors also support fields[semantic_id] and patterns[id] for schema-ingested contracts.
+  v0_7_note: P0/P1 execution-closure IRs are referenced by runtime_ir/*.yaml and may be used by validators even when not mutated by source rewrite.

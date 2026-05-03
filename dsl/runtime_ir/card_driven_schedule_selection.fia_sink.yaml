@@ -1,0 +1,84 @@
+version: 0.9-card-driven-execution
+kind: atdsl.card_driven_schedule_selection
+purpose: Convert profile/bottleneck signals into flow_group -> card -> schedule_point -> transform_trace choices.
+selection_pipeline:
+- step: profile_to_flow_group
+  input: profile summary or human bottleneck label
+  output: ranked flow groups
+  rules:
+  - cube stage bottleneck -> C1/C2
+  - vector/softmax bottleneck -> V1/V2
+  - workspace or LSE/FD issues -> FLASH_DECODE/WORKSPACE
+  - load imbalance or core underuse -> TILING_SPLIT_CORE
+- step: flow_group_to_cards
+  input: ranked flow group
+  output: ranked cards
+  source: runtime_ir/card_flow_taxonomy.fia_sink.yaml
+- step: card_to_dsl_mapping
+  input: card_id
+  output: dsl_paths, schedule_points, verifiers, tests, lowering_policy
+  source: runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- step: planner_or_transform
+  input: schedule point and policy
+  output: candidate transform_trace
+  rules:
+  - planner_generated_candidate -> call tiling_ir
+  - contract_guard_only -> emit validate_contract transform
+  - source_rewrite -> require reviewed binding
+- step: lowering
+  input: transform_trace
+  output: patch_plan with guards
+  source: scripts/lower_patch_plan.py
+profile_signal_to_flow_group:
+- signals:
+  - low cube utilization mm1
+  - q/k l1 reload
+  - rope/nope layout overhead
+  flow_group: C1
+- signals:
+  - softmax scalar/vector overhead
+  - invalid rows
+  - lse update issues
+  - sink token path
+  flow_group: V1
+- signals:
+  - v l1 reload
+  - mm2 wait
+  - nupdate barrier
+  flow_group: C2
+- signals:
+  - copyout overhead
+  - softmaxLse layout cost
+  - output stride cost
+  flow_group: V2
+- signals:
+  - fd merge overhead
+  - split kv lse cost
+  - fd task imbalance
+  flow_group: FLASH_DECODE
+- signals:
+  - core imbalance
+  - bad shape bucket
+  - s2/m tile mismatch
+  - sparse/sink range imbalance
+  flow_group: TILING_SPLIT_CORE
+- signals:
+  - workspace alias risk
+  - workspace sizing overhead
+  - gm scratch pressure
+  flow_group: WORKSPACE
+default_budget:
+  cards_per_round: 3
+  candidates_per_card: 4
+  max_contract_guard_only_per_round: 6
+safety_policy:
+  requires_review_lowering_policies:
+  - review_required_patch
+  - guarded_patch_requires_review
+  never_emit_source_diff_for:
+  - contract_guard_only
+  always_attach:
+  - required_tests
+  - risk_guards
+  - dataflow_guards
+  - lifetime_guards

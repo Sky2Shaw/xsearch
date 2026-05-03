@@ -1,0 +1,106 @@
+version: 0.8-card-flow-taxonomy
+kind: atdsl.card_flow_taxonomy
+purpose: Canonical card organization for FIA Sink performance-optimization agent. Cards are grouped by execution flow first,
+  then refined by stage/contract type.
+flow_order:
+- HOST_API
+- TILING_SPLIT_CORE
+- C1
+- V1
+- C2
+- V2
+- FLASH_DECODE
+- WORKSPACE
+- PIPELINE
+- SCALAR
+- COMMON_MEMORY_COPY
+- COMMON_RUNTIME
+groups:
+- id: HOST_API
+  order: 0
+  description: API preprocessing, optional outputs, shape/layout metadata guards.
+  card_count: 2
+  cards:
+  - OC-HOST-API-CONTIGUOUS-AND-INT4-VIEW-METADATA
+  - OC-HOST-OPTIONAL-SOFTMAX-LSE-ZERO-PLACEHOLDER
+- id: TILING_SPLIT_CORE
+  order: 1
+  description: Host tiling, split-core cost/search, sparse range assignment, FD partition metadata.
+  card_count: 7
+  cards:
+  - OC-COMMON-SPLIT-CORE-BALANCING
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  - OC-TILING-SPLIT-CORE-COST-TABLE
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+  - OC-TILING-FD-GS1-PARTITION-SEARCH
+  - OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+- id: C1
+  order: 2
+  description: Cube stage 1 / MM1 score production and L1 packing/residency.
+  card_count: 2
+  cards:
+  - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  - OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+- id: V1
+  order: 3
+  description: Vector stage 1 / softmax, sink semantics, invalid-row and LSE state.
+  card_count: 3
+  cards:
+  - OC-MLA-NUPDATE-SIDECHANNEL
+  - OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  - OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+- id: C2
+  order: 4
+  description: Cube stage 2 / MM2 value accumulation and MLA nUpdate barriers.
+  card_count: 2
+  cards:
+  - OC-GQA-MM2-L1-V-REUSE
+  - OC-MLA-MM2-NUPDATE-BARRIER
+- id: V2
+  order: 5
+  description: Vector stage 2 / output, normalization, layout-aware copyout.
+  card_count: 1
+  cards:
+  - OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+- id: FLASH_DECODE
+  order: 6
+  description: FD metadata, task mapping, stable merge, LSE weighted reduction.
+  card_count: 3
+  cards:
+  - OC-FD-STABLE-MERGE
+  - OC-FD-METADATA-BRIDGE
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+- id: WORKSPACE
+  order: 7
+  description: Concrete workspace ABI, normal/MLA/FD regions, alias and budget guards.
+  card_count: 4
+  cards:
+  - OC-WORKSPACE-NORMAL-RING
+  - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  - OC-WORKSPACE-FD-REGIONS
+- id: PIPELINE
+  order: 8
+  description: RunInfo / stage ring scheduler and event ordering.
+  card_count: 1
+  cards:
+  - OC-RUNINFO-THREE-STAGE-RING
+- id: SCALAR
+  order: 9
+  description: Offset formula, preload-ring indexing, hoist candidates requiring review.
+  card_count: 1
+  cards:
+  - OC-SCALAR-RING-OFFSET-HOIST
+- id: COMMON_MEMORY_COPY
+  order: 10
+  description: GM format, offset calculator, ND-to-NZ and copy helper contracts.
+  card_count: 1
+  cards:
+  - OC-COMMON-GM-COPY-LOWERING
+- id: COMMON_RUNTIME
+  order: 11
+  description: Buffer manager, event policy, hard-event legality.
+  card_count: 1
+  cards:
+  - OC-COMMON-BUFFER-POLICY-SELECTION

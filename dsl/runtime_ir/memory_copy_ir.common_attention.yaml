@@ -1,0 +1,286 @@
+version: 0.7-execution-closure
+kind: atdsl.memory_copy_ir
+artifact_type: common_kernel_memory_copy_extraction
+source_files:
+- inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+gm_formats:
+  enum:
+    name: GmFormat
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:28
+    values:
+      query_output_formats:
+      - name: BSNGD
+        value: 0
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:29
+      - name: BNGSD
+        value: 1
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:30
+      - name: NGBSD
+        value: 2
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:31
+      - name: TNGD
+        value: 3
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:32
+      - name: NGTD
+        value: 4
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:33
+      kv_formats:
+      - name: BSND
+        value: 5
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:34
+      - name: BNSD
+        value: 6
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:35
+      - name: TND
+        value: 7
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:36
+      - name: NTD
+        value: 8
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:37
+      - name: PA_BnBsND
+        value: 9
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:38
+      - name: PA_BnNBsD
+        value: 10
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:39
+      - name: PA_NZ
+        value: 11
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:40
+      auxiliary_formats:
+      - name: NGD
+        value: 12
+        role: post_quant
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:41
+      - name: ND
+        value: 13
+        role: antiquant_no_page_attention
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:42
+      - name: BS2
+        value: 14
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:43
+      - name: BNS2
+        value: 15
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:44
+      - name: PA_BnBs
+        value: 16
+        role: antiquant_page_attention
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:45
+      - name: PA_BnNBs
+        value: 17
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:46
+      - name: BN2GS1S2
+        value: 18
+        role: pse
+        evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:47
+  layout_to_format_helpers:
+    query:
+      helper: GetQueryGmFormat
+      supported_layouts:
+      - layout: BSH
+        format: BSNGD
+      - layout: BNSD
+        format: BNGSD
+      - layout: TND
+        format: TNGD
+      - layout: NTD
+        format: NGTD
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1991
+    kv:
+      helper: GetKVFormat
+      page_attention:
+      - layout: BSH
+        format: PA_BnBsND
+      - layout: BNSD
+        format: PA_BnNBsD
+      - layout: NZ
+        format: PA_NZ
+      continuous_or_tensor_list:
+      - layout: BSH
+        format: BSND
+      - layout: BNSD
+        format: BNSD
+      - layout: TND
+        format: TND
+      - layout: NTD
+        format: NTD
+      evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:2009
+format_categories:
+  enum:
+    name: FormatCategory
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:516
+    values:
+    - GM_Q_OUT_BNGSD
+    - GM_Q_OUT_TND
+    - GM_KV_BNSD
+    - GM_KV_TND
+    - GM_KV_PA_BNBD
+    - GM_KV_PA_NZ
+    - GM_POST_QUANT_NGD
+    - GM_ANTIQ_ND
+    - GM_ANTIQ_BS
+    - GM_ANTIQ_BNS
+    - GM_ANTIQ_BnBs
+    - GM_ANTIQ_BnNBs
+    - GM_PSE_BN2GS1S2
+layout_params:
+  mapping_rule:
+    description: GmLayoutParams maps each GmFormat specialization to exactly one FormatCategory.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:533
+  mappings:
+    GM_Q_OUT_BNGSD:
+    - BSNGD
+    - BNGSD
+    - NGBSD
+    GM_Q_OUT_TND:
+    - TNGD
+    - NGTD
+    GM_KV_BNSD:
+    - BSND
+    - BNSD
+    GM_KV_TND:
+    - TND
+    - NTD
+    GM_KV_PA_BNBD:
+    - PA_BnBsND
+    - PA_BnNBsD
+    GM_KV_PA_NZ:
+    - PA_NZ
+    GM_POST_QUANT_NGD:
+    - NGD
+    GM_ANTIQ_ND:
+    - ND
+    GM_ANTIQ_BS:
+    - BS2
+    GM_ANTIQ_BNS:
+    - BNS2
+    GM_ANTIQ_BnBs:
+    - PA_BnBs
+    GM_ANTIQ_BnNBs:
+    - PA_BnNBs
+    GM_PSE_BN2GS1S2:
+    - BN2GS1S2
+offset_calculators:
+  dispatch:
+    description: OffsetCalculator inherits OffsetCalculatorImpl selected by GmLayoutParams<FORMAT>::CATEGORY.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1422
+  category_specializations:
+  - category: GM_Q_OUT_BNGSD
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:635
+  - category: GM_Q_OUT_TND
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:719
+  - category: GM_KV_BNSD
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:788
+  - category: GM_KV_TND
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:866
+  - category: GM_KV_PA_BNBD
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:925
+  - category: GM_KV_PA_NZ
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:991
+  - category: GM_POST_QUANT_NGD
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1072
+  - category: GM_ANTIQ_ND
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1123
+  - category: GM_ANTIQ_BS
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1163
+  - category: GM_ANTIQ_BNS
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1203
+  - category: GM_ANTIQ_BnBs
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1253
+  - category: GM_ANTIQ_BnNBs
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1297
+  - category: GM_PSE_BN2GS1S2
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1352
+copy_helpers:
+  query_gm_to_l1:
+    class: CopyQueryGmToL1
+    default_l1_format: NZ
+    supported_formats:
+    - BSNGD
+    - TNGD
+    - BNGSD
+    - NGTD
+    behavior:
+    - BSNGD and TNGD use S1/G splitting.
+    - BNGSD chooses GS1 processing when actual sequence lengths are present, otherwise continuous processing.
+    - NGTD uses GS1 processing.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1505
+  kv_gm_to_l1:
+    class: CopyKvGmToL1
+    default_l1_format: NZ
+    continuous_or_tensor_list_formats:
+    - BNSD
+    - BSND
+    - NTD
+    - TND
+    page_attention_formats:
+    - PA_BnBsND
+    - PA_BnNBsD
+    - PA_NZ
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1808
+  k_krope_page_attention_gm_to_l1:
+    class: CopyKKropePAGmToL1
+    supported_formats:
+    - PA_NZ
+    - PA_BnNBsD
+    - PA_BnBsND
+    behavior: Copies K and K-rope page-attention rows with the same block-table driven block index.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1880
+  post_quant_gm_to_ub:
+    class: CopyPostQuantGmToUB
+    behavior: Computes post-quant per-channel offset and uses ND-to-ND padded copy into UB.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:2103
+nd_to_nz_lowering:
+  l1_format_enum:
+    value: NZ
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1433
+  single_matrix:
+    helper: CopySingleMatrixNDToNZ
+    params:
+    - nValue
+    - dValue
+    - srcDValue
+    - dstNzC0Stride
+    behavior: Builds Nd2NzParams with ndNum 1, row count nValue, column count dValue, source row stride srcDValue, dstNzNStride 1, and zero matrix
+      strides.
+    int4_behavior: For int4b_t, dValue and srcDValue are divided by HALF_SIZE_DIVISOR before DataCopy.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1454
+  multi_matrix:
+    helper: CopyMultiMatrixNDToNZ
+    stride_limit: 65536
+    behavior: Falls back to repeated single-matrix ND-to-NZ copies when srcNdMatrixStride exceeds ND_MATRIX_STRIDE_LIMIT.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1475
+  nd_to_nd_copy:
+    helper: CopySingleMatrixNDToND
+    behavior: Uses DataCopyPad with explicit blockCount, blockLen, srcStride, dstStride, rightPadding, and zero padding.
+    evidence: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:2086
+dsl_implications:
+- Layout selection is a compile-time choice over FIA_LAYOUT and page-attention state; a DSL schema should represent the query/KV layout and page-attention
+  mode before deriving GmFormat.
+- Offset semantics are category-based, so format categories are the stable DSL grouping for stride and offset rules.
+- L1 query/KV copies lower GM ND-like layouts to NZ tiles; ND-to-NZ row count, D extent, source stride, and destination NZ C0 stride are explicit
+  scheduling parameters.
+- Page-attention KV copies may be physically PA_NZ or ND-like page layouts; PA_NZ uses DataCopyParams directly, while other page layouts route
+  through ND-to-NZ lowering.
+- Anti-quant, post-quant, and PSE formats share the same common enum and category dispatch, so they should not be modeled as unrelated ad hoc
+  layouts.
+source_evidence:
+  rg_commands:
+  - command: rg -n "GmFormat|FormatCategory|GmLayoutParams|OffsetCalculator|CopyQueryGmToL1|CopyKvGmToL1|CopyKKropePAGmToL1|CopySingleMatrixNDToNZ|GetQueryGmFormat|GetKVFormat|ND|NZ"
+      inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+    result: matched GM format definitions, category mappings, offset calculator specializations, copy helpers, ND/NZ lowering helpers, and format
+      selection helpers.
+  key_lines:
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:26
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:28
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:516
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:533
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:631
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1422
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1454
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1475
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1505
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1808
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1880
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:1991
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:2009
+  - inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h:2086

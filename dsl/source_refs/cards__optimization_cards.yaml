@@ -1,0 +1,1547 @@
+version: 0.9-card-driven-execution
+kind: atdsl.optimization_card_catalog
+card_design_policy:
+  one_card_one_pattern: true
+  flow_group_required: true
+  card_type_required: true
+  tiling_split_core_cards_required: true
+  direct_source_rewrite_allowed_only_when: card_type in [optimization_pattern, planner_generated_candidate] and binding reviewed and lowering
+    mode permits source_rewrite
+  card_to_dsl_mapping_required: true
+  schedule_point_link_required_for_executable_cards: true
+  guard_cards_must_attach_verifier_and_test_contracts: true
+flow_groups:
+- id: HOST_API
+  order: 0
+  description: API preprocessing, optional outputs, shape/layout metadata guards.
+- id: TILING_SPLIT_CORE
+  order: 1
+  description: Host tiling, split-core cost/search, sparse range assignment, FD partition metadata.
+- id: C1
+  order: 2
+  description: Cube stage 1 / MM1 score production and L1 packing/residency.
+- id: V1
+  order: 3
+  description: Vector stage 1 / softmax, sink semantics, invalid-row and LSE state.
+- id: C2
+  order: 4
+  description: Cube stage 2 / MM2 value accumulation and MLA nUpdate barriers.
+- id: V2
+  order: 5
+  description: Vector stage 2 / output, normalization, layout-aware copyout.
+- id: FLASH_DECODE
+  order: 6
+  description: FD metadata, task mapping, stable merge, LSE weighted reduction.
+- id: WORKSPACE
+  order: 7
+  description: Concrete workspace ABI, normal/MLA/FD regions, alias and budget guards.
+- id: PIPELINE
+  order: 8
+  description: RunInfo / stage ring scheduler and event ordering.
+- id: SCALAR
+  order: 9
+  description: Offset formula, preload-ring indexing, hoist candidates requiring review.
+- id: COMMON_MEMORY_COPY
+  order: 10
+  description: GM format, offset calculator, ND-to-NZ and copy helper contracts.
+- id: COMMON_RUNTIME
+  order: 11
+  description: Buffer manager, event policy, hard-event legality.
+optimization_cards:
+- id: OC-GQA-MM2-L1-V-REUSE
+  canonical_name: gqa.mm2.v_l1_snapshot_reuse
+  aliases:
+  - gqa_v_l1_reuse
+  - vL1Snapshot_reuse
+  title: GQA MM2 reuses V L1 tiles across M slices
+  applies_to:
+    variants:
+    - gqa
+    owners:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>
+    stages:
+    - gqa.mm2
+  pattern_summary: ComputeMm2 caches V tiles in vL1Snapshot while streaming P from the shared Vec1 workspace ring, and only releases V_EVENT when
+    full-load reuse is impossible or the M-slice tail is reached.
+  optimization_intent: Reduce V reload traffic without violating the V_EVENT lifetime contract.
+  preconditions:
+  - GQA cube MM2 is consuming Vec1-generated P tiles.
+  - V reuse is keyed by batch/head/S2 coordinate and canFullLoadV remains true for the current KL1 slice set.
+  tunable_knobs:
+  - s2BaseSize
+  - preLoadNum
+  constraints:
+  - C-GQA-MM2-SYNC
+  risks:
+  - R-GQA-V-L1-LIFETIME
+  possible_dsl_fields:
+  - path: memory.l1.gqa.v_snapshot_signature
+    meaning: Coordinate key and reuse scope for V L1 caching across M slices.
+  - path: pipeline.stage_graph.edges[].sync_signal
+    meaning: syncV1C2 and syncC2V2 ordering around the GQA MM2 producer/consumer boundary.
+  lowering_hint: Lower as an owner-qualified GQA MM2 policy; do not fold it into the generic MM2 stage or drop the reuse/release guard.
+  source_evidence:
+  - id: SE-GQA-V-L1-RELEASE
+    role: V snapshot reuse and release condition inside GQA ComputeMm2.
+  confidence: high
+  flow_group: C2
+  card_type: optimization_pattern
+  pipeline_position: C2.GQA.MM2
+  granularity: stage_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards:
+  - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+- id: OC-MLA-MM2-NUPDATE-BARRIER
+  canonical_name: mla.mm2.first_fixpipe_wait_nupdate
+  aliases:
+  - mla_mm2_nupdate_barrier
+  - syncV1NupdateC2_guard
+  title: MLA MM2 waits for nUpdate before first fixpipe
+  applies_to:
+    variants:
+    - mla
+    owners:
+    - FiaBlockCubeNonQuantMla<FIAT>
+    stages:
+    - mla.mm2
+    - mla.mm2.process
+  pattern_summary: MLA MM2 delays the first fixpipe until syncV1NupdateC2 is observed, so the Vec1-side atomic correction into mm2ResInt32Gm is
+    visible before MM2 output is committed.
+  optimization_intent: Preserve correctness of MLA online-softmax correction while keeping MM2 and Vec1 overlapped.
+  preconditions:
+  - MLA path is active and the current tile reaches the first complete K-slice for the first nL1 and mL1 block.
+  - ProcessAmlaNupdate has a non-empty M partition and the current S-inner loop is not the first one.
+  tunable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  constraints:
+  - C-MLA-MM2-NUPDATE
+  - C-MLA-NUPDATE-FIRST-LOOP
+  risks:
+  - R-MLA-NUPDATE-NUMERIC
+  - R-MLA-MM2-ATOMIC
+  possible_dsl_fields:
+  - path: mla.nupdate.mm2_sync
+    meaning: Explicit wait edge from Vec1-side nUpdate apply to the first MM2 fixpipe.
+  - path: mla.nupdate.atomic_target
+    meaning: MM2 int32 alias location that receives the broadcast correction.
+  lowering_hint: Keep the wait, atomic add, and first-fixpipe condition in one lowering rule; splitting them loses the correctness fence.
+  source_evidence:
+  - id: SE-MLA-NUPDATE-BARRIER
+    role: MM2 wait condition before the first fixpipe.
+  - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+    role: Vec1-side atomic add target and row-group broadcast behavior.
+  confidence: high
+  flow_group: C2
+  card_type: correctness_guard
+  pipeline_position: C2.MLA.MM2
+  granularity: stage_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards:
+  - OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+- id: OC-MLA-NUPDATE-SIDECHANNEL
+  canonical_name: mla.vec1.nupdate_side_channel
+  aliases:
+  - mla_nupdate
+  - mla_softmax_row_correction
+  title: MLA vector stage emits row-wise nUpdate side channel
+  applies_to:
+    variants:
+    - mla
+    owners:
+    - FiaBlockVecNonQuantMla<FIAT>
+    stages:
+    - mla.vec1
+    - mla.nupdate.compute
+    - mla.nupdate.apply
+  pattern_summary: AmlaVecCompute derives row-wise nUpdate and aMlaSum from online softmax state, then ProcessAmlaNupdate broadcasts 128-lane
+    int32 corrections and atomically injects them into the MM2 int32 alias.
+  optimization_intent: Preserve MLA-specific numeric correction without materializing a separate GM reduction pass.
+  preconditions:
+  - MLA Vec1 path is active.
+  - ProcessAmlaNupdate runs only after the first S-inner loop and only when vecDealM is non-zero.
+  - headDim is consumed in 128-lane groups for the int32 broadcast/add path.
+  tunable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  constraints:
+  - C-MLA-NUPDATE-FIRST-LOOP
+  - C-MLA-MM2-NUPDATE
+  risks:
+  - R-MLA-NUPDATE-NUMERIC
+  possible_dsl_fields:
+  - path: mla.nupdate.compute_formula
+    meaning: Ordered n/cof/eps/clamp/scale sequence used to derive the correction term.
+  - path: mla.nupdate.broadcast_group
+    meaning: 128-lane int32 broadcast granularity for the atomic apply path.
+  - path: mla.nupdate.atomic_target
+    meaning: The correction is applied through mm2ResInt32Gm, not through a dedicated MLA-only GM tail buffer.
+  lowering_hint: Treat compute and apply as one side-channel contract; lowering only AmlaVecCompute or only ProcessAmlaNupdate is incomplete.
+  source_evidence:
+  - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+    role: Atomic-add path and 128-lane broadcast contract.
+  - id: SE-MLA-SOFTMAX-SUM-GEN
+    role: Last-loop generation of the aMlaSum normalization state.
+  - id: SE-MLA-AMLASUM-UB-ONLY
+    role: aMlaSum is retained in local UB state rather than a dedicated GM tail binding.
+  confidence: high
+  flow_group: V1
+  card_type: numeric_side_channel
+  pipeline_position: V1.MLA.nUpdate
+  granularity: stage_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-FD-STABLE-MERGE
+  canonical_name: flash_decode.merge.stable_lse_weighted_reduce
+  aliases:
+  - fd_stable_merge
+  - split_kv_lse_reduce
+  title: FlashDecode stable merge combines split-KV partials
+  applies_to:
+    variants:
+    - flash_decode
+    owners:
+    - FiaBlockVecFlashDecode<FIAT>
+    stages:
+    - flash_decode.merge
+  pattern_summary: FlashDecode computes merge weights by taking column max over lseMax, exponentiating shifted values, multiplying by lseSum,
+    accumulating partial outputs, and normalizing before final copy-out.
+  optimization_intent: Keep split-KV final output numerically stable while preserving the partial-output workspace contract.
+  preconditions:
+  - FLASH_DECODE path is active and split-KV partial outputs plus LSE scratch have been materialized.
+  - Metadata arrays describing per-core FD ranges are available through fdParams.
+  tunable_knobs:
+  - splitKVFlag
+  - headDimAlign
+  - mBaseSize
+  constraints:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  risks:
+  - R-FD-LSE-MERGE
+  - R-SPLITKV-PARTIAL-COLLISION
+  possible_dsl_fields:
+  - path: flash_decode.merge.weight_formula
+    meaning: Ordered max/sub/exp/mul/sum/div merge sequence.
+  - path: flash_decode.fdparams.metadata_arrays
+    meaning: Per-core metadata arrays that map split-KV partials into FD tasks.
+  - path: flash_decode.merge.output_layouts
+    meaning: Final output copy-out choices for BSH/BNSD/NBSD/TND/NTD layouts.
+  lowering_hint: Lower the merge formula and metadata arrays as one rule set; the weight formula alone is insufficient without the metadata partition
+    contract.
+  source_evidence:
+  - id: SE-FD-MERGE-WEIGHT-FORMULA
+    role: Stable merge formula over lseMax/lseSum and accumOut.
+  - id: SE-FD-METADATA-PARTITION
+    role: Construction of fdParams from metadata arrays.
+  confidence: high
+  flow_group: FLASH_DECODE
+  card_type: numeric_merge
+  pipeline_position: FD.merge
+  granularity: stage_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards:
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+- id: OC-WORKSPACE-NORMAL-RING
+  canonical_name: workspace.normal_ring
+  aliases:
+  - normal_workspace_ring
+  - mm1_vec1_mm2_vec2_contiguous_abi
+  title: Normal workspace is a four-region contiguous ring
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    stages:
+    - generic.mm1
+    - gqa.mm1
+    - gqa.vec1
+    - gqa.mm2
+    - gqa.vec2.output
+    - mla.mm1
+    - mla.vec1
+    - mla.mm2
+    - mla.vec2.output
+  pattern_summary: Host formulas and kernel InitWorkspace agree on a contiguous ring ordered as mm1 -> vec1 -> mm2 -> vec2, with per-core per-preload-slot
+    strides derived from mmResUbSize and bmm2ResUbSize.
+  optimization_intent: Make workspace offsets stable so stage-local GM rings can overlap across preload slots without aliasing.
+  preconditions:
+  - Workspace has been initialized for the current kernel variant.
+  - preLoadNum and element-width choices remain consistent between host tiling and kernel bindings.
+  tunable_knobs:
+  - preLoadNum
+  - headDimAlign
+  constraints:
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  risks:
+  - R-WORKSPACE-ABI-DRIFT
+  possible_dsl_fields:
+  - path: workspace.normal.regions[].base_offset_rule
+    meaning: Contiguous region order for mm1, vec1, mm2, and vec2.
+  - path: workspace.normal.regions[].slot_stride
+    meaning: Per-preload-slot stride for each ring region.
+  lowering_hint: Lower the normal workspace as one ordered ABI block; emitting independent anonymous buffers loses cross-stage offset validation.
+  source_evidence:
+  - id: SE-WORKSPACE-NORMAL-SIZE
+    role: Host-side size formula for the four-region ring.
+  - id: SE-WORKSPACE-NORMAL-ABI
+    role: Kernel-side contiguous SetGlobalBuffer order.
+  confidence: high
+  flow_group: WORKSPACE
+  card_type: workspace_abi
+  pipeline_position: Workspace.normal_ring
+  granularity: contract_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  canonical_name: workspace.mla_nupdate_budget_stub
+  aliases:
+  - mla_nupdate_tail
+  - mla_nupdate_budget_only_stub
+  title: MLA nUpdate budget is represented through the normal.mm2 int32 alias
+  applies_to:
+    variants:
+    - mla
+    owners:
+    - FiaTilingNonQuantMla
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    stages:
+    - mla.nupdate.compute
+    - mla.nupdate.apply
+    - mla.mm2.process
+  pattern_summary: Host sizing reserves an MLA nUpdate-sized tail budget, but kernel binding scans expose no dedicated GM tail tensor; runtime
+    correction writes through mm2ResInt32Gm, an int32 reinterpretation of the normal.mm2 workspace region.
+  optimization_intent: Preserve the nUpdate budget as an ABI-visible stub while lowering the actual correction path through the observed normal.mm2
+    alias.
+  preconditions:
+  - MLA host sizing path is active.
+  - Validation tooling distinguishes host-budget stubs from explicit kernel SetGlobalBuffer regions and alias-based runtime consumers.
+  tunable_knobs:
+  - mBaseSize
+  - preLoadNum
+  constraints:
+  - C-WORKSPACE-MLA-FD
+  - C-WORKSPACE-MLA-NUPDATE-STUB
+  risks:
+  - R-MLA-TAIL-BUDGET-MISMODELED
+  - R-MLA-NUPDATE-TAIL-MISLOWERED
+  - R-WORKSPACE-ABI-DRIFT
+  possible_dsl_fields:
+  - path: workspace.mla.tail_regions[region_id=mla.nupdate].binding_status
+    meaning: The nUpdate tail is host-budget-only and must not be emitted as a standalone GM region.
+  - path: workspace.normal.regions[region_id=normal.mm2].aliases[].name
+    meaning: mm2ResInt32Gm is the runtime target for MLA nUpdate atomic correction.
+  lowering_hint: Lower nUpdate as a budget stub plus normal.mm2 int32 alias rule; do not materialize a new GM tail without direct SetGlobalBuffer
+    evidence.
+  source_evidence:
+  - id: SE-WORKSPACE-MLA-ABI
+    role: Host formula adds the nUpdate budget bytes.
+  - id: SE-WORKSPACE-MLA-INIT-ORDER
+    role: Kernel InitWorkspace does not bind an extra nUpdate GM tensor before FD scratch.
+  - id: SE-MLA-MM2-INT32-ALIAS
+    role: nUpdate correction aliases normal.mm2 through mm2ResInt32Gm.
+  confidence: medium
+  flow_group: WORKSPACE
+  card_type: workspace_budget
+  pipeline_position: Workspace.MLA.nUpdate_stub
+  granularity: contract_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  canonical_name: workspace.mla_softmax_sum_budget_stub
+  aliases:
+  - mla_softmax_sum_tail
+  - mla_amlasum_budget_only_stub
+  title: MLA softmaxSum budget is bridged through local UB state
+  applies_to:
+    variants:
+    - mla
+    owners:
+    - FiaTilingNonQuantMla
+    - FiaBlockVecNonQuantMla<FIAT>
+    stages:
+    - mla.vec1
+    - mla.vec2.output
+  pattern_summary: Host sizing reserves an MLA softmaxSum tail budget, but kernel scans expose no dedicated GM binding; AmlaVecCompute materializes
+    aMlaSumUb on the last S2 loop and DealBmm2ResBaseBlock consumes it through local UB broadcast.
+  optimization_intent: Preserve the softmaxSum budget as an ABI-visible stub while modeling the observed Vec1-to-Vec2 normalization bridge through
+    local UB state.
+  preconditions:
+  - MLA host sizing path is active.
+  - Vec1 reaches the last S2 loop where aMlaSumUb is generated before Vec2 normalization consumes it.
+  tunable_knobs:
+  - mBaseSize
+  - preLoadNum
+  constraints:
+  - C-WORKSPACE-MLA-FD
+  - C-WORKSPACE-MLA-SOFTMAX-SUM-UB
+  risks:
+  - R-MLA-TAIL-BUDGET-MISMODELED
+  - R-MLA-SOFTMAX-SUM-GM-INVENTED
+  - R-WORKSPACE-ABI-DRIFT
+  possible_dsl_fields:
+  - path: workspace.mla.tail_regions[region_id=mla.softmax_sum].binding_status
+    meaning: The softmaxSum tail is host-budget-only and must not be emitted as a standalone GM region.
+  - path: workspace.mla.tail_regions[region_id=mla.softmax_sum].local_buffer_bridge
+    meaning: AmlaVecCompute produces aMlaSumUb and DealBmm2ResBaseBlock consumes it from local UB state.
+  lowering_hint: Lower softmaxSum as a budget stub plus local UB bridge; do not invent a GM producer/consumer path for aMlaSum without direct
+    binding evidence.
+  source_evidence:
+  - id: SE-WORKSPACE-MLA-ABI
+    role: Host formula adds the softmaxSum budget bytes.
+  - id: SE-WORKSPACE-MLA-INIT-ORDER
+    role: Kernel InitWorkspace does not bind an extra softmaxSum GM tensor before FD scratch.
+  - id: SE-MLA-AMLASUM-UB-ONLY
+    role: aMlaSum state is retained in local UB storage, not a dedicated GM tail.
+  - id: SE-MLA-SOFTMAX-SUM-GEN
+    role: Vec1 generates aMlaSumUb on the last S2 loop.
+  - id: SE-MLA-SOFTMAX-SUM-CONSUME
+    role: Vec2 consumes aMlaSumUb during final normalization.
+  confidence: medium
+  flow_group: WORKSPACE
+  card_type: workspace_budget
+  pipeline_position: Workspace.MLA.softmax_sum_stub
+  granularity: contract_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-WORKSPACE-FD-REGIONS
+  canonical_name: workspace.flash_decode_regions
+  aliases:
+  - fd_workspace_regions
+  - accumOut_lseSum_lseMax_abi
+  title: FlashDecode workspace adds accumOut and split LSE regions
+  applies_to:
+    variants:
+    - flash_decode
+    owners:
+    - FiaTilingNonQuant
+    - FiaTilingNonQuantMla
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    stages:
+    - gqa.vec2.output
+    - mla.vec2.output
+    - flash_decode.merge
+  pattern_summary: FlashDecode appends accumOut plus a split lseSum/lseMax super-region after the normal workspace, with offset rules shared by
+    generic and MLA kernels.
+  optimization_intent: Preserve stable split-KV partial export and merge offsets across host sizing and kernel readers.
+  preconditions:
+  - FLASH_DECODE path is active and splitKVFlag routes the operator into FD workspace sizing.
+  - headDimAlign and per-task FD parameter counts remain consistent between host and kernel.
+  tunable_knobs:
+  - splitKVFlag
+  - headDimAlign
+  - mBaseSize
+  - preLoadNum
+  constraints:
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  - C-FD-USED-VEC-BOUNDS
+  risks:
+  - R-FD-LSE-MERGE
+  - R-WORKSPACE-ABI-DRIFT
+  possible_dsl_fields:
+  - path: workspace.flash_decode.accum_out
+    meaning: Partial-output workspace region sized by FD task count and headDimAlign.
+  - path: workspace.flash_decode.lse_sum_max
+    meaning: Half-and-half LSE sum/max super-region and offset split rule.
+  lowering_hint: Keep accumOut and lseSum/lseMax in the same lowering contract because the merge kernel assumes fixed contiguous offsets between
+    them.
+  source_evidence:
+  - id: SE-WORKSPACE-FD-SIZE-NONQUANT
+    role: Generic host-side FD workspace formula.
+  - id: SE-WORKSPACE-FD-SIZE-MLA
+    role: MLA host-side FD workspace formula.
+  - id: SE-FD-WORKSPACE-OFFSETS
+    role: Kernel-side split-LSE offset contract.
+  confidence: high
+  flow_group: WORKSPACE
+  card_type: workspace_abi
+  pipeline_position: Workspace.flash_decode_regions
+  granularity: contract_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-RUNINFO-THREE-STAGE-RING
+  canonical_name: pipeline.runinfo_three_stage_ring
+  aliases:
+  - runinfo_ring
+  - mm1_vec1_mm2_vec2_overlap
+  title: RunInfo ring overlaps MM1, Vec1/MM2, and Vec2
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    stages:
+    - gqa.mm1
+    - gqa.vec1
+    - gqa.mm2
+    - gqa.vec2.output
+    - mla.mm1
+    - mla.vec1
+    - mla.mm2
+    - mla.vec2.output
+  pattern_summary: ExecuteTask uses a three-entry RunInfo cache where the current slot drives MM1, the older slot drives Vec1 and MM2, and the
+    previous slot drives Vec2 before being invalidated.
+  optimization_intent: Overlap AIC/AIV stages across loops while keeping stage ordering and ring-slot ownership explicit.
+  preconditions:
+  - FIA_PRELOAD_TASK_CACHE_SIZE remains at least three slots.
+  - preLoadNum and workspace ring depth are compatible with the scheduler overlap pattern.
+  tunable_knobs:
+  - preLoadNum
+  - s2BaseSize
+  constraints:
+  - C-EVENT-ORDER-RUNINFO
+  risks:
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  - R-SPLITKV-PARTIAL-COLLISION
+  possible_dsl_fields:
+  - path: pipeline.scheduler.runinfo_ring
+    meaning: Mapping from loop-relative cache slot to stage responsibility.
+  - path: pipeline.scheduler.invalid_after_vec2
+    meaning: Slot invalidation happens after Vec2 finishes, not after MM2.
+  lowering_hint: Emit the scheduler overlap as explicit slot roles instead of prose; stage graph builders need concrete loop-relative edges.
+  source_evidence:
+  - id: SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+    role: Nonquant/GQA ExecuteTask overlap pattern.
+  - id: SE-RUNINFO-THREE-STAGE-RING-MLA
+    role: MLA ExecuteTask overlap pattern.
+  confidence: high
+  flow_group: PIPELINE
+  card_type: pipeline_scheduler
+  pipeline_position: Pipeline.RunInfo.C1V1C2V2
+  granularity: flow_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-FD-METADATA-BRIDGE
+  canonical_name: flash_decode.metadata_host_kernel_bridge
+  aliases:
+  - fd_metadata_bridge
+  - split_core_fd_bridge
+  title: FlashDecode metadata uses an explicit host-to-kernel bridge
+  applies_to:
+    variants:
+    - flash_decode
+    owners:
+    - FiaTilingNonQuant
+    - FiaTilingNonQuantMla
+    - FiaKernelNonQuant<FIAT>
+    - FiaKernelNonQuantMla<FIAT, CubeBlockType, VecBlockType, FdBlockType>
+    stages:
+    - flash_decode.merge
+  pattern_summary: Host CreateSplitInput packages split-core inputs, SetSplitOutput copies fdRes arrays into tilingData, and both generic and
+    MLA FlashDecode wrappers rebuild matching local arrays before the FD service runs.
+  optimization_intent: Preserve the producer/consumer bridge contract even when the split-core planner implementation stays outside the extraction
+    boundary.
+  preconditions:
+  - splitKVFlag routes the operator into FlashDecode workspace sizing and metadata generation.
+  - usedVecNumOfFd and fdRes array ordering remain consistent across host and kernel.
+  tunable_knobs:
+  - mBaseSize
+  - gS1BaseSizeOfFd
+  - splitKVFlag
+  constraints:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - C-SPLIT-CORE-FD-BRIDGE
+  risks:
+  - R-FD-METADATA-DESYNC
+  - R-WORKSPACE-ABI-DRIFT
+  possible_dsl_fields:
+  - path: flash_decode.fdparams.used_vec_num
+    meaning: Bound on active AIV cores that may enter the FD merge path.
+  - path: flash_decode.fdparams.metadata_arrays
+    meaning: Host-copied AIC/AIV arrays reconstructed by the kernel before the merge service runs.
+  - path: split_core.range_assignments.bridge_status
+    meaning: External planner implementation with verified host input/output surfaces.
+  lowering_hint: Lower the split-core input package, fdRes copy bridge, and kernel consumer arrays as one schema family; the merge formula alone
+    is incomplete.
+  source_evidence:
+  - id: SE-SPLIT-CORE-INPUT-PARAMS
+    role: Host split-core input package.
+  - id: SE-SPLIT-CORE-OUTPUT-BRIDGE
+    role: Host fdRes bridge into tilingData.
+  - id: SE-FD-METADATA-PARTITION
+    role: Generic kernel consumer reconstruction.
+  - id: SE-FD-METADATA-PARTITION-MLA
+    role: MLA kernel consumer reconstruction.
+  confidence: high
+  flow_group: FLASH_DECODE
+  card_type: host_kernel_bridge
+  pipeline_position: FD.metadata_bridge
+  granularity: bridge_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards:
+  - OC-FD-BLOCKIDX-TASK-MAPPING
+- id: OC-SCALAR-RING-OFFSET-HOIST
+  canonical_name: scalar.offset.preload_ring_and_fd_task_offsets
+  aliases:
+  - fd_task_offset
+  - mla_ring_offsets
+  title: Scalar offset rules define FD and MLA ring addressing
+  applies_to:
+    variants:
+    - flash_decode
+    - mla
+    owners:
+    - FiaBlockVecFlashDecode<FIAT>
+    - FiaBlockVecNonQuantMla<FIAT>
+    stages:
+    - flash_decode.merge
+    - mla.nupdate.apply
+    - mla.vec2.output
+  pattern_summary: FD merge and MLA Vec2/nUpdate use hoistable scalar formulas built from prefix sums, preload-slot mod, headDimAlign stride,
+    and M-partition origins.
+  optimization_intent: Make address-generation structure explicit so Stage-2 can preserve correctness while exposing hoist/div-mod opportunities.
+  preconditions:
+  - preLoadNum ring depth remains stable.
+  - headDimAlign padded stride matches the GM ring ABI.
+  - split-core metadata arrays preserve task ordering.
+  tunable_knobs:
+  - mBaseSize
+  - preLoadNum
+  - headDimAlign
+  - gS1BaseSizeOfFd
+  constraints:
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  - C-VEC2-PARTIAL-RING-SEPARATION
+  - C-SCALAR-OFFSET-CONSISTENCY
+  risks:
+  - R-WORKSPACE-ABI-DRIFT
+  - R-FD-LSE-MERGE
+  possible_dsl_fields:
+  - path: scalar.offset_rules.fd_task_offset
+    meaning: Prefix-summed split-KV task base used by FlashDecode scratch reloads.
+  - path: scalar.offset_rules.mla_mm2_reload_slot
+    meaning: Preload-slot ring offset for MLA Vec2 mm2Res reloads.
+  - path: scalar.offset_rules.mla_nupdate_atomic_base
+    meaning: Atomic target base for MLA nUpdate apply.
+  lowering_hint: Keep these formulas as structured lowering rules instead of prose because they encode correctness-critical address generation.
+  source_evidence:
+  - id: SE-FD-TASK-OFFSET-SCALARS
+    role: FD task prefix-sum and taskOffset contract.
+  - id: SE-MLA-NUPDATE-ATOMIC-TARGET
+    role: MLA nUpdate atomic base and stride contract.
+  - id: SE-MLA-VEC2-NORMALIZE-COPY
+    role: MLA Vec2 reload and FD partial-output offset contract.
+  - id: SE-KNOB-HEADDIM-ALIGN
+    role: Padded stride source for MM2 and Vec2 addressing.
+  confidence: high
+  flow_group: SCALAR
+  card_type: scalar_offset
+  pipeline_position: Scalar.offset_rules
+  granularity: optimization_pattern
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-COMMON-SPLIT-CORE-BALANCING
+  canonical_name: common.split_core.discrete_cost_balancing
+  aliases:
+  - common_split_core_cost
+  - fa_fd_tolerance_balancing
+  title: Common split-core balances discrete M/S2 block costs
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - split_core common host planner
+    stages:
+    - host.split_core
+  pattern_summary: The common planner scores blocks as 6*ceil(M/16)+10*ceil(S2/64), searches bounded core counts, applies FA/FD tolerance ratios
+    of 2, and emits per-core ranges plus FD metadata.
+  optimization_intent: Expose split-core balancing as structured DSL cost/search policy instead of opaque host output arrays.
+  preconditions:
+  - Host CreateSplitInput has populated BaseInfo and SplitParam.
+  - supportFD, sparseMode, sinkNumber, and keySinkNumber are carried through from tiling metadata.
+  tunable_knobs:
+  - mBaseSize
+  - s2BaseSize
+  - gS1BaseSizeOfFd
+  constraints:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  risks:
+  - R-COMMON-SPLIT-CORE-MODEL-OMITTED
+  possible_dsl_fields:
+  - path: split_core.cost_model.block_cost_formula
+    meaning: Discrete aligned M/S2 formula used for block and tail scoring.
+  - path: split_core.assignment_phases
+    meaning: Ordered batch, row, block, and force assignment phases with supportFD gates.
+  lowering_hint: Lower the common planner as a costed range-assignment contract; preserving only bN2End/gS1End/s2End loses planner semantics.
+  source_evidence:
+  - id: SE-COMMON-SPLIT-CORE-CPP
+    role: Common split-core implementation.
+  - id: SE-COMMON-SPLIT-CORE-H
+    role: Common split-core structs and tolerance constants.
+  confidence: high
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_cost_model
+  pipeline_position: Tiling.split_core.balance
+  granularity: planner_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-COMMON-SPARSE-SINK-S2-RANGE
+  canonical_name: common.split_core.sparse_sink_s2_range_shaping
+  aliases:
+  - common_sparse_s2_range
+  - key_sink_split_core
+  title: Sparse and sink metadata shape common S2 ranges
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - split_core common host planner
+    stages:
+    - host.split_core
+  pattern_summary: Common split-core derives S2 token bounds from sparse mode, pre/next tokens, BAND shifts, sinkNumber/keySinkNumber selection,
+    and supportFD before block-range assignment and FD metadata recording.
+  optimization_intent: Keep sparse/sink range shaping explicit so Stage-2 planners do not rebalance against impossible S2 blocks.
+  preconditions:
+  - sparseMode and mask/sink metadata are valid for the selected tiling path.
+  - keySinkNumber is considered when supportFD is true.
+  tunable_knobs:
+  - s2BaseSize
+  - splitKVFlag
+  constraints:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  - C-SPARSE-POLICY-CONTRACT
+  risks:
+  - R-COMMON-SPLIT-CORE-MODEL-OMITTED
+  - R-SPARSE-POLICY-DESYNC
+  possible_dsl_fields:
+  - path: split_core.sparse_s2_range
+    meaning: Right-open S2 block range produced after token-window clipping and sink gap handling.
+  - path: split_core.sink_selection
+    meaning: supportFD-aware choice between sinkNumber and keySinkNumber.
+  lowering_hint: Run sparse/sink shaping before cost and block-count modeling; doing it after assignment changes per-core work.
+  source_evidence:
+  - id: SE-COMMON-SPLIT-CORE-CPP
+    role: S2 range, BAND, sink, and key-sink behavior.
+  confidence: high
+  flow_group: TILING_SPLIT_CORE
+  card_type: range_assignment
+  pipeline_position: Tiling.sparse_sink.s2_range
+  granularity: planner_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-COMMON-GM-COPY-LOWERING
+  canonical_name: common.memory_copy.gm_format_offset_and_nd_to_nz
+  aliases:
+  - common_gm_copy_lowering
+  - nd_to_nz_copy_contract
+  title: Common GM copy helpers lower layouts through format categories
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - common memory_copy helpers
+    stages:
+    - copy.query_gm_to_l1
+    - copy.kv_gm_to_l1
+    - copy.post_quant_gm_to_ub
+  pattern_summary: Layout and page-attention state select GmFormat, FormatCategory selects offsets, and query/KV copies lower ND-like GM layouts
+    into NZ L1 tiles with explicit strides and fallback paths.
+  optimization_intent: Make address generation and ND/NZ lowering reusable while preventing ad hoc layout-specific offset formulas.
+  preconditions:
+  - FIA layout and page-attention mode are known before copy lowering.
+  - D extent, source stride, and destination NZ C0 stride are available.
+  tunable_knobs:
+  - headDimAlign
+  constraints:
+  - C-COMMON-GM-FORMAT-OFFSET-COPY
+  risks:
+  - R-COMMON-GM-OFFSET-COPY-MISLOWERED
+  possible_dsl_fields:
+  - path: memory_copy.gm_format
+    meaning: Common enum selected from layout and page-attention state.
+  - path: memory_copy.offset_category
+    meaning: Stable FormatCategory dispatch key for offset calculation.
+  - path: memory_copy.nd_to_nz_params
+    meaning: Row count, column count, source stride, and NZ destination stride for lowering.
+  lowering_hint: Lower copy helpers through FormatCategory first, then specialize ND-to-NZ or direct DataCopy behavior by selected format.
+  source_evidence:
+  - id: SE-COMMON-MEMORY-COPY-H
+    role: Common GM format, offset, and copy helper definitions.
+  confidence: high
+  flow_group: COMMON_MEMORY_COPY
+  card_type: copy_lowering
+  pipeline_position: Common.copy.gm_format
+  granularity: lowering_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-COMMON-BUFFER-POLICY-SELECTION
+  canonical_name: common.buffer.policy_and_event_selection
+  aliases:
+  - common_buffer_policy
+  - hard_event_policy
+  title: Common buffer policies bind allocation, lifetime, and event legality
+  applies_to:
+    variants:
+    - gqa
+    - mla
+    owners:
+    - common buffer helpers
+    - common matmul helpers
+    stages:
+    - cube.matmul
+    - pipeline.buffer_sync
+  pattern_summary: Common buffer helpers map logical buffer types to hardware positions and hard-event pairs, while policy classes select single,
+    double, triple, four, or matrix-2x2 buffer lifetimes.
+  optimization_intent: Expose buffer count and event policy as DSL scheduling choices with legality constraints.
+  preconditions:
+  - Buffer space and sync type are known at allocation.
+  - Cross-core sync mode is selected consistently for AIC/AIV producer-consumer roles.
+  tunable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  constraints:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  risks:
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  possible_dsl_fields:
+  - path: pipeline.buffer_policy.kind
+    meaning: Single/DB/3-buffer/4-buffer/matrix-2x2 policy selected for a stage.
+  - path: pipeline.events.hard_event_pair
+    meaning: Producer-to-consumer and consumer-to-producer event pair implied by buffer type.
+  lowering_hint: Pair buffer policy selection with Init/Uninit and wait/set edges; emitting only memory size loses event legality.
+  source_evidence:
+  - id: SE-COMMON-BUFFER-H
+    role: BufferType mappings, hard-event pairs, sync modes, and cross-core event ID behavior.
+  - id: SE-COMMON-BUFFERS-POLICY-H
+    role: Buffer policy allocation counts, Init/Uninit ownership, traversal, reuse, and free-cursor behavior.
+  - id: SE-COMMON-MATMUL-H
+    role: Matmul usage of common buffer policy and unitFlag behavior.
+  confidence: high
+  flow_group: COMMON_RUNTIME
+  card_type: buffer_event_policy
+  pipeline_position: Common.buffer_policy.events
+  granularity: contract_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  canonical_name: common.vector.invalid_rows_and_safe_tokens
+  aliases:
+  - vector_invalid_rows
+  - safe_active_token_clamp
+  title: Common vector helpers clamp active tokens and zero invalid rows
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    owners:
+    - common vector helpers
+    stages:
+    - vec1.softmax
+    - vec2.output
+  pattern_summary: Sparse mode and token-window signs drive safe active-token clamping, invalid-row detection, row zeroing, and PIPE_V barriers
+    around invalid-row and large-column reduction paths.
+  optimization_intent: Preserve sparse/mask correctness while exposing repeat-vector versus split-reduction lowering choices.
+  preconditions:
+  - actual Q/KV sequence lengths are available.
+  - sparseMode, preToken, nextToken, attenMaskFlag, and isRowInvalid are carried into vector lowering.
+  tunable_knobs:
+  - s2BaseSize
+  constraints:
+  - C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS
+  - C-INVALID-ROW-LSE-CORRECTION
+  risks:
+  - R-COMMON-INVALID-ROW-HANDLING-LOST
+  possible_dsl_fields:
+  - path: vector.safe_active_token
+    meaning: Clamped pre/next token bounds derived from actual sequence lengths.
+  - path: vector.invalid_rows.mode
+    meaning: Sparse-mode-specific invalid-row rule and zeroing path.
+  lowering_hint: Keep invalid-row zeroing and PIPE_V barriers adjacent to softmax/reduction lowering; moving them can expose stale vector data.
+  source_evidence:
+  - id: SE-COMMON-VECTOR-COMMON-H
+    role: Safe active-token, invalid-row, and repeat-stride helper definitions.
+  confidence: high
+  flow_group: V1
+  card_type: vector_correctness_guard
+  pipeline_position: V1.common.invalid_rows
+  granularity: guard_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  canonical_name: common.split_core.fd_metadata_and_merge_partitioning
+  aliases:
+  - common_fd_metadata
+  - splitfd_vector_balancing
+  title: Common split-core FD metadata drives merge partitioning
+  applies_to:
+    variants:
+    - flash_decode
+    owners:
+    - split_core common host planner
+    - FiaBlockVecFlashDecode<FIAT>
+    stages:
+    - host.split_core
+    - flash_decode.merge
+  pattern_summary: Common RecordFDInfo emits FD head and S2/GS1 split metadata only for qualifying split rows, then SplitFD balances FD vector
+    work using the FD tolerance ratio.
+  optimization_intent: Keep FD merge partitioning aligned with host split-core metadata and vector merge boundaries.
+  preconditions:
+  - supportFD is true.
+  - curKvSplitPart exceeds one for rows requiring FD metadata.
+  tunable_knobs:
+  - gS1BaseSizeOfFd
+  - splitKVFlag
+  constraints:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  - C-FD-METADATA
+  risks:
+  - R-COMMON-FD-METADATA-MISMATCH
+  - R-FD-METADATA-DESYNC
+  possible_dsl_fields:
+  - path: flash_decode.fd_metadata.record_conditions
+    meaning: Common conditions that decide whether a split row emits FD metadata.
+  - path: flash_decode.fd_metadata.vector_boundaries
+    meaning: SplitFD vector boundary selection using FD_TOLERANCE_RATIO.
+  lowering_hint: Lower FD metadata generation together with FD merge scheduling; separating them can produce valid arrays with wrong vector ownership.
+  source_evidence:
+  - id: SE-COMMON-SPLIT-CORE-CPP
+    role: RecordFDInfo and SplitFD behavior.
+  - id: SE-COMMON-SPLIT-CORE-H
+    role: FlashDecodeResult and SplitResult fields.
+  confidence: high
+  flow_group: TILING_SPLIT_CORE
+  card_type: fd_partition_planner
+  pipeline_position: Tiling.FD.metadata_merge_partitioning
+  granularity: planner_card
+  agent_usage:
+  - stage2_strategy_seed
+  related_cards: []
+- id: OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  canonical_name: gqa.mm1.q_l1_snapshot_reuse
+  aliases:
+  - gqa_q_l1_snapshot
+  - gqa_mm1_sparse_l1_snapshot
+  title: GQA C1/MM1 reuses Q L1 snapshots and sparse K/L1 load state
+  flow_group: C1
+  card_type: optimization_pattern
+  pipeline_position: C1.GQA.MM1
+  granularity: stage_card
+  applies_to:
+    variants:
+    - gqa
+    owners:
+    - FiaBlockCubeNonQuantGqa<FIAT,Config>
+    stages:
+    - gqa.mm1
+    - gqa.mm1.sparse_l1_snapshot
+  pattern_summary: GQA MM1 keeps a Q-side L1 snapshot keyed by the current batch/head/query tile and coordinates it with sparse K/L1 load behavior
+    before producing the MM1 score ring.
+  optimization_intent: Reduce repeated GM-to-L1 Q/K traffic on the C1 path while preserving sparse skip and snapshot release semantics.
+  preconditions:
+  - GQA path is active.
+  - MM1 stage consumes sparse/sink-aware S2 windows.
+  - Q snapshot lifetime is bounded by the current M/S2 tile ownership.
+  tunable_knobs:
+  - s2BaseSize
+  - mBaseSize
+  - preLoadNum
+  constraints:
+  - C-GQA-MM1-Q-L1-LIFETIME
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  risks:
+  - R-GQA-Q-L1-LIFETIME
+  - R-SPARSE-SINK-RANGE-MISMATCH
+  possible_dsl_fields:
+  - path: memory.l1.gqa.q_snapshot_signature
+    meaning: Coordinate key and reuse scope for Q L1 caching on GQA MM1.
+  - path: pipeline.stage_graph.edges[].sync_signal
+    meaning: C1/V1 wait-set ordering around MM1 score production.
+  lowering_hint: Treat as a C1 owner-qualified residency policy; do not merge with generic C1 tiling without keeping sparse snapshot predicates.
+  source_evidence:
+  - id: SE-GQA-Q-L1-SNAPSHOT
+    role: Q L1 snapshot evidence.
+  - id: SE-GQA-MM1-SPARSE-L1-SNAPSHOT
+    role: Sparse-aware MM1 L1 snapshot behavior.
+  confidence: medium_high
+  agent_usage:
+  - search_hint
+  - l1_residency_optimization
+  - dataflow_guard
+  related_cards:
+  - OC-GQA-MM2-L1-V-REUSE
+- id: OC-MLA-MM1-ROPE-NOPE-L1-PACKING
+  canonical_name: mla.mm1.rope_nope_l1_packing
+  aliases:
+  - mla_rope_nope_packing
+  - mla_mm1_nbuffer_wrapper
+  title: MLA C1/MM1 packs RoPE/NoPE data through n-buffered L1 wrappers
+  flow_group: C1
+  card_type: layout_packing_contract
+  pipeline_position: C1.MLA.MM1
+  granularity: stage_card
+  applies_to:
+    variants:
+    - mla
+    owners:
+    - FiaBlockCubeNonQuantMla<FIAT>
+    stages:
+    - mla.mm1
+    - mla.mm1.process
+  pattern_summary: MLA MM1 uses n-buffered wrappers to pack NoPE/RoPE portions into L1-compatible C1 tiles; this layout contract feeds later nUpdate
+    and MM2 value alias behavior.
+  optimization_intent: Expose MLA MM1 packing as a guarded DSL contract so agent can reason about C1 traffic without breaking RoPE/NoPE layout.
+  preconditions:
+  - MLA path is active.
+  - NoPE and RoPE components share the MM1 path but have distinct packing/stride expectations.
+  - nBufferMBaseSize is treated as compile-time constrained unless explicitly reviewed.
+  tunable_knobs:
+  - nBufferMBaseSize
+  - headDimAlign
+  - preLoadNum
+  constraints:
+  - C-MLA-MM1-ROPE-NOPE-LAYOUT
+  - C-VEC-UB-ALIGNMENT
+  risks:
+  - R-MLA-ROPE-NOPE-LAYOUT-BREAK
+  - R-MLA-MM1-NBUFFER-MISMATCH
+  possible_dsl_fields:
+  - path: kernel_ir.mla.mm1.rope_nope_packing
+    meaning: MLA C1 packing contract for NoPE/RoPE slices.
+  - path: memory.l1.mla.mm1_pack_layout
+    meaning: L1 layout used by MM1 n-buffer wrappers.
+  lowering_hint: Guard-only until layout equivalence checker exists; do not auto-rewrite packing loops from this card alone.
+  source_evidence:
+  - id: SE-MLA-MM1-ROPE-NOPE-PACKING
+    role: MLA MM1 RoPE/NoPE packing.
+  - id: SE-MLA-MM1-NBUFFER-WRAPPER
+    role: n-buffer MM1 wrapper behavior.
+  confidence: medium_high
+  agent_usage:
+  - layout_guard
+  - search_pruning
+  - mla_c1_analysis
+  related_cards:
+  - OC-MLA-MM2-NUPDATE-BARRIER
+- id: OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+  canonical_name: shared.vec1.sink_softmax_fusion
+  aliases:
+  - vec1_sink_softmax
+  - shared_vec1_contract
+  title: Shared V1 performs sink-aware softmax, LSE correction, and V1/C2 synchronization
+  flow_group: V1
+  card_type: semantic_vector_contract
+  pipeline_position: V1.shared.softmax
+  granularity: stage_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - shared Vec1 sink softmax path
+    stages:
+    - vec1.softmax
+    - vec1.sink_softmax
+    - vec1.to_mm2
+  pattern_summary: Vec1 consumes C1 scores, injects sink semantics, handles invalid split-KV rows, updates softmax max/sum/exp and optionally
+    writes LSE state for FD merge before signaling C2/MM2.
+  optimization_intent: Make the V1 sink-softmax semantics explicit so vector fusion or scalar hoisting cannot drop invalid-row/LSE corrections.
+  preconditions:
+  - Sparse/sink parameters are available.
+  - C1 score ring is produced.
+  - Vec1 output feeds C2/MM2 and sometimes FD LSE scratch regions.
+  tunable_knobs:
+  - s2BaseSize
+  - splitKVFlag
+  constraints:
+  - C-INVALID-ROW-LSE-CORRECTION
+  - C-SHARED-VEC1-SYNC
+  risks:
+  - R-COMMON-INVALID-ROW-HANDLING-LOST
+  - R-FD-LSE-MERGE-MISMATCH
+  possible_dsl_fields:
+  - path: vector.vec1.sink_softmax.contract
+    meaning: Sink row injection, invalid-row handling, LSE correction, and Vec1 output semantics.
+  - path: pipeline.stage_graph.edges.vec1_to_c2
+    meaning: syncV1C2 ordering from V1 producer to C2 consumer.
+  lowering_hint: Any rewrite touching Vec1 softmax must carry both numerical verifier and FD/LSE workspace guards.
+  source_evidence:
+  - id: SE-SHARED-VEC1-CONTRACT
+    role: Shared Vec1 dataflow contract.
+  - id: SE-VEC1-SINK-SOFTMAX
+    role: Sink softmax behavior.
+  - id: SE-SHARED-VEC1-SYNC
+    role: Vec1/C2 synchronization.
+  confidence: high
+  agent_usage:
+  - semantic_guard
+  - v1_optimization
+  - test_selection
+  related_cards:
+  - OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  - OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+- id: OC-LAYOUT-AWARE-OUTPUT-LSE-COPYOUT
+  canonical_name: layout.output_lse_copyout
+  aliases:
+  - output_layout_copyout
+  - softmax_lse_layout_copy
+  title: V2/output copy-out and SoftmaxLse copy are layout-sensitive
+  flow_group: V2
+  card_type: layout_copy_contract
+  pipeline_position: V2.output.copyout
+  granularity: stage_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - Vec2 output path
+    - SoftmaxLse copy path
+    stages:
+    - vec2.output
+    - softmax_lse.copyout
+    - fd.output
+  pattern_summary: Final attentionOut and softmaxLse copy-out depend on layout families, headDim alignment, actual sequence lengths, prefix offsets,
+    and FD/MLA-specific output semantics.
+  optimization_intent: Prevent agent from treating final output/LSE copy as a generic DataCopy when it is actually layout- and variant-sensitive.
+  preconditions:
+  - attentionOut or softmaxLse output is requested.
+  - Shape/layout contract is known.
+  - FD and MLA variants may use separate copy paths.
+  tunable_knobs:
+  - headDimAlign
+  - splitKVFlag
+  constraints:
+  - C-SHAPE-LAYOUT-CONTRACT
+  - C-FD-OUTPUT-LAYOUT
+  risks:
+  - R-LAYOUT-COPYOUT-STRIDE-MISMATCH
+  - R-SOFTMAX-LSE-LAYOUT-BREAK
+  possible_dsl_fields:
+  - path: shape_layout.attention_out.copyout_contract
+    meaning: Layout-sensitive attention output copy contract.
+  - path: shape_layout.softmax_lse.copyout_contract
+    meaning: Layout-sensitive LSE copy contract.
+  lowering_hint: Attach layout-family tests and shape/layout verifier to any V2 copy-out rewrite.
+  source_evidence:
+  - id: SE-FD-OUTPUT-LAYOUTS
+    role: FD output layout evidence.
+  - id: SE-MLA-LSE-LAYOUT-COPY
+    role: MLA LSE layout copy evidence.
+  - id: SE-SHAPE-LAYOUT-CONTRACT
+    role: Host shape/layout contract.
+  confidence: medium_high
+  agent_usage:
+  - copyout_guard
+  - layout_verifier
+  - v2_optimization
+  related_cards:
+  - OC-SHARED-VEC1-SINK-SOFTMAX-FUSION
+- id: OC-HOST-API-CONTIGUOUS-AND-INT4-VIEW-METADATA
+  canonical_name: host.api.contiguous_int4_view_metadata
+  aliases:
+  - host_contiguous_guard
+  - int4_view_metadata
+  title: Host API preprocessing preserves contiguous tensors and int4/view metadata
+  flow_group: HOST_API
+  card_type: host_guard
+  pipeline_position: Host.preprocess
+  granularity: guard_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - op_api
+    - op_host preprocessing
+    stages:
+    - host.preprocess
+    - host.tensor_view
+  pattern_summary: Host-side tensor preprocessing handles contiguous copies, tensor-list conversions, prefix tensor preprocessing, and view metadata
+    that later host tiling and kernel ABI rely on.
+  optimization_intent: Prevent host-overhead optimizations from deleting apparently redundant preprocessing that actually preserves ABI metadata.
+  preconditions:
+  - ACLNN API path is active.
+  - Input may be non-contiguous or need view metadata conversion.
+  tunable_knobs: []
+  constraints:
+  - C-HOST-CONTIGUOUS-METADATA
+  risks:
+  - R-HOST-METADATA-DROPPED
+  - R-INT4-VIEW-BROKEN
+  possible_dsl_fields:
+  - path: host_api.preprocess.contiguous_policy
+    meaning: Whether and how inputs are materialized as contiguous tensors.
+  - path: host_api.preprocess.view_metadata
+    meaning: View metadata required by tiling/kernel ABI.
+  lowering_hint: Guard-only; never remove preprocessing without host API smoke tests and shape/layout tests.
+  source_evidence:
+  - id: SE-HOST-TENSOR-PREPROCESS
+    role: Host tensor preprocessing.
+  - id: SE-HOST-PREFIX-TENSOR-PREPROCESS
+    role: Prefix tensor preprocessing.
+  - id: SE-HOST-PROCESS-TENSOR-CONTIGUOUS
+    role: Contiguous tensor conversion.
+  - id: SE-HOST-PROCESS-TENSOR-LIST-CONTIGUOUS
+    role: Tensor-list contiguous conversion.
+  - id: SE-HOST-CONTIGUOUS-INPUT
+    role: Contiguous input evidence.
+  confidence: medium
+  agent_usage:
+  - host_guard
+  - test_selection
+  - risk_pruning
+- id: OC-HOST-OPTIONAL-SOFTMAX-LSE-ZERO-PLACEHOLDER
+  canonical_name: host.optional_softmax_lse_zero_placeholder
+  aliases:
+  - softmax_lse_placeholder
+  - zero_tensor_process
+  title: Host optional SoftmaxLse output uses zero-shape placeholder semantics
+  flow_group: HOST_API
+  card_type: host_semantic_guard
+  pipeline_position: Host.optional_outputs
+  granularity: guard_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - op_host optional output handling
+    stages:
+    - host.optional_softmax_lse
+  pattern_summary: When softmaxLse output is disabled or zero-shaped, host code preserves a placeholder/ZeroTensor behavior that keeps API and
+    downstream metadata semantics consistent.
+  optimization_intent: Prevent agent from deleting softmaxLse placeholder paths while pruning unused output work.
+  preconditions:
+  - softmaxLseFlag may be false or output may be zero-shaped.
+  tunable_knobs:
+  - splitKVFlag
+  constraints:
+  - C-HOST-OPTIONAL-LSE-PLACEHOLDER
+  risks:
+  - R-SOFTMAX-LSE-PLACEHOLDER-BROKEN
+  - R-FD-LSE-MERGE-MISMATCH
+  possible_dsl_fields:
+  - path: host_api.outputs.softmax_lse.optional_placeholder
+    meaning: ZeroTensor/placeholder contract for optional softmaxLse.
+  lowering_hint: Guard-only; attach API workspace smoke and shape-layout tests to rewrites touching optional LSE output handling.
+  source_evidence:
+  - id: SE-HOST-PROCESS-SOFTMAX-LSE
+    role: Host softmaxLse processing and placeholder behavior.
+  confidence: medium
+  agent_usage:
+  - host_guard
+  - correctness_guard
+- id: OC-FD-BLOCKIDX-TASK-MAPPING
+  canonical_name: flash_decode.blockidx_task_mapping
+  aliases:
+  - fd_task_mapping
+  - fd_blockidx_mapping
+  title: FlashDecode maps blockIdx/taskOffset/usedVec to FD merge ownership
+  flow_group: FLASH_DECODE
+  card_type: task_mapping_contract
+  pipeline_position: FD.kernel.task_mapping
+  granularity: stage_card
+  applies_to:
+    variants:
+    - flash_decode
+    - mla
+    owners:
+    - FiaBlockVecFlashDecode<FIAT>
+    - FiaKernelNonQuant* FlashDecode path
+    stages:
+    - flash_decode.init
+    - flash_decode.merge
+  pattern_summary: Kernel-side FD init maps blockIdx, taskOffset, startRow, actualGSplitSize, and usedVecNumOfFd to the merge work owned by each
+    vector task.
+  optimization_intent: Separate FD task mapping from generic metadata bridge so gS1/FD partition tuning can reason about kernel ownership boundaries.
+  preconditions:
+  - splitKVFlag is true or FD path is enabled.
+  - Host FD metadata bridge has emitted valid partition arrays.
+  tunable_knobs:
+  - gS1BaseSizeOfFd
+  - splitKVFlag
+  constraints:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  risks:
+  - R-FD-TASK-OFFSET-MISMATCH
+  - R-FD-METADATA-DESYNC
+  possible_dsl_fields:
+  - path: flash_decode.task_mapping.blockidx_to_fd_task
+    meaning: Mapping from blockIdx/taskOffset/startRow to FD vector merge ownership.
+  - path: flash_decode.task_mapping.used_vec_bounds
+    meaning: usedVecNumOfFd bounds and ownership.
+  lowering_hint: Keep host FD metadata, kernel InitDecodeParams, and merge task ownership in the same lowering/verification group.
+  source_evidence:
+  - id: SE-FD-INIT-BLOCKIDX
+    role: FD blockIdx/init parameter mapping.
+  - id: SE-FD-TASK-OFFSET-SCALARS
+    role: FD taskOffset scalar evidence.
+  - id: SE-FD-METADATA-PARTITION
+    role: Host metadata partition evidence.
+  confidence: medium_high
+  agent_usage:
+  - fd_partition_search
+  - task_mapping_guard
+  - lowering_guard
+  related_cards:
+  - OC-FD-METADATA-BRIDGE
+  - OC-FD-STABLE-MERGE
+- id: OC-TILING-SPLIT-CORE-COST-TABLE
+  canonical_name: tiling.split_core.cost_table_model
+  aliases:
+  - split_core_cost_table
+  - basic_m_s2_cost_model
+  title: Tiling split-core planner builds cost table from M/S2 tile sizes
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_cost_model
+  pipeline_position: Tiling.split_core.cost_model
+  granularity: planner_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - common split_core host planner
+    stages:
+    - host.tiling.split_core.cost_model
+  pattern_summary: The split-core planner estimates per-block cost from aligned M and S2 tile sizes and builds normal/tail block type costs before
+    core search.
+  optimization_intent: Expose the cost model as a first-class planner card so candidate tile sizes can be evaluated before source rewrite.
+  preconditions:
+  - mBaseSize and s2BaseSize are known.
+  - Per-batch actual sequence lengths are available.
+  tunable_knobs:
+  - mBaseSize
+  - s2BaseSize
+  constraints:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  risks:
+  - R-SPLIT-CORE-COST-MODEL-DESYNC
+  possible_dsl_fields:
+  - path: tiling.split_core.cost_model.block_cost_formula
+    meaning: 6*ceil(M/16)+10*ceil(S2/64)-style discrete cost formula.
+  - path: tiling.split_core.cost_model.block_type_table
+    meaning: normal/tail block cost table.
+  lowering_hint: Do not lower tile-size candidates without updating or validating the planner cost table.
+  source_evidence:
+  - id: SE-COMMON-SPLIT-CORE-CPP
+    role: SplitCore cost model implementation.
+  - id: SE-COMMON-SPLIT-CORE-H
+    role: SplitCore constants and tolerance predicates.
+  confidence: high
+  agent_usage:
+  - candidate_precheck
+  - tiling_search
+  - planner_guard
+  related_cards:
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+- id: OC-TILING-USED-CORE-SEARCH-BOUNDS
+  canonical_name: tiling.split_core.used_core_search_bounds
+  aliases:
+  - used_core_search
+  - core_num_bounds
+  title: Tiling split-core search selects usedCoreNum within cost and block-count bounds
+  flow_group: TILING_SPLIT_CORE
+  card_type: planner_search_bounds
+  pipeline_position: Tiling.split_core.used_core_search
+  granularity: planner_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - common split_core host planner
+    stages:
+    - host.tiling.split_core.search
+  pattern_summary: The host planner derives maxCore/minCore bounds from requested coreNum and totalBlockNum, evaluates candidates by maxCost,
+    and clamps usedCoreNum to at least one.
+  optimization_intent: Make usedCoreNum a derived planner result rather than an unconstrained tuning knob.
+  preconditions:
+  - Total block count and total cost info are available.
+  - Requested coreNum is known.
+  tunable_knobs:
+  - coreNum
+  - mBaseSize
+  - s2BaseSize
+  constraints:
+  - C-USED-CORE-SEARCH-BOUNDS
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  risks:
+  - R-USED-CORE-OVERPARTITION
+  - R-USED-CORE-UNDERUTILIZATION
+  possible_dsl_fields:
+  - path: tiling.split_core.core_search.search_bounds
+    meaning: minCore/maxCore derivation.
+  - path: tiling.split_core.core_search.selection
+    meaning: candidate replacement and final usedCoreNum rule.
+  lowering_hint: Agent should generate planner-driven candidates, not literal usedCoreNum rewrites, unless a reviewed binding exists.
+  source_evidence:
+  - id: SE-COMMON-SPLIT-CORE-CPP
+    role: Core search implementation.
+  - id: SE-SPLIT-CORE-INPUT-PARAMS
+    role: FIA split-core input parameters.
+  - id: SE-SPLIT-CORE-INPUT-PARAMS-MLA
+    role: MLA split-core input parameters.
+  confidence: high
+  agent_usage:
+  - tiling_search
+  - search_space_generation
+  - planner_guard
+  related_cards:
+  - OC-TILING-SPLIT-CORE-COST-TABLE
+  - OC-TILING-FD-GS1-PARTITION-SEARCH
+- id: OC-TILING-FD-GS1-PARTITION-SEARCH
+  canonical_name: tiling.flash_decode.g_s1_partition_search
+  aliases:
+  - gS1BaseSizeOfFd_planner
+  - fd_partition_gs1
+  title: Tiling derives FD gS1 partition and metadata from split-core result
+  flow_group: TILING_SPLIT_CORE
+  card_type: fd_partition_planner
+  pipeline_position: Tiling.FD.gS1_partition
+  granularity: planner_card
+  applies_to:
+    variants:
+    - flash_decode
+    - mla
+    owners:
+    - FIA sink host tiling
+    - common split_core planner
+    stages:
+    - host.tiling.fd_partition
+    - host.tiling.split_output
+  pattern_summary: gS1BaseSizeOfFd and split-output metadata are generated from split-core ranges and FD vector balancing, then consumed by FD
+    kernel task mapping.
+  optimization_intent: Give agent a safe abstraction for FD partition search, instead of directly mutating splitKV metadata arrays.
+  preconditions:
+  - FD path is enabled.
+  - Split-core range assignments are available.
+  - FD workspace regions are sized.
+  tunable_knobs:
+  - gS1BaseSizeOfFd
+  - splitKVFlag
+  - mBaseSize
+  constraints:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - C-WORKSPACE-CONTIGUOUS-ABI
+  risks:
+  - R-FD-METADATA-DESYNC
+  - R-FD-WORKSPACE-ALIAS
+  possible_dsl_fields:
+  - path: tiling.flash_decode.g_s1_partition_search
+    meaning: Planner-generated FD gS1 candidate and metadata arrays.
+  - path: flash_decode.fdparams.partition_contract
+    meaning: Host/kern FD metadata bridge contract.
+  lowering_hint: Lower as planner-generated candidate plus FD metadata verifier; never rewrite only gS1BaseSizeOfFd without bridge validation.
+  source_evidence:
+  - id: SE-FD-METADATA-PARTITION
+    role: FD metadata partition evidence.
+  - id: SE-FD-METADATA-PARTITION-MLA
+    role: MLA FD metadata partition evidence.
+  - id: SE-SPLIT-CORE-OUTPUT-BRIDGE
+    role: Split output bridge.
+  - id: SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+    role: MLA split output bridge.
+  confidence: high
+  agent_usage:
+  - fd_partition_search
+  - workspace_guard
+  - planner_generated_candidate
+  related_cards:
+  - OC-TILING-USED-CORE-SEARCH-BOUNDS
+- id: OC-TILING-SPARSE-SINK-PRE-NEXT-TOKEN-RANGES
+  canonical_name: tiling.sparse_sink.pre_next_token_ranges
+  aliases:
+  - sparse_sink_range_assignment
+  - pre_next_token_rule
+  title: Tiling maps sparse/sink preToken/nextToken into per-core S2 ranges
+  flow_group: TILING_SPLIT_CORE
+  card_type: sparse_range_planner
+  pipeline_position: Tiling.sparse_sink.range_assignment
+  granularity: planner_card
+  applies_to:
+    variants:
+    - nonquant
+    - gqa
+    - mla
+    - flash_decode
+    owners:
+    - host tiling sparse/sink planner
+    stages:
+    - host.tiling.sparse_range
+    - vec1.invalid_row
+  pattern_summary: Sparse mode, preToken, nextToken, actualSeqLen, and sink behavior shape S2 range assignments and invalid-row rules consumed
+    by Vec1 and FD merge.
+  optimization_intent: Separate sparse/sink range planning from generic s2BaseSize tuning so agent preserves invalid-row and LSE correction semantics.
+  preconditions:
+  - Sparse mode and pre/next token values are known.
+  - Actual sequence length arrays are available.
+  tunable_knobs:
+  - s2BaseSize
+  - sparseMode
+  - preToken
+  - nextToken
+  constraints:
+  - C-INVALID-ROW-LSE-CORRECTION
+  - C-SPARSE-SINK-RANGE
+  risks:
+  - R-SPARSE-SINK-RANGE-MISMATCH
+  - R-COMMON-INVALID-ROW-HANDLING-LOST
+  possible_dsl_fields:
+  - path: tiling.sparse_sink.range_assignment
+    meaning: Per-core S2 range assignment derived from sparse/sink rules.
+  - path: sparse.policy.fd_pre_next_token_rule
+    meaning: FD-specific pre/next token sparse rule.
+  lowering_hint: Attach vector invalid-row tests whenever changing S2 tiling under sparse/sink modes.
+  source_evidence:
+  - id: SE-FD-SPARSE-POLICY
+    role: FD sparse policy evidence.
+  - id: SE-SPARSE-MASK-PARAMS
+    role: Sparse mask parameter evidence.
+  - id: SE-SPARSE-LEFTUP-INVALID-ROW
+    role: Invalid-row evidence.
+  confidence: high
+  agent_usage:
+  - sparse_range_guard
+  - tiling_search
+  - test_selection
+  related_cards:
+  - OC-SHARED-VEC1-SINK-SOFTMAX-FUSION

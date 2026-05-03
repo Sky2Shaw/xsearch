@@ -1,0 +1,60 @@
+canonical_ownership:
+  status: ready_for_stage2_ingestion
+  ownership_rules:
+  - owner: flash_decode.metadata_bridge
+    owns:
+    - fdparams.usedVecNumOfFd
+    - fdparams.bN2IdxOfFdHead[]
+    - fdparams.gS1IdxOfFdHead[]
+    - fdparams.s2SplitNumOfFdHead[]
+    - fdparams.s2SplitStartIdxOfCore[]
+    - fdparams.gS1SplitNumOfFdHead[]
+    - fdparams.gS1LastPartSizeOfFdHead[]
+    - fdparams.gS1IdxEndOfFdHead[]
+    - fdparams.gS1IdxEndOfFdHeadSplit[]
+    rationale: FD metadata fields are produced by split_core/host bridge and consumed by FlashDecode; Stage-2 should avoid
+      duplicate definitions across split_core and scalar modules.
+    source_artifacts:
+    - dsl/flash_decode_metadata_bridge.yaml
+    - dsl/split_core_range_contract.yaml
+    - dsl/scalar_offset_contract.yaml
+  - owner: split_core.range_assignment
+    owns:
+    - range_assignments[].core_idx
+    - range_assignments[].bn2_range
+    - range_assignments[].gs1_range
+    - range_assignments[].s2_range
+    - planner.cost_model
+    - planner.assignment_phases
+    references:
+    - flash_decode.metadata_bridge
+    rationale: split_core owns common planning semantics and outer range assignments; FD metadata bridge owns the materialized
+      fdParams arrays.
+  - owner: scalar.offset_rules
+    owns:
+    - fd_task_offset_formula
+    - fd_partial_output_offset_formula
+    - mla_nupdate_atomic_base_formula
+    - mla_mm2_reload_slot_formula
+    - mla_fd_partial_offset_formula
+    consumes:
+    - flash_decode.metadata_bridge
+    - workspace.layout
+    - shape_layout.derived.head_dim_align
+    rationale: scalar.offset_rules should encode address formulas that consume metadata; it should not redefine metadata arrays
+      or workspace region ownership.
+  - owner: workspace.mla_tail
+    owns:
+    - mla.nupdate.binding_status
+    - mla.softmax_sum.binding_status
+    - mla.local_buffer_bridge
+    - mla.tail_region.lowering_policy
+    rationale: MLA tail bytes are host-budgeted but not all are explicit kernel GM regions; Stage-2 must preserve binding
+      status before lowering.
+  anti_duplication_rules:
+  - rule: Do not define fdParams arrays inside split_core.range_assignment and flash_decode.merge separately; define them
+      once in flash_decode.metadata_bridge and reference them.
+  - rule: Do not define workspace.mla_tail regions as explicit GM tensors unless binding_status is explicit_kernel_gm and
+      source evidence exists.
+  - rule: Do not expose scalar offset formulas as independent search knobs; they are derived from metadata/workspace/shape
+      contracts.

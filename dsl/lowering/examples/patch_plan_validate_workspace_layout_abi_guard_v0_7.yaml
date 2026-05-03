@@ -1,0 +1,102 @@
+version: 0.7-execution-closure
+kind: atdsl.patch_plan
+patch_plan_id: patch_plan_validate_workspace_layout_abi_guard
+source_transform: validate_workspace_layout_abi_guard
+schedule_point: sp_workspace_layout_abi_guard
+semantic_field: workspace.layout.regions
+dsl_path: workspace_ir.regions
+lowering_mode: contract_guard_only
+status: contract_guards_only
+rewrites: []
+contract_guards:
+- workspace_layout_abi_valid
+- workspace_no_alias
+- lifetime_no_overlap
+required_tests:
+- id: TEST-SHAPE-LAYOUT-FAMILIES
+  test_surface: unit_test_infershape
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_infershape.cpp
+  covered_contracts:
+  - shape_layout.query_layout_families
+  - shape_layout.attention_out_layouts
+  - shape_layout.softmax_lse_layouts
+- id: TEST-FD-WORKSPACE-TILING
+  test_surface: unit_test_tiling
+  file: tests/ut/op_host/test_ai_infra_fused_infer_attention_sink_tiling.cpp
+  covered_contracts:
+  - workspace.flash_decode_regions
+  - split_core.range_assignments
+  - flash_decode.metadata_bridge
+  - workspace.mla.tail_regions
+- id: TEST-API-WORKSPACE-SMOKE
+  test_surface: unit_test_op_api
+  file: tests/ut/op_api/test_aclnn_ai_infra_fused_infer_attention_sink.cpp
+  covered_contracts:
+  - operator.interface.public_aclnn_entry
+  - operator.optional_outputs.softmax_lse
+  - operator.input_tensor_lists.kv_tensor_list
+risk_guards:
+- id: R-MM2-OWNER-COLLAPSE
+  description: Collapsing ComputeMm2 or alias-aware Vec stages across owners hides distinct GQA, MLA, and generic nonquant semantics.
+  verifier_ids:
+  - mla_nupdate_numeric_contract
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-UB-ALIGNMENT-DRIFT
+  description: Removing Vec1 and Vec2 32B-safe rounding or mishandling headDimAlign can misalign UB accesses and leak padded garbage into outputs.
+  verifier_ids:
+  - forbidden_reorder_guard
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-INVALID-ROW-SEMANTIC-DRIFT
+  description: Skipping invalid-row correction changes the semantic meaning of softmaxLse output and masked rows.
+  verifier_ids:
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-MLA-NUPDATE-TAIL-MISLOWERED
+  description: Lowering MLA nUpdate as a standalone GM tail instead of the observed normal.mm2 int32 alias can move atomic correction away from
+    the MM2 data it adjusts.
+  verifier_ids:
+  - mla_nupdate_numeric_contract
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-WORKSPACE-ABI-DRIFT
+  description: Reordering or resizing workspace regions without synchronized host and kernel ABI updates can redirect ring slots or FD scratch
+    to the wrong bytes.
+  verifier_ids:
+  - fd_metadata_bridge_valid
+  - workspace_no_alias
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SHAPE-LAYOUT-CONTRACT-DRIFT
+  description: Changing infer-shape or layout-specific exporters independently can mismatch attentionOut and softmaxLse tensor ranks or offsets
+    across BSH, BSND, BNSD, NBSD, TND, and NTD families.
+  verifier_ids:
+  - offset_calculator_matches_layout
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-SPARSE-POLICY-DESYNC
+  description: Divergence between host maskParams packing and kernel sparse or invalid-row branches can invert sink-window or row-validity semantics.
+  verifier_ids:
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+- id: R-COMMON-SPLIT-CORE-MODEL-OMITTED
+  description: Omitting common split-core cost, tolerance, core-search, sparse/sink/key-sink, or assignment semantics can produce a Stage-2 planner
+    that preserves array names while assigning different BN2/GS1/S2 ranges and FD work.
+  verifier_ids:
+  - fd_metadata_bridge_valid
+  - invalid_row_lse_correction
+  lowering_guard: attach_guard_and_block_source_rewrite_when_requires_review
+dataflow_guards:
+  source: runtime_ir/dataflow_ir.fia_sink.yaml
+  required_when:
+  - fd
+  - workspace
+  - l1
+  - pipeline
+lifetime_guards:
+  source: runtime_ir/lifetime_ir.fia_sink.yaml
+  required_when:
+  - workspace
+  - l1
+  - event
+knob_domain_checks: []
+notes:
+- v0.7 emits execution-closure patch_plan only; real AscendC patch.diff backend is still pending.

@@ -1,0 +1,19 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: lifetime_ir
+purpose: Track resource live ranges and reuse scopes across GM/UB/L1 so agent patches cannot invalidate reuse or events.
+required_sections:
+- items
+item_schema:
+  id: string
+  resource: string
+  memory_space: enum(GM.workspace,UB,L1,L0A,L0B,L0C,GM)
+  owner: function_or_stage
+  live_from: string
+  live_until: string
+  reuse_scope: string
+  source_evidence_ids: list[string]
+verifier_hooks:
+- lifetime_no_overlap
+- event_release_preserved
+- reuse_scope_preserved

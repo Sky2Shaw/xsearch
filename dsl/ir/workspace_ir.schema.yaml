@@ -1,0 +1,24 @@
+version: 0.7-execution-closure
+kind: atdsl.ir.schema
+ir: workspace_ir
+purpose: 'Concrete workspace ABI: size formulas, byte order, producer/consumer functions, alias rules.'
+required_sections:
+- regions
+- alias_graph
+- host_kernel_bridge
+region_schema:
+  region_id: string
+  family: string
+  binding_status: enum(explicit_kernel_gm,host_budget_only_stub,derived)
+  element_type: string
+  size_formula: string
+  base_offset_rule: string
+  byte_order_rule: string
+  producer_functions: list[string]
+  consumer_functions: list[string]
+  aliasing_rule: string
+  confidence: enum(high,medium,low)
+verifier_hooks:
+- workspace_layout_abi_valid
+- workspace_no_alias
+- workspace_region_lifetime_valid

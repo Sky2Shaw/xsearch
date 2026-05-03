@@ -1,0 +1,106 @@
+version: 0.7-execution-closure
+layer: lowering_verifier
+validators:
+- id: v-workspace-contiguous-abi
+  constraint_id: C-WORKSPACE-CONTIGUOUS-ABI
+  module: workspace.layout
+  severity: hard
+  predicate_draft: region_order(host)==region_order(kernel) and region_size(host,r)==region_stride(kernel,r)
+  source_evidence_ids:
+  - SE-WORKSPACE-NORMAL-SIZE
+  - SE-WORKSPACE-NORMAL-ABI
+  - SE-WORKSPACE-FD-SIZE-NONQUANT
+  - SE-WORKSPACE-FD-SIZE-MLA
+- id: v-vec2-partial-ring-separation
+  constraint_id: C-VEC2-PARTIAL-RING-SEPARATION
+  module: workspace.layout
+  severity: hard
+  predicate_draft: Vec2 reads previous preload slot and writes current slot; current and previous vec2ResGm offsets are disjoint
+  source_evidence_ids:
+  - SE-SHARED-VEC2-CONTRACT
+  - SE-KNOB-PRELOAD-NUM
+- id: v-fd-metadata
+  constraint_id: C-FD-METADATA
+  module: flash_decode.metadata_bridge
+  severity: hard
+  predicate_draft: all FD consumer fields are produced by host bridge with matching array length and ordering
+  source_evidence_ids:
+  - SE-FD-METADATA-PARTITION
+- id: v-fd-used-vev-bounds
+  constraint_id: C-FD-USED-VEC-BOUNDS
+  module: flash_decode.metadata_bridge
+  severity: hard
+  predicate_draft: 0 <= usedVecNumOfFd <= len(fdRes arrays) and active AIV consumers are bounded by usedVecNumOfFd
+  source_evidence_ids:
+  - SE-SPLIT-CORE-OUTPUT-BRIDGE
+  - SE-FD-METADATA-PARTITION
+- id: v-workspace-mla-fd
+  constraint_id: C-WORKSPACE-MLA-FD
+  module: workspace.mla_tail
+  severity: hard
+  predicate_draft: MLA extra nUpdate/softmaxSum bytes remain budget-only unless explicit kernel GM binding evidence exists
+  source_evidence_ids:
+  - SE-WORKSPACE-MLA-ABI
+  - SE-WORKSPACE-MLA-INIT-ORDER
+  - SE-MLA-MM2-INT32-ALIAS
+  - SE-MLA-AMLASUM-UB-ONLY
+- id: v-workspace-mla-nupdate-stub
+  constraint_id: C-WORKSPACE-MLA-NUPDATE-STUB
+  module: workspace.mla_tail
+  severity: hard
+  predicate_draft: nUpdate tail region binding_status in {host_budget_only_stub, alias} and aliases normal.mm2 int32 path
+  source_evidence_ids:
+  - SE-WORKSPACE-MLA-ABI
+  - SE-WORKSPACE-MLA-INIT-ORDER
+  - SE-MLA-MM2-INT32-ALIAS
+  - SE-MLA-NUPDATE-ATOMIC-TARGET
+- id: v-workspace-mla-softmax-sum-ub
+  constraint_id: C-WORKSPACE-MLA-SOFTMAX-SUM-UB
+  module: workspace.mla_tail
+  severity: hard
+  predicate_draft: softmaxSum tail region binding_status==local_ub_state or host_budget_only_stub and has no standalone GM producer/consumer
+  source_evidence_ids:
+  - SE-WORKSPACE-MLA-ABI
+  - SE-WORKSPACE-MLA-INIT-ORDER
+  - SE-MLA-AMLASUM-UB-ONLY
+  - SE-MLA-SOFTMAX-SUM-GEN
+  - SE-MLA-SOFTMAX-SUM-CONSUME
+- id: v-split-core-fd-bridge
+  constraint_id: C-SPLIT-CORE-FD-BRIDGE
+  module: flash_decode.metadata_bridge
+  severity: hard
+  predicate_draft: split_core input fields, SetSplitOutput bridge, and FlashDecode fdparams consumers preserve mBaseSize/s2BaseSize/gS1BaseSizeOfFd
+    semantics
+  source_evidence_ids:
+  - SE-SPLIT-CORE-INPUT-PARAMS
+  - SE-SPLIT-CORE-INPUT-PARAMS-MLA
+  - SE-SPLIT-CORE-OUTPUT-BRIDGE
+  - SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA
+  - SE-FD-METADATA-PARTITION
+  - SE-FD-METADATA-PARTITION-MLA
+- id: reviewed_binding_required_for_source_diff
+  scope: binding_ir
+  predicate: Only reviewed/high records with patch_points may emit source diff.
+- id: contract_guard_lowering_must_not_patch
+  scope: lowering_ir
+  predicate: validate_contract schedule points may emit guards/reports but no source rewrite unless explicitly upgraded.
+- id: test_contract_coverage_selected
+  type: lowering_gate
+  checks:
+  - patch_plan.required_tests is non-empty for covered DSL path
+  source: runtime_ir/test_contract_ir.fia_sink.yaml
+- id: risk_guard_attached
+  type: lowering_gate
+  checks:
+  - patch_plan.risk_guards includes mapped risks for touched semantic fields
+  source: runtime_ir/risk_ir.fia_sink.yaml
+- id: negative_lesson_not_violated
+  type: search_pruning_gate
+  checks:
+  - transform does not match negative_lesson avoid_when without review
+  source: runtime_ir/learning_ir.fia_sink.yaml
+- id: knob_domain_valid
+  type: lowering_gate
+  checks:
+  - candidate value satisfies knob_ir domain and coupled_constraints
+  source: runtime_ir/knob_ir.fia_sink.yaml

@@ -1,0 +1,61 @@
+version: 0.7-execution-closure
+kind: atdsl.source_evidence_summary
+source_root: inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink
+key_spans:
+- id: EV-TILING-FIELDS
+  file: op_host/ai_infra_fused_infer_attention_sink_tiling.h
+  lines: 86-116
+  facts:
+  - mBaseSize
+  - s2BaseSize
+  - gS1BaseSizeOfFd
+  - usedVecNumOfFd
+  - fd metadata arrays
+- id: EV-HOST-NONQUANT-SPLIT-OUTPUT
+  file: op_host/fia_tiling_nonquant_sink.cpp
+  lines: 326-361
+  facts:
+  - CreateSplitInput packages mBaseSize/s2BaseSize/gS1BaseSizeOfFd
+  - SetSplitOutput copies fdRes arrays
+  - host writes innerSplitParams and fdParams
+- id: EV-HOST-MLA-SPLIT-OUTPUT
+  file: op_host/fia_tiling_nonquant_mla_sink.cpp
+  lines: 348-392
+  facts:
+  - MLA split core bridge mirrors nonquant FD metadata
+  - MLA writes innerSplitParams
+- id: EV-KERNEL-TILING-CONSUMER
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  lines: 253-254,584-597,822-824
+  facts:
+  - kernel reads mBaseSize and s2BaseSize from metadataGm
+  - kernel derives gS1 and s2 loop bounds
+- id: EV-KERNEL-FD-METADATA-CONSUMER
+  file: op_kernel/fia_kernel_nonquant_sink.h
+  lines: 731-757
+  facts:
+  - kernel reconstructs fdParams local arrays and passes them to FD service
+- id: EV-KERNEL-MLA-FD-METADATA-CONSUMER
+  file: op_kernel/fia_kernel_nonquant_mla_sink.h
+  lines: 654-685
+  facts:
+  - MLA kernel reconstructs fdParams local arrays
+- id: EV-FD-SCALAR-OFFSET
+  file: op_kernel/fia_block_vec_flashdecode_sink.h
+  lines: 455-486
+  facts:
+  - fd task offset prefix sum times mBaseSize
+  - gS1 split startRow
+  - copy lse and accumOut with taskOffset+startRow
+- id: EV-MLA-NUPDATE
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  lines: 471-804
+  facts:
+  - AmlaVecCompute emits nUpdate side channel
+  - ProcessAmlaNupdate atomically applies baseoffset
+  - syncV1NupdateC2 preserves MM2 ordering
+- id: EV-MLA-VEC2-RELOAD
+  file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+  lines: 1126-1150
+  facts:
+  - MLA Vec2 reloads MM2 result through preload slot and broadcasts aMlaSumUb

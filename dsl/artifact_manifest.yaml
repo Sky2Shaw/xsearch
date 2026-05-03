@@ -1,0 +1,52 @@
+package: xperf_atdsl_performance_dsl
+version: 0.9-card-driven-execution
+generated_at: '2026-05-03'
+input_artifacts:
+  stage1_cards: 17
+  validator_seed_count: 25
+  forbidden_transforms: 11
+top_level_dirs:
+- ir
+- schedule
+- feature
+- verifier
+- backend_contracts
+- profiles
+- examples
+- migration
+- reports
+- scripts
+- source_refs
+- bindings
+- lowering
+- extensions
+upgrade_goal: Turn optimization cards into executable DSL entry points via card_to_dsl_mapping, tiling planner, and card-aware patch_plan lowering.
+mvp_capabilities:
+- canonical DSL path checks
+- schedule-point to binding consistency checks
+- transform_trace apply scaffold
+- patch_plan lowering scaffold for safe tiling transforms
+- non-empty hardware verifier registry
+- execution record schema for benchmark feedback
+artifact_name: xperf_atdsl_performance_dsl_v0_9
+description: Card-driven execution upgrade of ATDSL FIA Sink performance optimization DSL
+key_new_files:
+- ir/card_to_dsl_mapping.schema.yaml
+- runtime_ir/card_to_dsl_mapping.fia_sink.yaml
+- ir/tiling_ir.schema.yaml
+- runtime_ir/tiling_ir.fia_sink.yaml
+- runtime_ir/card_driven_schedule_selection.fia_sink.yaml
+- reports/card_to_dsl_coverage_matrix_v0_9.yaml
+- reports/atdsl_v0_9_upgrade_report.md
+- scripts/validate_performance_dsl_v0_9.py
+- lowering/examples/patch_plan_card_driven_try_s2_base_128_v0_9.yaml
+known_limitations:
+- no real AscendC patch.diff backend yet
+- validators are partly contract-scaffold, not all executable Python checks
+- no concrete compile/correctness/benchmark execution_ir records yet
+artifacts:
+- ir/card_ir.schema.yaml
+- runtime_ir/card_flow_taxonomy.fia_sink.yaml
+- reports/card_coverage_matrix_v0_8.yaml
+- reports/atdsl_v0_8_card_taxonomy_report.md
+- scripts/validate_performance_dsl_v0_8.py

@@ -1,0 +1,20 @@
+version: 0.7-execution-closure
+kind: atdsl.transform_trace
+id: validate_fd_metadata_bridge
+type: contract_guard
+reason: Before enabling FD route/workspace changes, assert host split_core metadata arrays and kernel FD consumers are synchronized.
+schedule_points:
+- sp_fd_metadata_bridge_contract
+preconditions:
+- source bindings reviewed or rule validated
+- fd profile active
+mutations: []
+expected_effect: No source change; emit contract guard for lowering/search pruning.
+risk: none_source_rewrite
+validators:
+- fd_metadata_bridge_valid
+- split_core_range_contract_valid
+- fd_used_vec_bounds
+forbidden:
+- FT-NO-DIRECT-FD-ARRAY-REORDER
+requires_review: false

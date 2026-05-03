@@ -1,0 +1,67 @@
+version: 0.5-performance-dsl-mvp
+kind: atdsl.hardware_contract_ir.schema
+purpose: Declare Ascend-specific memory/engine/alignment/event contracts consumed by verifiers and backends.
+target:
+  soc: ascend
+  core_num: runtime
+  ub_size: runtime
+  l1_size: runtime
+memory_spaces:
+  GM:
+    role: global_memory
+  UB:
+    role: vector_local_memory
+    capacity: target.ub_size
+  L1:
+    role: cube_input_cache
+    capacity: target.l1_size
+  L0A:
+    role: cube_matrix_a_fragment
+  L0B:
+    role: cube_matrix_b_fragment
+  L0C:
+    role: cube_accumulator
+engines:
+  MTE2:
+    directions:
+    - GM_TO_UB
+    - GM_TO_L1
+  MTE3:
+    directions:
+    - UB_TO_GM
+  CUBE:
+    ops:
+    - bmm1_qk
+    - bmm2_pv
+    - fixpipe
+  VECTOR:
+    ops:
+    - softmax_lse
+    - fd_lse_merge
+    - invalid_row_correction
+    - tail_correction
+alignment:
+  gm_copy_bytes: 32
+  ub_safe_bytes: 32
+  s2_range_align: 8
+  l1_region_align_bytes: backend_defined
+event_model:
+  events:
+  - V_EVENT
+  - MTE3_MTE2
+  - syncV1C2
+  - syncC2V2
+  - syncV1NupdateC2
+  auto_reorder_allowed: false
+intrinsic_contract:
+  cube_formats:
+  - NZ
+  - ND
+  - owner_specific_templates
+  vector_mask_policy:
+  - duplicate_mask
+  - invalid_row_guard
+capacity_validators:
+- ub_capacity
+- l1_capacity
+- workspace_no_alias

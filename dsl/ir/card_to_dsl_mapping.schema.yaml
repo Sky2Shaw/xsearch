@@ -1,0 +1,27 @@
+version: 0.9-card-driven-execution
+kind: schema.atdsl.card_to_dsl_mapping
+required_top_level:
+  - version
+  - kind
+  - mappings
+mapping_required_fields:
+  - card_id
+  - flow_group
+  - dsl_paths
+  - schedule_points
+  - verifier_ids
+  - lowering_policy
+  - required_tests
+lowering_policy_enum:
+  - source_rewrite
+  - guarded_patch_requires_review
+  - semantic_policy_to_patch_plan
+  - contract_guard_only
+  - review_required_patch
+  - planner_generated_candidate
+validation_rules:
+  - every card_id must exist in source_refs/cards__optimization_cards.yaml
+  - every schedule point must exist in schedule/schedule_points.yaml
+  - contract_guard_only cards must not generate source diff directly
+  - planner_generated_candidate cards must reference tiling_ir or split_core_planner_ir
+  - source_rewrite cards require reviewed binding before patch.diff generation

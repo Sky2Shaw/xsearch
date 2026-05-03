@@ -1,0 +1,12 @@
+version: 0.7-execution-closure
+kind: atdsl.transform_trace
+id: try_s2_base_128_with_execution_guards
+schedule_point: sp_tiling_s2_base
+reason: 'Exercise v0.7 execution-closure lowering: tiling mutation must select tests, attach risk guards, and check knob domain.'
+mutations:
+- path: kernel_ir.tiles.s2_base.value
+  old_value: from_tiling
+  new_value: 128
+expected_effect:
+- larger S2 tile may reduce scheduling overhead but increases workspace pressure
+requires_review: false
