@@ -1,0 +1,47 @@
+version: "1.0"
+fallback: needs_review
+rules:
+  - token: kernel
+    module: kernel
+  - token: target
+    module: target
+  - token: features
+    module: features
+  - token: interface
+    module: interface
+  - token: shape
+    module: shape
+  - token: shape_layout
+    module: shape
+  - token: layout
+    module: layout
+  - token: tiling
+    module: tiling
+  - token: core_mapping
+    module: core_mapping
+  - token: memory
+    module: memory
+  - token: l1_partition
+    module: l1_partition
+  - token: l1_residency
+    module: l1_residency
+  - token: workspace
+    module: workspace
+  - token: pipeline
+    module: pipeline
+  - token: decode
+    module: decode
+  - token: flash_decode
+    module: decode
+  - token: sparse_window
+    module: sparse_window
+  - token: compute
+    module: compute
+  - token: mla
+    module: compute
+  - token: tail_policy
+    module: tail_policy
+  - token: search
+    module: search
+  - token: lowering
+    module: lowering

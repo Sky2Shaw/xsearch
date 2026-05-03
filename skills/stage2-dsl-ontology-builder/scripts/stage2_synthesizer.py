@@ -1,0 +1,407 @@
+#!/usr/bin/env python3
+"""Synthesize Stage 2 artifacts from EvidenceGraph."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from stage2_parser import EvidenceGraph, EvidenceNode
+
+
+def _load_module_rules(rules_path: Path) -> dict[str, str]:
+    raw = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
+    rules = {}
+    for r in raw.get("rules", []):
+        rules[r["token"]] = r["module"]
+    rules["_fallback"] = raw.get("fallback", "needs_review")
+    return rules
+
+
+def _infer_module(field_path: str, rules: dict[str, str]) -> str:
+    first_token = field_path.split(".")[0] if "." in field_path else field_path
+    return rules.get(first_token, rules.get("_fallback", "needs_review"))
+
+
+def _infer_field_type(meaning: str) -> str:
+    m = meaning.lower()
+    if any(w in m for w in ("coordinate", "key", "signature", "name", "path")):
+        return "string"
+    if any(w in m for w in ("formula", "sequence", "contract", "policy")):
+        return "object"
+    if any(w in m for w in ("size", "count", "number", "distance", "depth")):
+        return "int"
+    if any(w in m for w in ("enabled", "flag", "valid", "alias")):
+        return "bool"
+    if any(w in m for w in ("layout", "mode", "kind", "order")):
+        return "enum"
+    return "string"
+
+
+def _infer_editable_policy(field_node: EvidenceNode, has_knob: bool) -> str:
+    meaning = field_node.data.get("meaning", "").lower()
+    if has_knob:
+        return "searchable"
+    if any(w in meaning for w in ("policy", "order", "mode", "layout")):
+        return "configurable"
+    if any(w in meaning for w in ("formula", "identity", "signature", "contract")):
+        return "fixed"
+    return "fixed"
+
+
+def _ydump(obj: Any, indent: int = 0) -> str:
+    sp = "  " * indent
+    if isinstance(obj, dict):
+        lines = []
+        for k, v in obj.items():
+            if isinstance(v, (dict, list)):
+                lines.append(f"{sp}{k}:")
+                lines.append(_ydump(v, indent + 1))
+            else:
+                lines.append(f"{sp}{k}: {json.dumps(v, ensure_ascii=False) if isinstance(v, str) else str(v).lower() if isinstance(v, bool) else v}")
+        return "\n".join(lines)
+    if isinstance(obj, list):
+        lines = []
+        for item in obj:
+            if isinstance(item, dict):
+                lines.append(f"{sp}-")
+                lines.append(_ydump(item, indent + 1))
+            else:
+                lines.append(f"{sp}- {json.dumps(item, ensure_ascii=False) if isinstance(item, str) else item}")
+        return "\n".join(lines)
+    return f"{sp}{obj}"
+
+
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text.rstrip() + "\n", encoding="utf-8")
+
+
+MANDATORY_VALIDATORS = [
+    "ub_capacity",
+    "l1_capacity",
+    "workspace_no_alias",
+    "sparse_window_alignment",
+    "split_kv_lse_merge_valid",
+    "event_dependency_valid",
+    "l1_residency_loop_order",
+]
+
+MANDATORY_LOWERING = {
+    "LowerTiling": (["tiling", "target", "features"], ["host_tiling_fields", "constexpr_constants"], ["host_tiling", "ComputeConstexpr"]),
+    "LowerCoreMapping": (["core_mapping", "shape", "tiling"], ["logical_axis_mapping"], ["ComputeAxisIdx", "Process_loop_header"]),
+    "LowerSparseWindow": (["sparse_window", "shape", "features"], ["s2_range_expressions"], ["GetS2LoopRange"]),
+    "LowerL1Partition": (["l1_partition", "target", "decode", "tiling"], ["l1_regions", "TPipe_TBuf_allocation"], ["InitBuffer"]),
+    "LowerL1Residency": (["l1_residency", "l1_partition", "decode.loop_order"], ["DataCopy_placement", "eviction_points"], ["Process", "LoadKvTile"]),
+    "LowerDecodeLoopNest": (["decode", "core_mapping", "l1_residency"], ["kv_loops", "group_loops", "split_kv_loops"], ["Process"]),
+    "LowerWorkspaceLayout": (["workspace", "decode.split_kv", "shape"], ["offset_functions", "partial_layout"], ["CalcWorkspaceOffset", "CalcAccumOffset"]),
+    "LowerPipeline": (["pipeline", "memory", "compute"], ["stage_schedule", "event_variants"], ["Process", "pipeline_helpers"]),
+}
+
+
+def _build_canonical_optimizations(graph: EvidenceGraph) -> list[dict]:
+    cards = [n for n in graph.nodes if n.kind == "card"]
+    result = []
+    for card in cards:
+        modules = sorted(set(
+            _infer_module(graph.get_node(e.to_id).data.get("path", ""), {"_fallback": "needs_review"})
+            for e in graph.edges if e.from_id == card.id and e.label == "suggests"
+            if graph.get_node(e.to_id) is not None
+        ))
+        if not modules:
+            modules = ["tiling"]
+        result.append({
+            "id": card.id,
+            "aliases": card.data.get("aliases", []),
+            "intent": [card.data.get("optimization_intent", "")],
+            "applies_to": card.data.get("applies_to", {}).get("variants", []),
+            "preconditions": card.data.get("preconditions", []),
+            "risks": card.data.get("risks", []),
+            "required_dsl_modules": modules,
+            "suggested_fields": [graph.get_node(e.to_id).data.get("path", "") for e in graph.edges if e.from_id == card.id and e.label == "suggests"],
+            "searchable_knobs": card.data.get("tunable_knobs", []),
+            "validators": [],
+            "lowering_passes": [],
+            "source_evidence": [e.to_id for e in graph.edges if e.from_id == card.id and e.label == "backed_by"],
+        })
+    return result
+
+
+def _build_modules(canon: list[dict], graph: EvidenceGraph, rules: dict[str, str]) -> list[dict]:
+    module_to_cards: dict[str, list[str]] = {}
+    for item in canon:
+        for m in item.get("required_dsl_modules", []):
+            module_to_cards.setdefault(m, []).append(item["id"])
+
+    # Collect fields per module
+    module_fields: dict[str, list[tuple[str, dict]]] = {}
+    for e in graph.edges:
+        if e.label == "suggests":
+            field_node = graph.get_node(e.to_id)
+            if field_node and field_node.kind == "dsl_field":
+                mod = _infer_module(field_node.data.get("path", ""), rules)
+                module_fields.setdefault(mod, []).append((field_node.id, field_node.data))
+
+    items = []
+    for mod_name in sorted(module_to_cards.keys()):
+        fields = module_fields.get(mod_name, [])
+        searchable = []
+        for field_id, field_data in fields:
+            has_knob = any(
+                ee.label == "tuned_by" and ee.from_id == field_id
+                for ee in graph.edges
+            )
+            if has_knob:
+                searchable.append(field_data.get("path", "").split(".")[-1])
+
+        items.append({
+            "name": mod_name,
+            "responsibility": f"Generated from Stage 1 evidence for {mod_name}",
+            "profile_scope": ["all"],
+            "source_cards": sorted(set(module_to_cards.get(mod_name, []))),
+            "core_fields": sorted(set(field_data.get("path", "").split(".")[-1] for _, field_data in fields)),
+            "searchable_fields": sorted(set(searchable)),
+            "hard_validators": [],
+            "lowering_passes": [],
+        })
+    return items
+
+
+def _build_field_policy(modules: list[dict]) -> dict[str, list[str]]:
+    policies = {"searchable": [], "configurable": [], "fixed": [], "forbidden": []}
+    for mod in modules:
+        for f in mod.get("searchable_fields", []):
+            policies["searchable"].append(f"{mod['name']}.{f}")
+    return policies
+
+
+def _build_module_schemas(graph: EvidenceGraph, rules: dict[str, str]) -> dict[str, dict]:
+    schemas: dict[str, dict] = {}
+    for e in graph.edges:
+        if e.label == "suggests":
+            field_node = graph.get_node(e.to_id)
+            if not field_node or field_node.kind != "dsl_field":
+                continue
+            mod = _infer_module(field_node.data.get("path", ""), rules)
+            schemas.setdefault(mod, {})
+
+            field_path = field_node.data.get("path", "")
+            field_name = field_path.split(".")[-1]
+            meaning = field_node.data.get("meaning", "")
+            confidence = field_node.data.get("confidence", "medium")
+
+            has_knob = any(
+                ee.label == "tuned_by" and ee.from_id == field_node.id
+                for ee in graph.edges
+            )
+
+            # Collect source cards
+            source_cards = sorted(set(
+                ee.from_id for ee in graph.edges
+                if ee.to_id == field_node.id and ee.label == "suggests"
+            ))
+
+            # Collect source evidence
+            source_evidence = []
+            for card_id in source_cards:
+                for ee in graph.edges:
+                    if ee.from_id == card_id and ee.label == "backed_by":
+                        ev_node = graph.get_node(ee.to_id)
+                        if ev_node and ev_node.kind == "evidence":
+                            source_evidence.append(ev_node.id)
+            source_evidence = sorted(set(source_evidence))
+
+            schemas[mod][field_name] = {
+                "type": _infer_field_type(meaning),
+                "searchable": has_knob,
+                "editable_policy": _infer_editable_policy(field_node, has_knob),
+                "source_cards": source_cards,
+                "source_evidence": source_evidence if source_evidence else ["needs_evidence: true"],
+                "meaning": meaning,
+                "confidence": confidence,
+            }
+    return schemas
+
+
+def _build_validators(graph: EvidenceGraph) -> list[dict]:
+    validators = []
+
+    # Mandatory validators
+    for v_name in MANDATORY_VALIDATORS:
+        validators.append({
+            "name": v_name,
+            "module": "unknown",
+            "severity": "hard",
+            "inputs": [],
+            "expr": "placeholder: needs derivation from evidence",
+            "error_message": f"{v_name} failed",
+            "related_risks": [],
+            "source_cards": [],
+            "source_evidence": ["needs_evidence: true"],
+        })
+
+    # Risk-derived validators
+    for risk_node in graph.nodes:
+        if risk_node.kind != "risk":
+            continue
+        risk_id = risk_node.id
+
+        # Find forbidden transforms
+        ft_ids = [e.to_id for e in graph.edges if e.from_id == risk_id and e.label == "forbids"]
+
+        # Find constraints that also point to those FTs
+        constraint_ids = []
+        for ft_id in ft_ids:
+            for e in graph.edges:
+                if e.to_id == ft_id and e.label == "forbids" and e.from_id.startswith("C-"):
+                    constraint_ids.append(e.from_id)
+
+        # Find evidence backing
+        evidence_ids = []
+        for c_id in constraint_ids:
+            c_node = graph.get_node(c_id)
+            if c_node:
+                for ev_id in c_node.data.get("source_evidence_ids", []):
+                    evidence_ids.append(ev_id)
+
+        v_name = f"valid_{risk_id.lower().replace('-', '_')}"
+        validators.append({
+            "name": v_name,
+            "module": "derived",
+            "severity": "hard",
+            "inputs": constraint_ids,
+            "expr": f"derived from {', '.join(constraint_ids) if constraint_ids else 'risk description'}",
+            "error_message": f"{v_name} failed",
+            "related_risks": [risk_id],
+            "source_cards": [],
+            "source_evidence": sorted(set(evidence_ids)) if evidence_ids else ["needs_evidence: true"],
+        })
+
+    return validators
+
+
+def _build_lowering_specs(graph: EvidenceGraph) -> list[dict]:
+    specs = []
+    for name, (consumes, emits, patch_points) in MANDATORY_LOWERING.items():
+        specs.append({
+            "name": name,
+            "consumes": consumes,
+            "emits": emits,
+            "patch_points": patch_points,
+            "pre_validators": MANDATORY_VALIDATORS,
+            "post_validators": ["compile_success", "golden_correctness"],
+            "editable_policy": "limited_variants" if name == "LowerPipeline" else "template_or_patch_point",
+            "source_cards": [],
+        })
+    return specs
+
+
+def _build_shadow_dsl(graph: EvidenceGraph) -> dict[str, dict]:
+    """Build shadow DSL per variant from high-confidence fields."""
+    variants = {}
+    for card_node in graph.nodes:
+        if card_node.kind != "card":
+            continue
+        card_variants = card_node.data.get("applies_to", {}).get("variants", [])
+        for variant in card_variants:
+            if variant not in variants:
+                variants[variant] = {"fields": []}
+
+            # Collect high-confidence fields from this card
+            for e in graph.edges:
+                if e.from_id == card_node.id and e.label == "suggests":
+                    field_node = graph.get_node(e.to_id)
+                    if field_node and field_node.data.get("confidence") == "high":
+                        variants[variant]["fields"].append({
+                            "path": field_node.data.get("path", ""),
+                            "meaning": field_node.data.get("meaning", ""),
+                        })
+
+    shadows = {}
+    for variant, data in variants.items():
+        shadows[variant] = {
+            "version": "0.3",
+            "kind": "ascend.attention.shadow",
+            "variant": variant,
+            "fields": data["fields"],
+        }
+    return shadows
+
+
+def synthesize(graph: EvidenceGraph, output_dir: Path, rules_path: Path | None = None) -> dict[str, Any]:
+    if rules_path is None:
+        rules_path = Path(__file__).parent / "module_inference_rules.yaml"
+    rules = _load_module_rules(rules_path)
+
+    canon = _build_canonical_optimizations(graph)
+    modules = _build_modules(canon, graph, rules)
+    field_policy = _build_field_policy(modules)
+    module_schemas = _build_module_schemas(graph, rules)
+    validators = _build_validators(graph)
+    lowering = _build_lowering_specs(graph)
+    shadows = _build_shadow_dsl(graph)
+
+    # Write ontology
+    _write(output_dir / "ontology" / "canonical_optimizations.yaml", _ydump(canon))
+    _write(output_dir / "ontology" / "modules.yaml", _ydump(modules))
+    _write(output_dir / "ontology" / "field_policy.yaml", _ydump(field_policy))
+
+    # Write schema
+    _write(output_dir / "schema" / "atdsl.schema.yaml", _ydump({
+        "version": "0.3",
+        "kind": "ascend.attention.dsl_schema",
+        "modules": [m["name"] for m in modules],
+        "searchable_fields": field_policy.get("searchable", []),
+        "readonly_fields": field_policy.get("fixed", []) + field_policy.get("forbidden", []),
+        "validators": [v["name"] for v in validators],
+        "lowering_passes": [s["name"] for s in lowering],
+    }))
+
+    for mod_name, fields in module_schemas.items():
+        _write(output_dir / "schema" / "modules" / f"{mod_name}.schema.yaml", _ydump({mod_name: fields}))
+
+    # Write validators
+    for v in validators:
+        _write(output_dir / "validators_spec" / f"{v['name']}.yaml", _ydump(v))
+
+    # Write lowering
+    for s in lowering:
+        _write(output_dir / "lowering_spec" / f"{s['name']}.yaml", _ydump(s))
+
+    # Write shadow examples
+    for variant, shadow in shadows.items():
+        _write(output_dir / "examples" / f"{variant}_shadow.yaml", _ydump(shadow))
+
+    # Write review scaffold
+    _write(output_dir / "review" / "schema_review.md", "# Stage 2 Schema Review\n\nGenerated by stage2_synthesizer.\n")
+    _write(output_dir / "review" / "coverage_matrix.md", "# Stage 2 Coverage Matrix\n\nGenerated by stage2_synthesizer.\n")
+    _write(output_dir / "review" / "missing_fields.md", "# Missing or Weak Fields\n\nGenerated by stage2_synthesizer.\n")
+
+    return {
+        "ontology": ["canonical_optimizations.yaml", "modules.yaml", "field_policy.yaml"],
+        "schema": ["atdsl.schema.yaml"] + [f"{m}.schema.yaml" for m in module_schemas],
+        "validators": [f"{v['name']}.yaml" for v in validators],
+        "lowering": [f"{s['name']}.yaml" for s in lowering],
+        "examples": [f"{v}_shadow.yaml" for v in shadows],
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--evidence-graph", default="stage2_outputs/.evidence_graph.json")
+    parser.add_argument("--output", default="stage2_outputs")
+    parser.add_argument("--module-config", default=None)
+    args = parser.parse_args()
+
+    graph = EvidenceGraph.load(Path(args.evidence_graph))
+    rules_path = Path(args.module_config) if args.module_config else None
+    outputs = synthesize(graph, Path(args.output), rules_path)
+    print(f"Synthesized {sum(len(v) for v in outputs.values())} files in {args.output}")
+
+
+if __name__ == "__main__":
+    main()
