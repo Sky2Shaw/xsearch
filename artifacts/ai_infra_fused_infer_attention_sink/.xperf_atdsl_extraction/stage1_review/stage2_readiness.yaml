@@ -1,0 +1,52 @@
+stage2_readiness:
+  overall_score: 94
+  readiness: "READY_FOR_STAGE2"
+  stage2_gate_blocked: false
+  blocking_reason: ""
+
+gate_results:
+  coverage:
+    threshold: ">=18/25"
+    observed: "24/25"
+    pass: true
+  accuracy:
+    threshold: ">=20/25"
+    observed: "24/25"
+    pass: true
+  dsl_convertibility:
+    threshold: ">=15/20"
+    observed: "18/20"
+    pass: true
+  important_card_evidence_coverage:
+    threshold: ">=90%"
+    observed: "33/33 = 100.0%"
+    pass: true
+  human_spot_check_accuracy:
+    threshold: ">=85% if available"
+    observed: "not provided"
+    pass: null
+
+can_enter_stage2_now:
+  status: "yes"
+  allowed_inputs:
+    - "all 33 optimization cards with resolvable source_evidence IDs"
+    - "auxiliary/workspace_layout.yaml"
+    - "auxiliary/pipeline_graphs.yaml"
+    - "auxiliary/dataflow_graphs.yaml"
+    - "auxiliary/memory_lifetime.yaml"
+    - "constraints/constraints.yaml after preserving source-backed entries"
+    - "constraints/forbidden_transforms.yaml"
+    - "risks/risks.yaml with source-backed entries"
+    - "knobs/tunable_knobs.yaml"
+    - "dsl/*_contract.yaml as schema backlog/input"
+  disallowed_until_fixed:
+    - "index-only function annotations as full behavioral specs"
+    - "duplicate FD metadata cards as independent modules"
+
+final_judgement:
+  coverage: "sufficient"
+  accuracy: "sufficient_for_inspected_core_paths"
+  traceability: "sufficient"
+  dsl_convertibility: "sufficient"
+  risk_constraints: "mostly_sufficient"
+  dedup_canonicalization: "sufficient_with_parent_child_fd_metadata_model"

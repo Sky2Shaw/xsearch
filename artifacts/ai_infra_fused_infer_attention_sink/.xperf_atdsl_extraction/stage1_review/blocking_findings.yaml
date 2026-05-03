@@ -1,0 +1,18 @@
+stage2_blocked: false
+readiness: "READY_FOR_STAGE2"
+blocking_findings: []
+
+non_blocking_findings:
+  - id: "NF-001-CONSTRAINT-EVIDENCE-LINK"
+    severity: "minor"
+    title: "C-TEMPLATE-IDENTITY lacks source_evidence_ids"
+    required_fix:
+      - "Attach function_index evidence or convert it to a source_evidence record."
+  - id: "NF-002-RISK-FORBIDDEN-LINKS"
+    severity: "minor"
+    title: "Two risks lack related forbidden transform IDs"
+    affected_risks:
+      - "R-SHAPE-LAYOUT-CONTRACT-DRIFT"
+      - "R-COMMON-SHAPE-LAYOUT-VALIDATION-OMITTED"
+    required_fix:
+      - "Add forbidden transforms for shape/layout contract drift and common shape validation omission, or explicitly mark why no forbidden transform is needed."

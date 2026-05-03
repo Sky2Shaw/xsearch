@@ -1,0 +1,111 @@
+review:
+  input_dir: "artifacts/ai_infra_fused_infer_attention_sink/.xperf_atdsl_extraction"
+  source_root: "/mnt/workspace/omni-ops-performance/inference/ascendc/src/ops-transformer/attention/ai_infra_fused_infer_attention_sink"
+  reviewer: "codex-stage1-artifact-scorer"
+  score: 94
+  readiness: "READY_FOR_STAGE2"
+  stage2_gate_blocked: false
+  judgement_summary: "Core operator facts are strong and source-aligned; all 33 optimization cards now have resolvable source evidence IDs, so the Stage-2 card evidence gate passes."
+
+inventory:
+  indexed_functions: 616
+  brief_annotations: 18
+  deep_annotations: 134
+  index_annotations: 616
+  file_annotations: 38
+  optimization_cards: 33
+  tunable_knobs: 7
+  constraints: 25
+  risks: 23
+  dsl_sections: 10
+  schema_gaps: 8
+  auxiliary:
+    dataflow_graphs: true
+    pipeline_graphs: true
+    memory_lifetime: true
+    workspace_layout: true
+
+scores:
+  coverage:
+    score: 24
+    weight: 25
+    rationale: "All 15 required kernel structures are represented; many non-critical helpers remain index-only."
+  accuracy:
+    score: 24
+    weight: 25
+    rationale: "Targeted operator and common-source spot checks matched inspected claims, including the newly added MM1, Vec1, LSE, and common-helper card evidence."
+  traceability:
+    score: 15
+    weight: 15
+    rationale: "33 of 33 optimization cards have resolvable source evidence IDs with source file, symbol, line range, observed fact, and confidence."
+  dsl_convertibility:
+    score: 18
+    weight: 20
+    rationale: "Artifacts expose DSL modules, fields, enums, validators, offset rules, and lowering hints."
+  risk_constraints:
+    score: 9
+    weight: 10
+    rationale: "Strong risks and forbidden transforms remain, with only minor non-blocking links to improve."
+  dedup_canonicalization:
+    score: 4
+    weight: 5
+    rationale: "Good canonical names and aliases; FD metadata common/operator cards still need parent-child modeling."
+
+gate_conditions:
+  coverage:
+    required: ">=18/25"
+    observed: "24/25"
+    result: "PASS"
+  accuracy:
+    required: ">=20/25"
+    observed: "24/25"
+    result: "PASS"
+  dsl_convertibility:
+    required: ">=15/20"
+    observed: "18/20"
+    result: "PASS"
+  important_card_evidence_coverage:
+    required: ">=90%"
+    observed: "33/33 = 100.0% resolvable source evidence"
+    result: "PASS"
+  human_spot_check_accuracy:
+    required: ">=85% if data exists"
+    observed: "not provided"
+    result: "N/A"
+
+important_card_evidence:
+  total_cards: 33
+  cards_with_source_evidence_field: 33
+  cards_with_resolvable_source_evidence: 33
+  coverage_percent: 100.0
+  cards_with_unresolved_evidence_ids: []
+
+judgement_labels:
+  verified_against_source:
+    - "RunInfo three-stage ring for nonquant/GQA and MLA"
+    - "GQA Q/V L1 snapshot reuse and event release"
+    - "MLA nUpdate compute/apply, mm2ResInt32Gm alias, first-fixpipe barrier"
+    - "FlashDecode metadata reconstruction, task offsets, LSE weight formula, final output/LSE export"
+    - "Normal/FD workspace binding order and host sizing formulas"
+    - "Common split-core cost/FD metadata, buffer hard events, matmul unitFlag, memory-copy, vector, and shape helper facts"
+  supported_by_artifacts_only:
+    - "Index-only non-critical helper functions"
+  not_verifiable: []
+  contradicted_or_suspicious: []
+
+coverage_matrix:
+  interface_tiling_workspace: "strong"
+  shape_layout_varlen: "strong"
+  multicore_mapping_split_ranges: "strong"
+  s1_s2_kv_loops: "strong"
+  bmm_vec_pipeline: "strong"
+  ub_l1_l0_buffers: "strong"
+  l1_residency_partitioning: "strong"
+  sparse_mask_policy: "strong"
+  online_softmax_lse: "strong"
+  workspace_offsets: "strong"
+  tail_alignment: "strong"
+  event_wait_flag_sync: "strong"
+  scalar_offsets_hoist: "strong"
+  split_kv_lse_merge: "strong"
+  knobs_constraints_forbidden: "strong_with_minor_gaps"

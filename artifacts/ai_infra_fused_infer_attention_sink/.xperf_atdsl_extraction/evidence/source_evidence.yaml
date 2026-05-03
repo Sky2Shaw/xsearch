@@ -1070,3 +1070,367 @@ source_evidence:
       - UNITFLAG_EN_OUTER_LAST
     semantic_summary: Direct MLA cube include brings common matmul scheduling, L0A/L0B double-buffer policy usage, and unitFlag lowering behavior.
     confidence: high
+  - id: SE-GQA-KP-L1-PINGPONG
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/memory_lifetime.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    line_range:
+      start: 963
+      end: 1112
+    observed_fact: ComputeMm1 cycles K tiles through kpOrSinkL1BufId, waits on KP_EVENT0 before reusing a L1 buffer, copies K to L1, consumes it through MM1, then releases and wraps the buffer index for the next tile.
+    confidence: high
+  - id: SE-GQA-KP-L1-EVENT-CYCLE
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    line_range:
+      start: 963
+      end: 1112
+    observed_fact: KP_EVENT0 uses a paired WaitFlag/SetFlag event cycle across MTE1_MTE2 and MTE2_MTE1 so MTE2 K-copy production and MTE1/MMAD consumption stay ordered.
+    confidence: high
+  - id: SE-MM1-VEC1-BRIDGE-PIPELINE
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/dataflow_graphs.yaml
+      - annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+    line_range:
+      start: 405
+      end: 463
+    observed_fact: DealBmm1ResBaseBlock reads MM1 scores from mm1ResGm into UB, runs ElewiseCompute and SoftmaxFlashV2Compute, casts the P tile to KV_T, and writes the result to vec1ResGm for MM2.
+    confidence: high
+  - id: SE-MM1-VEC1-SINK-SKIP
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+    line_range:
+      start: 405
+      end: 463
+    observed_fact: The sink-skip branch bypasses the full ElewiseCompute plus SoftmaxFlashV2 path, forwards previous softmax max/sum state, duplicates softmaxExpUb to one, zero-fills vec1ResUb, and writes the zero tile to vec1ResGm.
+    confidence: high
+  - id: SE-MM1-SPARSE-SKIP-SETFLAG
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    line_range:
+      start: 994
+      end: 1026
+    observed_fact: Both full-M and per-mL1 sparse skip paths call SetFlag on KP_EVENT0 before continuing, preserving event-counter progress even when MMAD work is skipped.
+    confidence: high
+  - id: SE-MM1-SPARSE-SKIP-ISCAL
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - risks/risks.yaml
+    file: op_kernel/fia_block_cube_nonquant_gqa_sink.h
+    symbol: FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1
+    line_range:
+      start: 994
+      end: 1026
+    observed_fact: ComputeMm1 performs two IsSkipCal checks, one for the full mSize against nL1 and one for each mL1 block, before deciding whether to skip sparse attention work.
+    confidence: high
+  - id: SE-MM1-OUTPUT-ATOMIC-ADD
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - annotations/functions/deep/0053_op_kernel_fia_block_cube_nonquant_sink.h__FiaBlockCubeNonQuant_FIAT_ComputeMm1.yaml
+    file: op_kernel/fia_block_cube_nonquant_sink.h
+    symbol: FiaBlockCubeNonQuant<FIAT>::DealMm1SingleMKN
+    line_range:
+      start: 496
+      end: 620
+    observed_fact: DealMm1SingleMKN enables SetAtomicAdd<MM_OUT_T>() when kStart is nonzero and restores SetAtomicNone after Fixpipe, so later K-split chunks accumulate into mm1ResGm.
+    confidence: high
+  - id: SE-MM1-K-SPLIT-FIXPIPE
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - annotations/functions/deep/0053_op_kernel_fia_block_cube_nonquant_sink.h__FiaBlockCubeNonQuant_FIAT_ComputeMm1.yaml
+    file: op_kernel/fia_block_cube_nonquant_sink.h
+    symbol: FiaBlockCubeNonQuant<FIAT>::ComputeMm1
+    line_range:
+      start: 779
+      end: 850
+    observed_fact: ComputeMm1 iterates kStart in K_SPLIT_SIZE chunks and calls DealMm1SingleMKN, whose Fixpipe writes C0 output to mm1ResGm with dstStride set to actualSingleProcessSInnerSizeAlign.
+    confidence: high
+  - id: SE-VEC1-SOFTMAX-FLASHV2
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - annotations/functions/deep/0095_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ProcessVec1SingleBuf.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::SoftmaxFlashV2Compute
+    line_range:
+      start: 531
+      end: 568
+    observed_fact: SoftmaxFlashV2Compute updates online softmax max, sum, and exp tensors for each base block and stores the new state in the preload-slot ring.
+    confidence: high
+  - id: SE-VEC1-SOFTMAX-FIRST-LOOP
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - risks/risks.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::SoftmaxFlashV2Compute
+    line_range:
+      start: 531
+      end: 568
+    observed_fact: The first S-inner loop uses softmaxMaxDefaultUb and softmaxSumDefaultUb, while later loops load the previous preload slot's max and sum state.
+    confidence: high
+  - id: SE-SOFTMAX-TILING-FUNC
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::SoftmaxFlashV2Compute
+    line_range:
+      start: 531
+      end: 568
+    observed_fact: SoftmaxFlashV2Compute calls SoftMaxFlashV2TilingFunc with per-block source shape, compute type sizes, and softmax temporary-buffer capacity before invoking SoftmaxFlashV2.
+    confidence: high
+  - id: SE-SOFTMAX-BRC-CONFIG
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::SoftmaxFlashV2Compute
+    line_range:
+      start: 531
+      end: 568
+    observed_fact: The softmax call dispatches between FIA_SOFTMAX_FLASHV2_CFG and FIA_SOFTMAX_FLASHV2_CFG_WITHOUT_BRC according to the compile-time SOFTMAX_WITH_BRC branch.
+    confidence: high
+  - id: SE-VEC1-SINK-SKIP-STATE
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/forbidden_transforms.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::DealBmm1ResBaseBlock
+    line_range:
+      start: 405
+      end: 463
+    observed_fact: The sink-skip path copies previous-loop softmaxMaxUb and softmaxSumUb into the current slot, duplicates softmaxExpUb to one, and zeroes the P tile output.
+    confidence: high
+  - id: SE-VEC1-SINK-VALUE-MIN
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::Vec1SinkSoftmaxProc
+    line_range:
+      start: 916
+      end: 938
+    observed_fact: Vec1SinkSoftmaxProc adjusts sink softmax values with AdjustSoftMaxRes using negativeIntScalar and a zero replacement for invalid split-KV rows before accumulating into softmaxSumUb.
+    confidence: high
+  - id: SE-VEC1-INVALID-ROW-ZERO
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::DealInvalidMaskRows
+    line_range:
+      start: 711
+      end: 729
+    observed_fact: DealInvalidMaskRows checks invalid-row and sparse-mask state, then calls fa_base_vector::InvalidMaskRows with softmaxMaxUb, negativeIntScalar, and bmm2ResUb to zero invalid rows in the output path.
+    confidence: high
+  - id: SE-VEC1-M-PARTITION-FORMULA
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - knobs/tunable_knobs.yaml
+    file: op_kernel/fia_block_vec_nonquant_sink.h
+    symbol: FiaBlockVecNonQuant<FIAT>::SetMSplitInfo
+    line_range:
+      start: 286
+      end: 304
+    observed_fact: SetMSplitInfo maps nBufferDealM to vecDealM as nBufferDealM when <=16, otherwise ceil(ceil(nBufferDealM/16)/2)*16, and odd blockIdx receives the tail remainder.
+    confidence: high
+  - id: SE-VEC1-NBUFFER-VEC-DEAL
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - knobs/tunable_knobs.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L
+    line_range:
+      start: 784
+      end: 793
+    observed_fact: MLA Vec1 assigns nBufferDealM from nBufferMBaseSize or the tail, computes vecDealM with the same 16-aligned split rule, forces vecDealM to nBufferDealM for CV1:1, and gives odd blockIdx the tail.
+    confidence: high
+  - id: SE-LSE-COMPUTE-SOFTMAX
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - annotations/functions/deep/0070_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    line_range:
+      start: 491
+      end: 535
+    observed_fact: FlashDecode computes final LSE with fa_base_vector::ComputeSoftMaxLse using merged lseSumUb and lseMaxUb before layout-aware export.
+    confidence: high
+  - id: SE-LSE-ADJUST-INVALID
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    line_range:
+      start: 491
+      end: 535
+    observed_fact: When invalid rows exist, FlashDecode calls AdjustSoftMaxRes with negativeIntScalar and a 3e+99 replacement before exporting LSE values.
+    confidence: high
+  - id: SE-LSE-EXPORT-LAYOUT
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - auxiliary/dataflow_graphs.yaml
+    file: op_kernel/fia_block_vec_flashdecode_sink.h
+    symbol: FiaBlockVecFlashDecode<FIAT>::FlashDecode
+    line_range:
+      start: 491
+      end: 535
+    observed_fact: FlashDecode exports LSE through layout-specific DataCopySoftmaxLseTND, DataCopySoftmaxLseNTD, DataCopySoftmaxLseBSND, and DataCopySoftmaxLseBNSD branches.
+    confidence: high
+  - id: SE-LSE-EXPORT-TND
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
+    line_range:
+      start: 751
+      end: 774
+    observed_fact: The TND LSE export path computes a prefixBS1 batch offset and calls DataCopySoftmaxLseTND with vecDealM rows.
+    confidence: high
+  - id: SE-LSE-EXPORT-BSND
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
+    line_range:
+      start: 751
+      end: 774
+    observed_fact: The BSND and BSH LSE export path computes a flat batch/head/sequence offset and calls DataCopySoftmaxLseBSND with vecDealM rows.
+    confidence: high
+  - id: SE-LSE-EXPORT-BNSD
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - constraints/constraints.yaml
+    file: op_kernel/fia_block_vec_nonquant_mla_sink.h
+    symbol: FiaBlockVecNonQuantMla<FIAT>::CopySoftmaxLseToGmByLayout
+    line_range:
+      start: 751
+      end: 774
+    observed_fact: The BNSD LSE export path dispatches to DataCopySoftmaxLseBNSD with bN2Offset, mOffset, vecDealM, and sequence-length parser state.
+    confidence: high
+  - id: SE-COMMON-MATMUL-UNITFLAG
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+    symbol: MatmulBase::Mmad / MMParam::unitFlag
+    line_range:
+      start: 21
+      end: 55
+    observed_fact: Common matmul defines UNITFLAG_DISABLE, UNITFLAG_ENABLE, and UNITFLAG_EN_OUTER_LAST modes and carries unitFlag through MMParam for MMAD lowering.
+    confidence: high
+  - id: SE-COMMON-MATMUL-K-LOOP
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+    symbol: MatmulBase::Mmad
+    line_range:
+      start: 308
+      end: 375
+    observed_fact: Matmul assigns mmaParams.unitFlag from param.unitFlag and switches final-K behavior to UNITFLAG_EN_OUTER_LAST for the outer-loop-last K iteration.
+    confidence: high
+  - id: SE-COMMON-VECTOR-REPEAT-STRIDE
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/common_dependency_inventory.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+    symbol: fa_base_vector repeat-stride helpers
+    line_range:
+      start: 33
+      end: 212
+    observed_fact: Common vector code defines REPEATE_STRIDE_UP_BOUND as 256 and uses columnCount-based repeat strides for vector operations below the wide-column fallback threshold.
+    confidence: high
+  - id: SE-COMMON-VECTOR-PIPE-V-BARRIER
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/common_dependency_inventory.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+    symbol: fa_base_vector row reduction helpers
+    line_range:
+      start: 426
+      end: 535
+    observed_fact: Wide-column row sum and row max reduction helpers insert PIPE_V barriers after partial updates and between reduction-halving steps.
+    confidence: high
+  - id: SE-COMMON-BUFFER-MATRIX-2X2
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h
+    symbol: Matrix2x2BufferPolicy
+    line_range:
+      start: 293
+      end: 360
+    observed_fact: Matrix2x2BufferPolicy implements a four-buffer 2x2 policy with M and K cursors, row-first allocation, column-first usage, dynamic m extent, and AllocNext/ReuseNext/FreeNext operations.
+    confidence: high
+  - id: SE-COMMON-BUFFER-PEEK-NEXT-K
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/buffer_matmul_extraction.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h
+    symbol: Matrix2x2BufferPolicy::PeekNextK
+    line_range:
+      start: 352
+      end: 360
+    observed_fact: PeekNextK returns the next K-dimension buffer cursor for lookahead without advancing the allocation cursor.
+    confidence: high
+  - id: SE-COMMON-ND2NZ-INT4-DIVISOR
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/memory_copy_extraction.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+    symbol: CopyND2NZ / Nd2NzParams
+    line_range:
+      start: 1461
+      end: 1492
+    observed_fact: The ND-to-NZ copy path divides dValue and srcDValue by HALF_SIZE_DIVISOR for int4b_t before building Nd2NzParams.
+    confidence: high
+  - id: SE-COMMON-ND2NZ-STRIDE-LIMIT
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/memory_copy_extraction.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+    symbol: CopyMultiMatrixNDToNZ
+    line_range:
+      start: 25
+      end: 1492
+    observed_fact: Common memory copy defines ND_MATRIX_STRIDE_LIMIT as 65536 and decomposes large source-stride ND-to-NZ copies into CopySingleMatrixNDToNZ calls when the stride exceeds that limit.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-AXIS-MAP
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/common_dependency_inventory.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp
+    symbol: FIA_LAYOUT_AXIS_MAP
+    line_range:
+      start: 22
+      end: 86
+    observed_fact: FIA_LAYOUT_AXIS_MAP defines canonical axis ordering for more than twenty layouts, including NZ packing as Bn, N, D1, Bs, D0.
+    confidence: high
+  - id: SE-COMMON-FIA-TILING-D-FALLBACK
+    artifact_ids:
+      - cards/optimization_cards.yaml
+      - common_supplement/common_dependency_inventory.yaml
+    file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h
+    symbol: FiaTilingShape::GetD
+    line_range:
+      start: 115
+      end: 120
+    observed_fact: FiaTilingShape::GetD returns direct D when present, otherwise derives D from H/N when N divides H, otherwise returns D1*D0 for NZ-style packed layouts.
+    confidence: high

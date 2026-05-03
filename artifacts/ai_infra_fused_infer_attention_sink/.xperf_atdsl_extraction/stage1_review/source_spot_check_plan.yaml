@@ -1,0 +1,817 @@
+{
+  "critical_functions": [
+    {
+      "stage": "gqa.mm1",
+      "canonical_name": "FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm1",
+      "file": "op_kernel/fia_block_cube_nonquant_gqa_sink.h",
+      "line_range": {
+        "start": 958,
+        "end": 1112
+      },
+      "annotation_path": "annotations/functions/deep/0035_op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm1.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "gqa.vec1",
+      "canonical_name": "FiaBlockVecNonQuant<FIAT>::ComputeVec1",
+      "file": "op_kernel/fia_block_vec_nonquant_sink.h",
+      "line_range": {
+        "start": 973,
+        "end": 981
+      },
+      "annotation_path": "annotations/functions/deep/0126_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec1.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "gqa.mm2",
+      "canonical_name": "FiaBlockCubeNonQuantGqa<FIAT,Config>::ComputeMm2",
+      "file": "op_kernel/fia_block_cube_nonquant_gqa_sink.h",
+      "line_range": {
+        "start": 1113,
+        "end": 1240
+      },
+      "annotation_path": "annotations/functions/deep/0036_op_kernel_fia_block_cube_nonquant_gqa_sink.h__FiaBlockCubeNonQuantGqa_FIAT_Config_ComputeMm2.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "gqa.vec2.output",
+      "canonical_name": "FiaBlockVecNonQuant<FIAT>::ComputeVec2",
+      "file": "op_kernel/fia_block_vec_nonquant_sink.h",
+      "line_range": {
+        "start": 982,
+        "end": 990
+      },
+      "annotation_path": "annotations/functions/deep/0127_op_kernel_fia_block_vec_nonquant_sink.h__FiaBlockVecNonQuant_FIAT_ComputeVec2.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.mm1",
+      "canonical_name": "FiaBlockCubeNonQuantMla<FIAT>::ComputeMm1",
+      "file": "op_kernel/fia_block_cube_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 485,
+        "end": 501
+      },
+      "annotation_path": "annotations/functions/deep/0042_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm1.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.mm1.process",
+      "canonical_name": "FiaBlockCubeNonQuantMla<FIAT>::ProcessMm1",
+      "file": "op_kernel/fia_block_cube_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 522,
+        "end": 850
+      },
+      "annotation_path": "annotations/functions/deep/0044_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm1.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.vec1",
+      "canonical_name": "FiaBlockVecNonQuantMla<FIAT>::ProcessVec1L",
+      "file": "op_kernel/fia_block_vec_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 775,
+        "end": 867
+      },
+      "annotation_path": "annotations/functions/deep/0082_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec1L.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.nupdate.compute",
+      "canonical_name": "FiaBlockVecNonQuantMla<FIAT>::AmlaVecCompute",
+      "file": "op_kernel/fia_block_vec_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 470,
+        "end": 561
+      },
+      "annotation_path": "annotations/functions/deep/0077_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_AmlaVecCompute.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.nupdate.apply",
+      "canonical_name": "FiaBlockVecNonQuantMla<FIAT>::ProcessAmlaNupdate",
+      "file": "op_kernel/fia_block_vec_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 657,
+        "end": 717
+      },
+      "annotation_path": "annotations/functions/deep/0079_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessAmlaNupdate.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.mm2",
+      "canonical_name": "FiaBlockCubeNonQuantMla<FIAT>::ComputeMm2",
+      "file": "op_kernel/fia_block_cube_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 502,
+        "end": 521
+      },
+      "annotation_path": "annotations/functions/deep/0043_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ComputeMm2.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.mm2.process",
+      "canonical_name": "FiaBlockCubeNonQuantMla<FIAT>::ProcessMm2",
+      "file": "op_kernel/fia_block_cube_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 851,
+        "end": 1077
+      },
+      "annotation_path": "annotations/functions/deep/0045_op_kernel_fia_block_cube_nonquant_mla_sink.h__FiaBlockCubeNonQuantMla_FIAT_ProcessMm2.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "mla.vec2.output",
+      "canonical_name": "FiaBlockVecNonQuantMla<FIAT>::ProcessVec2L",
+      "file": "op_kernel/fia_block_vec_nonquant_mla_sink.h",
+      "line_range": {
+        "start": 921,
+        "end": 943
+      },
+      "annotation_path": "annotations/functions/deep/0084_op_kernel_fia_block_vec_nonquant_mla_sink.h__FiaBlockVecNonQuantMla_FIAT_ProcessVec2L.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "flash_decode.merge",
+      "canonical_name": "FiaBlockVecFlashDecode<FIAT>::FlashDecode",
+      "file": "op_kernel/fia_block_vec_flashdecode_sink.h",
+      "line_range": {
+        "start": 433,
+        "end": 556
+      },
+      "annotation_path": "annotations/functions/deep/0070_op_kernel_fia_block_vec_flashdecode_sink.h__FiaBlockVecFlashDecode_FIAT_FlashDecode.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    },
+    {
+      "stage": "generic.mm2",
+      "canonical_name": "FiaBlockCubeNonQuant<FIAT>::ComputeMm2",
+      "file": "op_kernel/fia_block_cube_nonquant_sink.h",
+      "line_range": {
+        "start": 835,
+        "end": 878
+      },
+      "annotation_path": "annotations/functions/deep/0054_op_kernel_fia_block_cube_nonquant_sink.h__FiaBlockCubeNonQuant_FIAT_ComputeMm2.yaml",
+      "checks": [
+        "Verify function identity and template specialization.",
+        "Verify pipeline stage behavior against source lines.",
+        "Verify cited evidence supports DSL fields and constraints."
+      ]
+    }
+  ],
+  "optimization_cards": [
+    {
+      "id": "OC-RUNINFO-THREE-STAGE-RING",
+      "evidence": [
+        {
+          "id": "SE-RUNINFO-THREE-STAGE-RING-NONQUANT",
+          "role": "Nonquant/GQA ExecuteTask overlap pattern."
+        },
+        {
+          "id": "SE-RUNINFO-THREE-STAGE-RING-MLA",
+          "role": "MLA ExecuteTask overlap pattern."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-SPLIT-CORE-BALANCING",
+      "evidence": [
+        {
+          "id": "SE-COMMON-SPLIT-CORE-CPP",
+          "role": "Common split-core implementation."
+        },
+        {
+          "id": "SE-COMMON-SPLIT-CORE-H",
+          "role": "Common split-core structs and tolerance constants."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-SPARSE-SINK-S2-RANGE",
+      "evidence": [
+        {
+          "id": "SE-COMMON-SPLIT-CORE-CPP",
+          "role": "S2 range, BAND, sink, and key-sink behavior."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-FD-METADATA-MERGE-BEHAVIOR",
+      "evidence": [
+        {
+          "id": "SE-COMMON-SPLIT-CORE-CPP",
+          "role": "RecordFDInfo and SplitFD behavior."
+        },
+        {
+          "id": "SE-COMMON-SPLIT-CORE-H",
+          "role": "FlashDecodeResult and SplitResult fields."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE",
+      "evidence": [
+        {
+          "id": "SE-GQA-Q-L1-SNAPSHOT",
+          "role": "Q snapshot initialization, reuse check, and buffer cycling inside GQA ComputeMm1."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-GQA-MM1-KP-L1-DOUBLE-BUFFER-PINGPONG",
+      "evidence": [
+        {
+          "id": "SE-GQA-KP-L1-PINGPONG",
+          "role": "K-tile buffer cycling and MTE2-MTE1 overlap in GQA ComputeMm1."
+        },
+        {
+          "id": "SE-GQA-KP-L1-EVENT-CYCLE",
+          "role": "KP_EVENT0 SetFlag/WaitFlag around CopyKToL1 and MMAD consumption."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-GM-COPY-LOWERING",
+      "evidence": [
+        {
+          "id": "SE-COMMON-MEMORY-COPY-H",
+          "role": "Common GM format, offset, and copy helper definitions."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-MM1-VEC1-SOFTMAX-PIPELINE-BRIDGE",
+      "evidence": [
+        {
+          "id": "SE-MM1-VEC1-BRIDGE-PIPELINE",
+          "role": "DealBmm1ResBaseBlock full pipeline from mm1ResGm read to vec1ResGm write."
+        },
+        {
+          "id": "SE-MM1-VEC1-SINK-SKIP",
+          "role": "Sink skip path that copies softmax state and zeros output."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-MM1-SPARSE-SKIP-L1-EVENT-DEADLOCK-GUARD",
+      "evidence": [
+        {
+          "id": "SE-MM1-SPARSE-SKIP-SETFLAG",
+          "role": "SetFlag on KP_EVENT0 before continue in sparse skip branch."
+        },
+        {
+          "id": "SE-MM1-SPARSE-SKIP-ISCAL",
+          "role": "Two-level IsSkipCal calls inside ComputeMm1."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-MM1-OUTPUT-FIXPIPE-ATOMIC-ADD-ACCUMULATION",
+      "evidence": [
+        {
+          "id": "SE-MM1-OUTPUT-ATOMIC-ADD",
+          "role": "SetAtomicAdd conditional on kStart in DealMm1SingleMKN."
+        },
+        {
+          "id": "SE-MM1-K-SPLIT-FIXPIPE",
+          "role": "FixpipeCToGM with dstStride alignment across K-split chunks."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-VEC1-ONLINE-SOFTMAX-FLASHV2",
+      "evidence": [
+        {
+          "id": "SE-VEC1-SOFTMAX-FLASHV2",
+          "role": "SoftmaxFlashV2Compute online update logic and preload slot indexing."
+        },
+        {
+          "id": "SE-VEC1-SOFTMAX-FIRST-LOOP",
+          "role": "isFirstSInnerLoop branch and default state initialization."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-SOFTMAX-TILING-BRC",
+      "evidence": [
+        {
+          "id": "SE-SOFTMAX-TILING-FUNC",
+          "role": "SoftMaxFlashV2TilingFunc call with srcShape and buffer size."
+        },
+        {
+          "id": "SE-SOFTMAX-BRC-CONFIG",
+          "role": "Template dispatch between FIA_SOFTMAX_FLASHV2_CFG and _WITHOUT_BRC."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-MLA-NUPDATE-SIDECHANNEL",
+      "evidence": [
+        {
+          "id": "SE-MLA-NUPDATE-ATOMIC-TARGET",
+          "role": "Atomic-add path and 128-lane broadcast contract."
+        },
+        {
+          "id": "SE-MLA-SOFTMAX-SUM-GEN",
+          "role": "Last-loop generation of the aMlaSum normalization state."
+        },
+        {
+          "id": "SE-MLA-AMLASUM-UB-ONLY",
+          "role": "aMlaSum is retained in local UB state rather than a dedicated GM tail binding."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-MLA-MM2-NUPDATE-BARRIER",
+      "evidence": [
+        {
+          "id": "SE-MLA-NUPDATE-BARRIER",
+          "role": "MM2 wait condition before the first fixpipe."
+        },
+        {
+          "id": "SE-MLA-NUPDATE-ATOMIC-TARGET",
+          "role": "Vec1-side atomic add target and row-group broadcast behavior."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-VECTOR-INVALID-ROW-HANDLING",
+      "evidence": [
+        {
+          "id": "SE-COMMON-VECTOR-COMMON-H",
+          "role": "Safe active-token, invalid-row, and repeat-stride helper definitions."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-VEC1-SINK-SKIP-AND-INVALID-ROW",
+      "evidence": [
+        {
+          "id": "SE-VEC1-SINK-SKIP-STATE",
+          "role": "Sink skip path copying softmax state and zeroing output."
+        },
+        {
+          "id": "SE-VEC1-SINK-VALUE-MIN",
+          "role": "Vec1SinkSoftmaxProc minValue injection for invalid sink rows."
+        },
+        {
+          "id": "SE-VEC1-INVALID-ROW-ZERO",
+          "role": "DealInvalidMaskRows zeroing in Vec2 using negativeIntScalar."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-VEC1-M-PARTITION-SPLIT",
+      "evidence": [
+        {
+          "id": "SE-VEC1-M-PARTITION-FORMULA",
+          "role": "SetMSplitInfo vecDealM computation and blockIdx parity logic."
+        },
+        {
+          "id": "SE-VEC1-NBUFFER-VEC-DEAL",
+          "role": "nBufferDealM to vecDealM split in GQA and MLA paths."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-LSE-GENERATE-AND-EXPORT",
+      "evidence": [
+        {
+          "id": "SE-LSE-COMPUTE-SOFTMAX",
+          "role": "ComputeSoftMaxLse on final softmaxSumUb/maxUb."
+        },
+        {
+          "id": "SE-LSE-ADJUST-INVALID",
+          "role": "AdjustSoftMaxRes replacing invalid rows with 3e+99."
+        },
+        {
+          "id": "SE-LSE-EXPORT-LAYOUT",
+          "role": "Layout-aware export via DataCopySoftmaxLse* helpers."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-GQA-MM2-L1-V-REUSE",
+      "evidence": [
+        {
+          "id": "SE-GQA-V-L1-RELEASE",
+          "role": "V snapshot reuse and release condition inside GQA ComputeMm2."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-BUFFER-POLICY-SELECTION",
+      "evidence": [
+        {
+          "id": "SE-COMMON-BUFFER-H",
+          "role": "BufferType mappings, hard-event pairs, sync modes, and cross-core event ID behavior."
+        },
+        {
+          "id": "SE-COMMON-BUFFERS-POLICY-H",
+          "role": "Buffer policy allocation counts, Init/Uninit ownership, traversal, reuse, and free-cursor behavior."
+        },
+        {
+          "id": "SE-COMMON-MATMUL-H",
+          "role": "Matmul usage of common buffer policy and unitFlag behavior."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-LSE-EXPORT-LAYOUT-CONTRACT",
+      "evidence": [
+        {
+          "id": "SE-LSE-EXPORT-TND",
+          "role": "TND path with prefixBS1 and DataCopySoftmaxLseTND."
+        },
+        {
+          "id": "SE-LSE-EXPORT-BSND",
+          "role": "BSND/BSH path with flat batch/head/seq offset."
+        },
+        {
+          "id": "SE-LSE-EXPORT-BNSD",
+          "role": "BNSD path with DataCopySoftmaxLseBNSD dispatch."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-FD-STABLE-MERGE",
+      "evidence": [
+        {
+          "id": "SE-FD-MERGE-WEIGHT-FORMULA",
+          "role": "Stable merge formula over lseMax/lseSum and accumOut."
+        },
+        {
+          "id": "SE-FD-METADATA-PARTITION",
+          "role": "Construction of fdParams from metadata arrays."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-FD-METADATA-BRIDGE",
+      "evidence": [
+        {
+          "id": "SE-SPLIT-CORE-INPUT-PARAMS",
+          "role": "Host split-core input package."
+        },
+        {
+          "id": "SE-SPLIT-CORE-OUTPUT-BRIDGE",
+          "role": "Host fdRes bridge into tilingData."
+        },
+        {
+          "id": "SE-FD-METADATA-PARTITION",
+          "role": "Generic kernel consumer reconstruction."
+        },
+        {
+          "id": "SE-FD-METADATA-PARTITION-MLA",
+          "role": "MLA kernel consumer reconstruction."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-WORKSPACE-NORMAL-RING",
+      "evidence": [
+        {
+          "id": "SE-WORKSPACE-NORMAL-SIZE",
+          "role": "Host-side size formula for the four-region ring."
+        },
+        {
+          "id": "SE-WORKSPACE-NORMAL-ABI",
+          "role": "Kernel-side contiguous SetGlobalBuffer order."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-WORKSPACE-FD-REGIONS",
+      "evidence": [
+        {
+          "id": "SE-WORKSPACE-FD-SIZE-NONQUANT",
+          "role": "Generic host-side FD workspace formula."
+        },
+        {
+          "id": "SE-WORKSPACE-FD-SIZE-MLA",
+          "role": "MLA host-side FD workspace formula."
+        },
+        {
+          "id": "SE-FD-WORKSPACE-OFFSETS",
+          "role": "Kernel-side split-LSE offset contract."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB",
+      "evidence": [
+        {
+          "id": "SE-WORKSPACE-MLA-ABI",
+          "role": "Host formula adds the nUpdate budget bytes."
+        },
+        {
+          "id": "SE-WORKSPACE-MLA-INIT-ORDER",
+          "role": "Kernel InitWorkspace does not bind an extra nUpdate GM tensor before FD scratch."
+        },
+        {
+          "id": "SE-MLA-MM2-INT32-ALIAS",
+          "role": "nUpdate correction aliases normal.mm2 through mm2ResInt32Gm."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB",
+      "evidence": [
+        {
+          "id": "SE-WORKSPACE-MLA-ABI",
+          "role": "Host formula adds the softmaxSum budget bytes."
+        },
+        {
+          "id": "SE-WORKSPACE-MLA-INIT-ORDER",
+          "role": "Kernel InitWorkspace does not bind an extra softmaxSum GM tensor before FD scratch."
+        },
+        {
+          "id": "SE-MLA-AMLASUM-UB-ONLY",
+          "role": "aMlaSum state is retained in local UB storage, not a dedicated GM tail."
+        },
+        {
+          "id": "SE-MLA-SOFTMAX-SUM-GEN",
+          "role": "Vec1 generates aMlaSumUb on the last S2 loop."
+        },
+        {
+          "id": "SE-MLA-SOFTMAX-SUM-CONSUME",
+          "role": "Vec2 consumes aMlaSumUb during final normalization."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-SCALAR-RING-OFFSET-HOIST",
+      "evidence": [
+        {
+          "id": "SE-FD-TASK-OFFSET-SCALARS",
+          "role": "FD task prefix-sum and taskOffset contract."
+        },
+        {
+          "id": "SE-MLA-NUPDATE-ATOMIC-TARGET",
+          "role": "MLA nUpdate atomic base and stride contract."
+        },
+        {
+          "id": "SE-MLA-VEC2-NORMALIZE-COPY",
+          "role": "MLA Vec2 reload and FD partial-output offset contract."
+        },
+        {
+          "id": "SE-KNOB-HEADDIM-ALIGN",
+          "role": "Padded stride source for MM2 and Vec2 addressing."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-MATMUL-UNITFLAG-K-LOOP",
+      "evidence": [
+        {
+          "id": "SE-COMMON-MATMUL-UNITFLAG",
+          "role": "MMParam::unitFlag and MmadParams.unitFlag assignment."
+        },
+        {
+          "id": "SE-COMMON-MATMUL-K-LOOP",
+          "role": "K-loop iteration with isLastK conditional unitFlag."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD",
+      "evidence": [
+        {
+          "id": "SE-COMMON-VECTOR-REPEAT-STRIDE",
+          "role": "REPEATE_STRIDE_UP_BOUND and dstRepStride calculation."
+        },
+        {
+          "id": "SE-COMMON-VECTOR-PIPE-V-BARRIER",
+          "role": "PIPE_V barrier placement in RowSum, RowMax, and long-column split paths."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-BUFFER-MATRIX-2X2-POLICY",
+      "evidence": [
+        {
+          "id": "SE-COMMON-BUFFER-MATRIX-2X2",
+          "role": "Matrix2x2BufferPolicy class definition and cursor management."
+        },
+        {
+          "id": "SE-COMMON-BUFFER-PEEK-NEXT-K",
+          "role": "PeekNextK for K-dimension lookahead without allocation."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-ND2NZ-INT4-STRIDE-LIMIT-FALLBACK",
+      "evidence": [
+        {
+          "id": "SE-COMMON-ND2NZ-INT4-DIVISOR",
+          "role": "HALF_SIZE_DIVISOR adjustment in Nd2NzParams for int4b_t."
+        },
+        {
+          "id": "SE-COMMON-ND2NZ-STRIDE-LIMIT",
+          "role": "65536-element stride limit and fallback decomposition."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    },
+    {
+      "id": "OC-COMMON-FIA-TILING-SHAPE-NZ-PACKING",
+      "evidence": [
+        {
+          "id": "SE-COMMON-FIA-TILING-AXIS-MAP",
+          "role": "FIA_LAYOUT_AXIS_MAP definition for 20+ layouts."
+        },
+        {
+          "id": "SE-COMMON-FIA-TILING-D-FALLBACK",
+          "role": "GetD() three-way fallback logic."
+        }
+      ],
+      "checks": [
+        "Verify optimization preconditions.",
+        "Verify risk and constraint coverage."
+      ]
+    }
+  ],
+  "recommended_sample": {
+    "critical_functions": 10,
+    "optimization_cards": 10
+  }
+}
