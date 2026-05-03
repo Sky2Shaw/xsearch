@@ -116,3 +116,28 @@ source_cards: []
   "next_actions": []
 }
 ```
+
+## Extended quality_gate.json (v0.3)
+
+The semantic verifier extends `quality_gate.json` with these additional fields:
+
+```json
+{
+  "semantic_issues": [
+    {
+      "severity": "error|warning",
+      "category": "evidence|schema|knob|validator|lowering|shadow",
+      "message": "human-readable description",
+      "remediation": "suggested fix"
+    }
+  ],
+  "coverage": {
+    "shadow_dsl": {
+      "variant_name": {"covered": 8, "total": 12, "pct": 66.7}
+    }
+  },
+  "next_actions": ["ordered list of fixes"]
+}
+```
+
+All new fields are optional for backward compatibility. Consumers that only read `overall_status` and `scores` continue to work unchanged.

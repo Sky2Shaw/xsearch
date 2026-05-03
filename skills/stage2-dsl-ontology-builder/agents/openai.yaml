@@ -5,3 +5,20 @@ inputs:
   - stage1_outputs
 outputs:
   - stage2_outputs
+  - stage2_outputs/.evidence_graph.json
+agent_roles:
+  - name: Parser Agent
+    tool: scripts/stage2_parser.py
+    input: stage1_outputs
+    output: .evidence_graph.json
+    purpose: Parse structured Stage 1 YAML into typed EvidenceGraph
+  - name: Synthesizer Agent
+    tool: scripts/stage2_synthesizer.py
+    input: .evidence_graph.json
+    output: stage2_outputs/*
+    purpose: Generate ontology, schema, validators, lowering, and shadow DSL
+  - name: Verifier Agent
+    tool: scripts/stage2_verifier.py
+    input: .evidence_graph.json + stage2_outputs
+    output: review/quality_gate.json
+    purpose: Semantic quality gate with evidence connectivity and coverage checks
