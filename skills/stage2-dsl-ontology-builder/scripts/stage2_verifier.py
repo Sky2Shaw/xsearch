@@ -283,6 +283,170 @@ def _check_shadow_dsl_coverage(stage2_dir: Path, graph: EvidenceGraph) -> tuple[
     return max(0, round(score)), issues, coverage
 
 
+def _load_all_schema_fields(stage2_dir: Path) -> list[dict[str, Any]]:
+    fields = []
+    schema_dir = stage2_dir / "schema" / "modules"
+    if not schema_dir.exists():
+        return fields
+    for schema_file in schema_dir.glob("*.yaml"):
+        data = _load_yaml_file(schema_file)
+        if not isinstance(data, dict):
+            continue
+        for module_name, module_fields in data.items():
+            if not isinstance(module_fields, dict):
+                continue
+            for field_name, spec in module_fields.items():
+                if isinstance(spec, dict):
+                    fields.append({
+                        "module": module_name,
+                        "name": field_name,
+                        "path": f"{module_name}.{field_name}",
+                        "spec": spec,
+                    })
+    return fields
+
+
+def _agent_issue(severity: str, category: str, message: str, remediation: str) -> dict[str, str]:
+    return {
+        "severity": severity,
+        "category": category,
+        "message": message,
+        "remediation": remediation,
+    }
+
+
+def _required_tuning_record_names(stage2_dir: Path) -> set[str]:
+    path = stage2_dir / "search" / "tuning_record.schema.yaml"
+    data = _load_yaml_file(path)
+    if not isinstance(data, dict):
+        return set()
+    return {item.get("name", "") for item in data.get("fields", []) if isinstance(item, dict)}
+
+
+def _has_finite_domain(data: dict[str, Any]) -> bool:
+    if data.get("candidates") or data.get("enum"):
+        return True
+    domain_range = data.get("range")
+    return isinstance(domain_range, dict) and "minimum" in domain_range and "maximum" in domain_range
+
+
+def _check_agent_readiness(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
+    scores = {
+        "ir_layer_mapping": 20,
+        "schedule_space_quality": 25,
+        "hardware_contract_coverage": 20,
+        "feedback_contract_completeness": 20,
+        "replayability": 15,
+    }
+    issues: list[dict[str, str]] = []
+    hard_failures: list[str] = []
+
+    fields = _load_all_schema_fields(stage2_dir)
+    schedule_data = _load_yaml_file(stage2_dir / "search" / "schedule_space.yaml") or {}
+    hardware_data = _load_yaml_file(stage2_dir / "ir" / "hardware_contract.yaml") or {}
+    feedback_data = _load_yaml_file(stage2_dir / "ir" / "execution_feedback.yaml") or {}
+
+    schedule_points = schedule_data.get("schedule_points", []) if isinstance(schedule_data, dict) else []
+    schedule_fields = {item.get("field") for item in schedule_points if isinstance(item, dict)}
+    capability_names = {
+        item.get("name")
+        for item in hardware_data.get("capabilities", [])
+        if isinstance(item, dict)
+    } if isinstance(hardware_data, dict) else set()
+    metrics = {
+        item.get("name")
+        for item in feedback_data.get("metrics", [])
+        if isinstance(item, dict)
+    } if isinstance(feedback_data, dict) else set()
+
+    for field in fields:
+        spec = field["spec"]
+        if "ir_layer" not in spec or spec.get("ir_layer") == "needs_review":
+            scores["ir_layer_mapping"] -= 3
+            issues.append(_agent_issue(
+                "warning", "ir",
+                f"Field {field['path']} has no resolved IR layer",
+                "Add an ir_layer mapping rule or mark the source field for review",
+            ))
+
+        if spec.get("searchable") and field["path"] not in schedule_fields:
+            scores["schedule_space_quality"] -= 5
+            message = f"Searchable field {field['path']} is missing from schedule_space"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Add the field to search/schedule_space.yaml"))
+
+        if spec.get("searchable") and not _has_finite_domain(spec):
+            scores["schedule_space_quality"] -= 5
+            message = f"Searchable field {field['path']} has no range, candidates, or enum"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Map the source knob domain into the schema field"))
+
+        if spec.get("ir_layer") == "hardware" and not capability_names:
+            scores["hardware_contract_coverage"] -= 5
+            message = f"Hardware field {field['path']} has no hardware contract"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "hardware", message, "Add a hardware capability entry"))
+
+        lowered_path = field["path"].lower()
+        if spec.get("searchable") and ("softmax" in lowered_path or "lse" in lowered_path or "formula" in lowered_path):
+            scores["schedule_space_quality"] -= 8
+            message = f"Unsafe formula field {field['path']} is searchable"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Mark formula fields fixed"))
+
+    for item in schedule_points:
+        if not isinstance(item, dict):
+            continue
+        if not item.get("guard_validators"):
+            scores["schedule_space_quality"] -= 5
+            message = f"Schedule point has no validator guard: {item.get('id', item.get('field', 'unknown'))}"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Attach at least one constraint, risk, or mandatory validator"))
+        if item.get("searchable") and not _has_finite_domain(item):
+            scores["schedule_space_quality"] -= 4
+            message = f"Searchable schedule point has no domain: {item.get('id', item.get('field', 'unknown'))}"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Add range, candidates, or enum"))
+
+    if not capability_names:
+        scores["hardware_contract_coverage"] = 0
+        hard_failures.append("Hardware contract has no capabilities")
+        issues.append(_agent_issue("error", "hardware", "Hardware contract has no capabilities", "Generate ir/hardware_contract.yaml capabilities"))
+
+    if not metrics:
+        scores["feedback_contract_completeness"] = 0
+        hard_failures.append("Execution feedback has no metrics")
+        issues.append(_agent_issue("error", "feedback", "Execution feedback has no metrics", "Generate metrics in ir/execution_feedback.yaml"))
+
+    required_record_fields = {
+        "environment_fingerprint",
+        "shape_signature",
+        "dsl_version",
+        "schedule_trace",
+        "validator_results",
+        "compile_result",
+        "measurement_result",
+        "failure_metadata",
+    }
+    missing_record_fields = required_record_fields - _required_tuning_record_names(stage2_dir)
+    if missing_record_fields:
+        scores["replayability"] -= min(15, len(missing_record_fields) * 3)
+        message = f"Tuning record schema missing fields: {', '.join(sorted(missing_record_fields))}"
+        hard_failures.append(message)
+        issues.append(_agent_issue("error", "replay", message, "Add required replay fields to search/tuning_record.schema.yaml"))
+
+    normalized_scores = {key: max(0, value) for key, value in scores.items()}
+    total = sum(normalized_scores.values())
+    status = "fail" if hard_failures else "pass" if total >= 85 else "warn" if total >= 70 else "fail"
+    return {
+        "status": status,
+        "score": total,
+        "scores": normalized_scores,
+        "hard_failures": hard_failures,
+        "issues": issues,
+    }
+
+
 def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
     scores = {}
     all_issues = []
@@ -305,9 +469,11 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
     scores["shadow_dsl_coverage"], issues, coverage = _check_shadow_dsl_coverage(stage2_dir, graph)
     all_issues.extend(issues)
 
+    agent_readiness = _check_agent_readiness(graph, stage2_dir)
+
     total = sum(scores.values())
     hard_failures = [i for i in all_issues if i["severity"] == "error"]
-    status = "pass" if total >= 85 and not hard_failures else "warn" if total >= 70 else "fail"
+    status = "pass" if total >= 85 and not hard_failures and agent_readiness["status"] != "fail" else "warn" if total >= 70 and not agent_readiness["hard_failures"] else "fail"
 
     result = {
         "overall_status": status,
@@ -316,6 +482,7 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
         "hard_failures": [i["message"] for i in hard_failures],
         "semantic_issues": all_issues,
         "coverage": {"shadow_dsl": coverage},
+        "agent_readiness": agent_readiness,
         "next_actions": list(dict.fromkeys(
             i.get("remediation", f"Fix: {i['message']}") for i in all_issues
         )),
@@ -332,6 +499,16 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
     md += ["", "## Issues", ""]
     md += [f"- [{i['severity']}] ({i['category']}) {i['message']}" for i in all_issues] or ["- No issues found."]
     (stage2_dir / "review" / "quality_gate.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+
+    readiness_md = ["# Stage 2 Agent Readiness", "", f"Status: **{agent_readiness['status']}**", f"Score: **{agent_readiness['score']}/100**", "", "## Scores", ""]
+    for key, value in agent_readiness["scores"].items():
+        readiness_md.append(f"- {key}: {value}")
+    readiness_md += ["", "## Issues", ""]
+    readiness_md += [
+        f"- [{issue['severity']}] ({issue['category']}) {issue['message']}"
+        for issue in agent_readiness["issues"]
+    ] or ["- No issues found."]
+    (stage2_dir / "review" / "agent_readiness.md").write_text("\n".join(readiness_md) + "\n", encoding="utf-8")
 
     return result
 
