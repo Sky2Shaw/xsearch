@@ -213,6 +213,10 @@ def _finite_domain_from_knob(knob: EvidenceNode | None) -> dict | None:
     return {"kind": domain.get("kind", "unspecified")}
 
 
+def _fixed_evidence_domain() -> dict[str, list[str]]:
+    return {"enum": ["fixed_from_evidence"]}
+
+
 def _agent_metadata_for_field(graph: EvidenceGraph, field_node: EvidenceNode) -> dict[str, Any]:
     ir_edges = _edges_from(graph, field_node.id, "field_maps_to_ir")
     ir_layer = "needs_review"
@@ -492,6 +496,8 @@ def _build_search_artifacts(graph: EvidenceGraph) -> dict[str, dict]:
         finite_domain = _finite_domain_from_knob(knob)
         if finite_domain is not None:
             item.update(finite_domain)
+        elif knob is None:
+            item.update(_fixed_evidence_domain())
         if field_node is not None:
             item["meaning"] = field_node.data.get("meaning", "")
         schedule_points.append(item)

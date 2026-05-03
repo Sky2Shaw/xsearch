@@ -114,6 +114,25 @@ def test_synthesizer_bounds_searchable_domains(tmp_path):
     )
 
 
+def test_synthesizer_bounds_every_schedule_space_entry(tmp_path):
+    fixtures = Path(__file__).parent / "fixtures"
+    graph = parse_stage1(fixtures)
+    output_dir = tmp_path / "stage2_outputs"
+    synthesize(graph, output_dir=output_dir)
+
+    schedule_space = yaml.safe_load((output_dir / "search" / "schedule_space.yaml").read_text())
+    for schedule_point in schedule_space["schedule_points"]:
+        has_candidates = bool(schedule_point.get("candidates"))
+        has_enum = bool(schedule_point.get("enum"))
+        range_spec = schedule_point.get("range", {})
+        has_bounded_range = (
+            isinstance(range_spec, dict)
+            and "minimum" in range_spec
+            and "maximum" in range_spec
+        )
+        assert has_candidates or has_enum or has_bounded_range, schedule_point["field"]
+
+
 def test_synthesizer_preserves_yaml_contract_types(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
