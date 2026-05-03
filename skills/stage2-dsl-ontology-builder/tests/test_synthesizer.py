@@ -84,7 +84,34 @@ def test_synthesizer_adds_agent_metadata_to_schema_fields():
     assert field["feature_sources"]
     assert field["measurement_metrics"]
     assert "schedule_trace" in field["replay_requirements"]
-    assert "range" in field
+    assert "range" in field or "candidates" in field
+
+
+def test_synthesizer_bounds_searchable_domains(tmp_path):
+    fixtures = Path(__file__).parent / "fixtures"
+    graph = parse_stage1(fixtures)
+    output_dir = tmp_path / "stage2_outputs"
+    synthesize(graph, output_dir=output_dir)
+
+    schema = yaml.safe_load(
+        (output_dir / "schema" / "modules" / "tiling.schema.yaml").read_text()
+    )
+    field = schema["tiling"]["s1_base"]
+    assert "candidates" in field or (
+        "range" in field
+        and "minimum" in field["range"]
+        and "maximum" in field["range"]
+    )
+
+    schedule_space = yaml.safe_load((output_dir / "search" / "schedule_space.yaml").read_text())
+    schedule_point = next(
+        item for item in schedule_space["schedule_points"] if item["field"] == "tiling.s1_base"
+    )
+    assert "candidates" in schedule_point or (
+        "range" in schedule_point
+        and "minimum" in schedule_point["range"]
+        and "maximum" in schedule_point["range"]
+    )
 
 
 def test_synthesizer_preserves_yaml_contract_types(tmp_path):

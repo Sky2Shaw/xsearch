@@ -190,21 +190,26 @@ def _knob_for_field(graph: EvidenceGraph, field_id: str) -> EvidenceNode | None:
     return None
 
 
-def _range_from_knob(knob: EvidenceNode | None) -> dict | None:
+def _finite_domain_from_knob(knob: EvidenceNode | None) -> dict | None:
     if knob is None:
         return None
     domain = knob.data.get("domain", {})
-    result = {}
-    if "minimum" in domain:
-        result["minimum"] = domain["minimum"]
-    if "maximum" in domain:
-        result["maximum"] = domain["maximum"]
-    if "unit" in domain:
-        result["unit"] = domain["unit"]
-    if result:
-        return result
     if "candidates" in domain:
         return {"candidates": domain["candidates"]}
+    if "minimum" in domain and "maximum" in domain:
+        range_spec = {
+            "minimum": domain["minimum"],
+            "maximum": domain["maximum"],
+        }
+        if "unit" in domain:
+            range_spec["unit"] = domain["unit"]
+        return {"range": range_spec}
+    if "minimum" in domain:
+        minimum = domain["minimum"]
+        domain_spec = {"candidates": [minimum, minimum * 2, minimum * 4, minimum * 8]}
+        if "unit" in domain:
+            domain_spec["unit"] = domain["unit"]
+        return domain_spec
     return {"kind": domain.get("kind", "unspecified")}
 
 
@@ -298,9 +303,9 @@ def _build_module_schemas(graph: EvidenceGraph, rules: dict[str, str]) -> dict[s
                 **agent_metadata,
             }
             if has_knob:
-                knob_range = _range_from_knob(knob_node)
-                if knob_range is not None:
-                    field_spec["range"] = knob_range
+                finite_domain = _finite_domain_from_knob(knob_node)
+                if finite_domain is not None:
+                    field_spec.update(finite_domain)
             schemas[mod][field_name] = field_spec
     return schemas
 
@@ -484,9 +489,9 @@ def _build_search_artifacts(graph: EvidenceGraph) -> dict[str, dict]:
             "guard_validators": sorted(edge.to_id for edge in _edges_from(graph, node.id, "schedule_point_guarded_by")),
             "forbidden_moves": ["event_wait_reorder", "online_softmax_formula_edit", "lse_formula_edit"],
         }
-        knob_range = _range_from_knob(knob)
-        if knob_range is not None:
-            item["range"] = knob_range
+        finite_domain = _finite_domain_from_knob(knob)
+        if finite_domain is not None:
+            item.update(finite_domain)
         if field_node is not None:
             item["meaning"] = field_node.data.get("meaning", "")
         schedule_points.append(item)
