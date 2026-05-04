@@ -49,6 +49,18 @@ stage2_outputs/
     field_policy.yaml
     card_to_module_matrix.md
 
+  ir/
+    semantic_ir.yaml
+    kernel_ir.yaml
+    hardware_contract.yaml
+    execution_feedback.yaml
+
+  search/
+    schedule_space.yaml
+    feature_schema.yaml
+    measurement_schema.yaml
+    tuning_record.schema.yaml
+
   schema/
     atdsl.schema.yaml
     modules/
@@ -100,6 +112,7 @@ stage2_outputs/
     coverage_matrix.md
     missing_fields.md
     quality_gate.json
+    agent_readiness.md
 ```
 
 ## Workflow
@@ -163,6 +176,12 @@ python scripts/check_stage2_quality.py --input stage2_outputs                   
 - Do not create split-KV fields without partial workspace and LSE merge validators.
 - Do not allow workspace-related fields without no-alias constraints.
 - Prefer a small, high-quality schema over a large vague schema.
+- Treat v0.4 artifacts as contracts, not executable compiler output.
+- Every searchable field must appear in `search/schedule_space.yaml` with a finite domain and validator guard.
+- Every schedule point must be guarded by a constraint, risk-derived validator, or mandatory validator.
+- Hardware-sensitive fields must link to `ir/hardware_contract.yaml`.
+- Tuning records must include environment fingerprint, shape signature, DSL version, schedule trace, validation result, compile result, measurement result, and failure metadata.
+- Do not claim benchmark results from `measurement_schema.yaml`; it describes future measurements only.
 
 ## Final response to user
 

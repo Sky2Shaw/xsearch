@@ -40,3 +40,7 @@ Fail or warn strongly if:
 - `coverage_matrix.md`: card/module/field/validator matrix.
 - `missing_fields.md`: gaps and evidence needs.
 - `quality_gate.json`: machine-readable result.
+
+## Agent readiness
+
+The verifier reports `agent_readiness` in addition to the legacy score. Hard failures include searchable fields without domains, schedule points without guards, hardware-sensitive fields without hardware contracts, unsafe searchable formula fields, and tuning records missing replay-critical fields.

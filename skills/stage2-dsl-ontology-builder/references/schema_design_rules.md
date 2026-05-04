@@ -116,3 +116,13 @@ unsafe online LSE rewrite
 - `constraints`
 - `search`
 - `lowering`
+
+## v0.4 IR-layer metadata
+
+Every generated field should declare an `ir_layer`.
+
+- `semantic`: operator meaning and fixed math.
+- `kernel`: schedulable implementation choices.
+- `hardware`: target capability or capacity assumptions.
+- `execution_feedback`: metric, feature, trace, or replay fields.
+- `needs_review`: field exists but layer inference was not reliable.

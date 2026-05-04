@@ -22,3 +22,18 @@ agent_roles:
     input: .evidence_graph.json + stage2_outputs
     output: review/quality_gate.json
     purpose: Semantic quality gate with evidence connectivity and coverage checks
+  - name: IR Contract Agent
+    tool: scripts/stage2_synthesizer.py
+    input: .evidence_graph.json
+    output: ir/*.yaml
+    purpose: Generate semantic IR, kernel IR, hardware contract, and execution feedback contracts
+  - name: Search Contract Agent
+    tool: scripts/stage2_synthesizer.py
+    input: .evidence_graph.json
+    output: search/*.yaml
+    purpose: Generate schedule space, feature schema, measurement schema, and tuning record schema
+  - name: Agent Readiness Verifier
+    tool: scripts/stage2_verifier.py
+    input: .evidence_graph.json + stage2_outputs
+    output: review/agent_readiness.md
+    purpose: Check action-space guards, hardware coverage, feedback completeness, and replayability

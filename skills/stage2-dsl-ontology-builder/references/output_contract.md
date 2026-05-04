@@ -141,3 +141,51 @@ The semantic verifier extends `quality_gate.json` with these additional fields:
 ```
 
 All new fields are optional for backward compatibility. Consumers that only read `overall_status` and `scores` continue to work unchanged.
+
+## Stage 2 v0.4 agent-ready outputs
+
+Additional directories:
+
+```text
+stage2_outputs/
+  ir/
+    semantic_ir.yaml
+    kernel_ir.yaml
+    hardware_contract.yaml
+    execution_feedback.yaml
+  search/
+    schedule_space.yaml
+    feature_schema.yaml
+    measurement_schema.yaml
+    tuning_record.schema.yaml
+```
+
+Per-field schema entries may include:
+
+```yaml
+ir_layer: semantic|kernel|hardware|execution_feedback|needs_review
+schedule_points: []
+feature_sources: []
+measurement_metrics: []
+replay_requirements: []
+```
+
+`quality_gate.json` may include:
+
+```json
+{
+  "agent_readiness": {
+    "status": "pass|warn|fail",
+    "score": 0,
+    "scores": {
+      "ir_layer_mapping": 0,
+      "schedule_space_quality": 0,
+      "hardware_contract_coverage": 0,
+      "feedback_contract_completeness": 0,
+      "replayability": 0
+    },
+    "hard_failures": [],
+    "issues": []
+  }
+}
+```
