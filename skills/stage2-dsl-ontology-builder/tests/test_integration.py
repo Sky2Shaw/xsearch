@@ -8,14 +8,14 @@ from stage2_synthesizer import synthesize
 from stage2_verifier import verify
 
 
-def test_full_pipeline_on_real_data():
+def test_full_pipeline_on_real_data(tmp_path):
     """Run full pipeline against actual Stage 1 extraction."""
     input_dir = Path("artifacts/ai_infra_fused_infer_attention_sink/.xperf_atdsl_extraction")
     if not input_dir.exists():
         import pytest
         pytest.skip("Real Stage 1 data not available")
 
-    output_dir = Path("/tmp/test_stage2_integration")
+    output_dir = tmp_path / "stage2_outputs"
     graph = parse_stage1(input_dir)
     assert len(graph.nodes) > 0
     assert len(graph.edges) > 0

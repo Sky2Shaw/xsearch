@@ -350,6 +350,30 @@ def _required_tuning_record_names(stage2_dir: Path) -> set[str]:
     return {item.get("name", "") for item in data.get("fields", []) if isinstance(item, dict)}
 
 
+def _hardware_contract_covers_field(
+    graph: EvidenceGraph,
+    field_path: str,
+    capability_items: list[dict[str, Any]],
+) -> bool:
+    field_id = f"field:{field_path}"
+    required_capability_ids = {
+        edge.to_id
+        for edge in graph.edges
+        if edge.from_id == field_id and edge.label == "field_requires_capability"
+    }
+
+    for item in capability_items:
+        if item.get("field_path") == field_path:
+            return True
+        source_fields = item.get("source_fields", [])
+        if isinstance(source_fields, list) and field_path in source_fields:
+            return True
+        if item.get("id") in required_capability_ids:
+            return True
+
+    return False
+
+
 def _has_finite_domain(data: dict[str, Any]) -> bool:
     if data.get("candidates") or data.get("enum"):
         return True
@@ -417,11 +441,15 @@ def _check_agent_readiness(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, 
 
     schedule_points = schedule_data.get("schedule_points", []) if isinstance(schedule_data, dict) else []
     schedule_fields = {item.get("field") for item in schedule_points if isinstance(item, dict)}
-    capability_names = {
-        item.get("name")
+    capability_items = [
+        item
         for item in hardware_data.get("capabilities", [])
         if isinstance(item, dict)
-    } if isinstance(hardware_data, dict) else set()
+    ] if isinstance(hardware_data, dict) else []
+    capability_names = {
+        item.get("name")
+        for item in capability_items
+    }
     metrics = {
         item.get("name")
         for item in feedback_data.get("metrics", [])
@@ -450,11 +478,11 @@ def _check_agent_readiness(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, 
             hard_failures.append(message)
             issues.append(_agent_issue("error", "schedule", message, "Map the source knob domain into the schema field"))
 
-        if spec.get("ir_layer") == "hardware" and not capability_names:
+        if spec.get("ir_layer") == "hardware" and not _hardware_contract_covers_field(graph, field["path"], capability_items):
             scores["hardware_contract_coverage"] -= 5
-            message = f"Hardware field {field['path']} has no hardware contract"
+            message = f"Hardware field {field['path']} has no linked hardware contract"
             hard_failures.append(message)
-            issues.append(_agent_issue("error", "hardware", message, "Add a hardware capability entry"))
+            issues.append(_agent_issue("error", "hardware", message, "Add a hardware capability entry linked by source_fields or field_requires_capability"))
 
         lowered_path = field["path"].lower()
         if spec.get("searchable") and ("softmax" in lowered_path or "lse" in lowered_path or "formula" in lowered_path):

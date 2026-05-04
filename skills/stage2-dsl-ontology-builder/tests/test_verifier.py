@@ -10,19 +10,19 @@ from stage2_synthesizer import synthesize
 from stage2_verifier import verify
 
 
-def test_verifier_runs():
+def test_verifier_runs(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
     result = verify(graph, output_dir)
     assert "overall_status" in result
 
 
-def test_verifier_score_range():
+def test_verifier_score_range(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_2")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
     result = verify(graph, output_dir)
     assert 0 <= result["total_score"] <= 100
@@ -30,10 +30,10 @@ def test_verifier_score_range():
     assert "semantic_issues" in result
 
 
-def test_verifier_mandatory_validators():
+def test_verifier_mandatory_validators(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_3")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
     result = verify(graph, output_dir)
 
@@ -46,10 +46,10 @@ def test_verifier_mandatory_validators():
         assert result["overall_status"] == "warn"
 
 
-def test_verifier_reports_agent_readiness():
+def test_verifier_reports_agent_readiness(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_v04")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
     result = verify(graph, output_dir)
 
@@ -61,10 +61,10 @@ def test_verifier_reports_agent_readiness():
     assert (output_dir / "review" / "agent_readiness.md").exists()
 
 
-def test_verifier_fails_schedule_point_without_guard():
+def test_verifier_fails_schedule_point_without_guard(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_v04_bad_schedule")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
 
     schedule_path = output_dir / "search" / "schedule_space.yaml"
@@ -78,10 +78,10 @@ def test_verifier_fails_schedule_point_without_guard():
     assert result["overall_status"] == "fail"
 
 
-def test_verifier_fails_when_legacy_hard_failures_exist():
+def test_verifier_fails_when_legacy_hard_failures_exist(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_v04_legacy_hard_failure")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
     (output_dir / "validators_spec" / "ub_capacity.yaml").unlink()
 
@@ -91,10 +91,10 @@ def test_verifier_fails_when_legacy_hard_failures_exist():
     assert result["overall_status"] == "fail"
 
 
-def test_verifier_accepts_bounded_searchable_domains():
+def test_verifier_accepts_bounded_searchable_domains(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_v04_finite_domains")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
 
     result = verify(graph, output_dir)
@@ -105,10 +105,10 @@ def test_verifier_accepts_bounded_searchable_domains():
     assert not any("Searchable field tiling.s1_base has no range, candidates, or enum" in msg for msg in readiness_messages)
 
 
-def test_verifier_rejects_open_ended_searchable_schema_domain():
+def test_verifier_rejects_open_ended_searchable_schema_domain(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_v04_open_domain")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
 
     schema_path = output_dir / "schema" / "modules" / "tiling.schema.yaml"
@@ -123,10 +123,10 @@ def test_verifier_rejects_open_ended_searchable_schema_domain():
     assert "Searchable field tiling.s1_base has no finite candidates/range/enum" in messages
 
 
-def test_verifier_rejects_schema_domain_that_does_not_map_to_source_knob():
+def test_verifier_rejects_schema_domain_that_does_not_map_to_source_knob(tmp_path):
     fixtures = Path(__file__).parent / "fixtures"
     graph = parse_stage1(fixtures)
-    output_dir = Path("/tmp/test_stage2_verify_v04_bad_knob_mapping")
+    output_dir = tmp_path / "stage2_outputs"
     synthesize(graph, output_dir=output_dir)
 
     schema_path = output_dir / "schema" / "modules" / "tiling.schema.yaml"
@@ -138,3 +138,24 @@ def test_verifier_rejects_schema_domain_that_does_not_map_to_source_knob():
 
     messages = [issue["message"] for issue in result["semantic_issues"]]
     assert "Knob s1_base domain is not mapped to searchable field tiling.s1_base" in messages
+
+
+def test_verifier_rejects_unlinked_hardware_contract(tmp_path):
+    fixtures = Path(__file__).parent / "fixtures"
+    graph = parse_stage1(fixtures)
+    output_dir = tmp_path / "stage2_outputs"
+    synthesize(graph, output_dir=output_dir)
+
+    hardware_path = output_dir / "ir" / "hardware_contract.yaml"
+    hardware = yaml.safe_load(hardware_path.read_text())
+    hardware["capabilities"] = [{
+        "id": "capability:unrelated",
+        "name": "unrelated",
+        "source_fields": ["target.unrelated"],
+    }]
+    hardware_path.write_text(yaml.safe_dump(hardware, sort_keys=False), encoding="utf-8")
+
+    result = verify(graph, output_dir)
+
+    assert "Hardware field target.ub_capacity_bytes has no linked hardware contract" in result["hard_failures"]
+    assert result["overall_status"] == "fail"
