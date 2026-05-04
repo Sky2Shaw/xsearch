@@ -1,40 +1,50 @@
-summary:
-  major_kernel_structure_missing: false
-  primary_gap_type: "minor_followups"
-  note: "The required FA/FlashDecode structures are present and all optimization-card evidence IDs now resolve to first-class source evidence records."
+missing_patterns: []
+notes:
+  - All 15 required structures from the FA/FlashDecode coverage matrix are present.
+  - The eight Stage-1 schema gaps in dsl/schema_gaps.yaml are not "missing patterns" — each carries a temporary_schema_stub.status of ready_for_ingestion that Stage-2 will consume.
+  - The internal split-core planner (split_core.h) is correctly marked as external scope; this is not a missing pattern but a deliberate extraction-boundary decision documented in dsl/split_core_range_contract.yaml.
 
-missing_or_weak_patterns:
-  - id: "MP-003-TEMPLATE-IDENTITY-SOURCE-LINK"
-    category: "constraints"
-    severity: "minor"
-    description: "C-TEMPLATE-IDENTITY is a valid DSL constraint but currently points only at reports/function_index.yaml and lacks source_evidence_ids."
-    required_fix: "Attach function-index evidence as a first-class source evidence record or add source examples showing same-name functions with distinct owners/templates."
-
-  - id: "MP-004-RISK-TO-FORBIDDEN-TRANSFORM-COVERAGE"
-    category: "risks"
-    severity: "minor"
-    description: "Shape/layout risks are present but not tied to explicit forbidden transforms."
-    required_fix: "Add forbidden transforms for independent shape/layout drift and common shape-validation omission."
-
-  - id: "MP-005-INDEX-ONLY-HELPERS"
-    category: "function_annotations"
-    severity: "minor"
-    description: "134 of 616 indexed functions have deep annotations. Critical-path coverage is strong, but index-only helpers are not full behavioral specs."
-    required_fix: "Treat index-only helper records as inventory unless Stage-2 needs their behavior."
-
-coverage_status:
-  interface_tiling_workspace: "covered"
-  shape_layout_varlen: "covered"
-  multicore_mapping_split_ranges: "covered"
-  s1_s2_kv_loops: "covered"
-  bmm_vec_pipeline: "covered"
-  ub_l1_l0_buffers: "covered"
-  l1_residency_partitioning: "covered"
-  sparse_mask_policy: "covered"
-  online_softmax_lse: "covered"
-  workspace_offsets: "covered"
-  tail_alignment: "covered"
-  event_wait_flag_sync: "covered"
-  scalar_offsets_hoist: "covered"
-  split_kv_lse_merge: "covered"
-  knobs_constraints_forbidden: "covered_with_minor_gaps"
+stage1_known_partial_items:
+  - id: P-MLA-NUPDATE-CONTRACT-MEDIUM-CONFIDENCE
+    severity: low
+    dimension: accuracy
+    type: confidence_audit
+    target_files:
+      - op_kernel/fia_block_vec_nonquant_mla_sink.h
+      - op_host/fia_tiling_nonquant_mla_sink.cpp
+    target_symbols:
+      - ProcessAmlaNupdate
+      - InitWorkspace
+      - CalcNormalWorkspaceSize
+    required_artifacts:
+      - cards/optimization_cards.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+    required_evidence:
+      - Negative confirmation that no kernel SetGlobalBuffer exists for nupdate or softmax_sum tails
+      - Positive confirmation of mm2ResInt32Gm alias and aMlaSumUb local-UB lifecycle
+    operator_info_needed: none — Stage-2 should add a regression test that detects any new SetGlobalBuffer for mla.nupdate or mla.softmax_sum
+    acceptance_checks:
+      - Stage-2 emits a guardrail validator that fails if a future kernel binds either tail as a standalone GM tensor without an explicit re-evaluation of OC-WORKSPACE-MLA-* cards
+    evidence_class: supported_by_artifacts_only_with_high_confidence_negative_test
+  - id: P-HW-MICRO-APPLICABILITY-UNDER-SPECIFIED
+    severity: low
+    dimension: coverage
+    type: applicability_band_tightening
+    target_files:
+      - op_kernel/fia_block_cube_nonquant_gqa_sink.h
+      - op_kernel/fia_block_cube_nonquant_mla_sink.h
+      - op_kernel/fia_block_vec_nonquant_sink.h
+    target_symbols:
+      - mmadParams.unitFlag dispatch
+      - vector repeat-stride threshold check
+      - ND2NZ int4 stride-limit fallback
+    required_artifacts:
+      - cards/optimization_cards.yaml::OC-COMMON-MATMUL-UNITFLAG-K-LOOP
+      - cards/optimization_cards.yaml::OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD
+      - cards/optimization_cards.yaml::OC-COMMON-ND2NZ-INT4-STRIDE-LIMIT-FALLBACK
+    required_evidence:
+      - Tabulated dtype × tile_size × layout combinations that select each branch
+    operator_info_needed: none — Stage-2 may lower as policy-table fields and ingest existing constraints
+    acceptance_checks:
+      - Stage-2 schema represents these as policy tables rather than scalars
+    evidence_class: supported_by_artifacts_only

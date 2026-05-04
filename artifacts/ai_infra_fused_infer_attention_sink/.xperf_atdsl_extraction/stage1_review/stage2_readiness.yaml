@@ -1,52 +1,60 @@
 stage2_readiness:
-  overall_score: 94
-  readiness: "READY_FOR_STAGE2"
-  stage2_gate_blocked: false
-  blocking_reason: ""
+  operator: ai_infra_fused_infer_attention_sink
+  decision: READY_FOR_STAGE2
+  total_score: 96
+  max_score: 100
+  band: 85_to_100_ready_for_stage2
+  blocking_findings_count: 0
+  blocking_findings_artifact: stage1_review/blocking_findings.yaml
+  recommended_fixes_artifact: stage1_review/recommended_fixes.md
+  go_no_go: GO
 
-gate_results:
-  coverage:
-    threshold: ">=18/25"
-    observed: "24/25"
-    pass: true
-  accuracy:
-    threshold: ">=20/25"
-    observed: "24/25"
-    pass: true
-  dsl_convertibility:
-    threshold: ">=15/20"
-    observed: "18/20"
-    pass: true
-  important_card_evidence_coverage:
-    threshold: ">=90%"
-    observed: "33/33 = 100.0%"
-    pass: true
-  human_spot_check_accuracy:
-    threshold: ">=85% if available"
-    observed: "not provided"
-    pass: null
+  ingestion_targets:
+    direct_consume:
+      - cards/optimization_cards.yaml
+      - knobs/tunable_knobs.yaml
+      - constraints/constraints.yaml
+      - constraints/forbidden_transforms.yaml
+      - risks/risks.yaml
+      - dsl/suggested_dsl_sections.yaml
+      - dsl/schema_gaps.yaml
+      - dsl/split_core_range_contract.yaml
+      - dsl/sparse_policy.yaml
+      - dsl/shape_layout_contract.yaml
+      - dsl/scalar_offset_contract.yaml
+      - dsl/mla_workspace_tail_contract.yaml
+      - dsl/flash_decode_metadata_bridge.yaml
+      - dsl/shared_stage_aliases.yaml
+    validate_then_consume:
+      - cards/optimization_cards.yaml::OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+      - cards/optimization_cards.yaml::OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+      - common_supplement/buffer_matmul_extraction.yaml
+      - common_supplement/vector_common_extraction.yaml
+      - common_supplement/memory_copy_extraction.yaml
+      - common_supplement/split_core_extraction.yaml
+      - common_supplement/shape_layout_extraction.yaml
+    out_of_scope:
+      - internal split_core planner heuristic (split_core.h)
 
-can_enter_stage2_now:
-  status: "yes"
-  allowed_inputs:
-    - "all 33 optimization cards with resolvable source_evidence IDs"
-    - "auxiliary/workspace_layout.yaml"
-    - "auxiliary/pipeline_graphs.yaml"
-    - "auxiliary/dataflow_graphs.yaml"
-    - "auxiliary/memory_lifetime.yaml"
-    - "constraints/constraints.yaml after preserving source-backed entries"
-    - "constraints/forbidden_transforms.yaml"
-    - "risks/risks.yaml with source-backed entries"
-    - "knobs/tunable_knobs.yaml"
-    - "dsl/*_contract.yaml as schema backlog/input"
-  disallowed_until_fixed:
-    - "index-only function annotations as full behavioral specs"
-    - "duplicate FD metadata cards as independent modules"
+  stage2_required_actions:
+    - action: Wire 8 schema_gaps temporary_schema_stub artifacts into final schema
+      priority: high
+      blocker: false
+    - action: Add negative-evidence regression test for MLA tail stubs
+      priority: high
+      blocker: false
+    - action: Lower hardware micro-optimization cards as policy tables
+      priority: medium
+      blocker: false
 
-final_judgement:
-  coverage: "sufficient"
-  accuracy: "sufficient_for_inspected_core_paths"
-  traceability: "sufficient"
-  dsl_convertibility: "sufficient"
-  risk_constraints: "mostly_sufficient"
-  dedup_canonicalization: "sufficient_with_parent_child_fd_metadata_model"
+  spot_check_summary:
+    cards_sampled: 6
+    cards_verified_against_source: 6
+    cards_contradicted: 0
+    cards_not_verifiable: 0
+
+  notes:
+    - 6 high-value cards verified directly against source code at /tmp/fia_sink_src
+    - All forbidden_transforms have at least one source_evidence_ids cross-reference
+    - 22 of 23 risks have related_forbidden_transform_ids; the single exception is shape/layout drift, which is correctly co-design rather than an enforceable transform constraint
+    - confidence label distribution is high for 31 of 33 cards and medium for the two MLA tail-stub cards
