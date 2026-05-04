@@ -24,6 +24,45 @@ def _scan_placeholders(text: str) -> int:
     return sum(text.lower().count(m) for m in markers)
 
 
+def _has_finite_domain(spec: dict[str, Any] | None) -> bool:
+    if not isinstance(spec, dict):
+        return False
+
+    candidates = spec.get("candidates")
+    if isinstance(candidates, list) and candidates:
+        return True
+
+    enum = spec.get("enum")
+    if isinstance(enum, list) and enum:
+        return True
+
+    range_spec = spec.get("range")
+    if isinstance(range_spec, dict):
+        return range_spec.get("minimum") is not None and range_spec.get("maximum") is not None
+
+    return False
+
+
+def _load_searchable_fields(stage2_dir: Path) -> dict[str, dict[str, Any]]:
+    searchable_fields: dict[str, dict[str, Any]] = {}
+    schema_dir = stage2_dir / "schema" / "modules"
+    if not schema_dir.exists():
+        return searchable_fields
+
+    for fpath in schema_dir.rglob("*.yaml"):
+        data = _load_yaml_file(fpath)
+        if not isinstance(data, dict):
+            continue
+        for mod_name, fields in data.items():
+            if not isinstance(fields, dict):
+                continue
+            for field_name, spec in fields.items():
+                if isinstance(spec, dict) and spec.get("searchable"):
+                    searchable_fields[f"{mod_name}.{field_name}"] = spec
+
+    return searchable_fields
+
+
 def _check_evidence_connectivity(graph: EvidenceGraph) -> tuple[int, list[dict]]:
     score = 20
     issues = []
@@ -99,12 +138,12 @@ def _check_field_completeness(stage2_dir: Path, graph: EvidenceGraph) -> tuple[i
                             "message": f"Field {mod_name}.{field_name} missing type",
                         })
                     if "searchable" in spec and spec.get("searchable"):
-                        if not any(k in spec for k in ("candidates", "range", "enum")):
+                        if not _has_finite_domain(spec):
                             score -= 3
                             issues.append({
                                 "severity": "error",
                                 "category": "schema",
-                                "message": f"Searchable field {mod_name}.{field_name} has no candidates/range/enum",
+                                "message": f"Searchable field {mod_name}.{field_name} has no finite domain (candidates, enum, or range with minimum and maximum)",
                             })
 
     if placeholder_count > 20:
@@ -122,36 +161,40 @@ def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, li
     score = 15
     issues = []
 
-    field_nodes = [n for n in graph.nodes if n.kind == "dsl_field"]
-    for field_node in field_nodes:
-        has_knob = any(
-            e.label == "tuned_by" and e.from_id == field_node.id
-            for e in graph.edges
+    searchable_fields = _load_searchable_fields(stage2_dir)
+    for field_path in searchable_fields:
+        field_node = next(
+            (n for n in graph.nodes if n.kind == "dsl_field" and n.data.get("path") == field_path),
+            None,
         )
-        if not has_knob:
+        if not field_node:
+            score -= 3
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Searchable field {field_path} has no graph node",
+            })
             continue
 
-        # Searchable field must map to a knob with domain
         knob_edges = [e for e in graph.edges if e.from_id == field_node.id and e.label == "tuned_by"]
         if not knob_edges:
             score -= 3
             issues.append({
                 "severity": "error",
                 "category": "knob",
-                "message": f"Field {field_node.data.get('path')} searchable but no knob mapping",
+                "message": f"Searchable field {field_path} has no knob mapping",
             })
             continue
 
         knob_node = graph.get_node(knob_edges[0].to_id)
-        if knob_node and "domain" in knob_node.data:
-            domain = knob_node.data["domain"]
-            if not any(k in domain for k in ("candidates", "range", "minimum", "maximum")):
-                score -= 2
-                issues.append({
-                    "severity": "warning",
-                    "category": "knob",
-                    "message": f"Knob {knob_node.data.get('name')} domain not mapped to field range",
-                })
+        domain = knob_node.data.get("domain") if knob_node else None
+        if not _has_finite_domain(domain if isinstance(domain, dict) else None):
+            score -= 2
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Knob {knob_node.data.get('name') if knob_node else field_path} has no finite domain",
+            })
 
     return max(0, score), issues
 
@@ -307,7 +350,7 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
 
     total = sum(scores.values())
     hard_failures = [i for i in all_issues if i["severity"] == "error"]
-    status = "pass" if total >= 85 and not hard_failures else "warn" if total >= 70 else "fail"
+    status = "fail" if hard_failures else "pass" if total >= 85 else "warn" if total >= 70 else "fail"
 
     result = {
         "overall_status": status,
