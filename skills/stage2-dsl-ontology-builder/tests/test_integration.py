@@ -23,8 +23,18 @@ def test_full_pipeline_on_real_data():
     synthesize(graph, output_dir=output_dir)
     assert (output_dir / "ontology" / "canonical_optimizations.yaml").exists()
     assert (output_dir / "schema" / "atdsl.schema.yaml").exists()
+    assert (output_dir / "ir" / "semantic_ir.yaml").exists()
+    assert (output_dir / "ir" / "kernel_ir.yaml").exists()
+    assert (output_dir / "ir" / "hardware_contract.yaml").exists()
+    assert (output_dir / "ir" / "execution_feedback.yaml").exists()
+    assert (output_dir / "search" / "schedule_space.yaml").exists()
+    assert (output_dir / "search" / "feature_schema.yaml").exists()
+    assert (output_dir / "search" / "measurement_schema.yaml").exists()
+    assert (output_dir / "search" / "tuning_record.schema.yaml").exists()
 
     result = verify(graph, output_dir)
+    assert "agent_readiness" in result
+    assert (output_dir / "review" / "agent_readiness.md").exists()
     assert result["total_score"] >= 0
     assert result["overall_status"] in ("pass", "warn", "fail")
 
