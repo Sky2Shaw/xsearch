@@ -99,12 +99,12 @@ def _check_field_completeness(stage2_dir: Path, graph: EvidenceGraph) -> tuple[i
                             "message": f"Field {mod_name}.{field_name} missing type",
                         })
                     if "searchable" in spec and spec.get("searchable"):
-                        if not any(k in spec for k in ("candidates", "range", "enum")):
+                        if not _has_finite_domain(spec):
                             score -= 3
                             issues.append({
                                 "severity": "error",
                                 "category": "schema",
-                                "message": f"Searchable field {mod_name}.{field_name} has no candidates/range/enum",
+                                "message": f"Searchable field {mod_name}.{field_name} has no finite candidates/range/enum",
                             })
 
     if placeholder_count > 20:
@@ -122,35 +122,45 @@ def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, li
     score = 15
     issues = []
 
-    field_nodes = [n for n in graph.nodes if n.kind == "dsl_field"]
-    for field_node in field_nodes:
-        has_knob = any(
-            e.label == "tuned_by" and e.from_id == field_node.id
-            for e in graph.edges
-        )
-        if not has_knob:
+    field_nodes = {
+        n.data.get("path", ""): n
+        for n in graph.nodes
+        if n.kind == "dsl_field"
+    }
+    for field in _load_all_schema_fields(stage2_dir):
+        spec = field["spec"]
+        if not spec.get("searchable"):
             continue
 
-        # Searchable field must map to a knob with domain
+        field_node = field_nodes.get(field["path"])
+        if field_node is None:
+            score -= 3
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Searchable field {field['path']} has no source DSL field",
+            })
+            continue
+
         knob_edges = [e for e in graph.edges if e.from_id == field_node.id and e.label == "tuned_by"]
         if not knob_edges:
             score -= 3
             issues.append({
                 "severity": "error",
                 "category": "knob",
-                "message": f"Field {field_node.data.get('path')} searchable but no knob mapping",
+                "message": f"Searchable field {field['path']} has no knob mapping",
             })
             continue
 
         knob_node = graph.get_node(knob_edges[0].to_id)
-        if knob_node and "domain" in knob_node.data:
+        if knob_node and "domain" in knob_node.data and not _has_finite_domain(spec):
             domain = knob_node.data["domain"]
-            if not any(k in domain for k in ("candidates", "range", "minimum", "maximum")):
+            if not _has_finite_knob_domain(domain):
                 score -= 2
                 issues.append({
-                    "severity": "warning",
+                    "severity": "error",
                     "category": "knob",
-                    "message": f"Knob {knob_node.data.get('name')} domain not mapped to field range",
+                    "message": f"Knob {knob_node.data.get('name')} domain is not finite",
                 })
 
     return max(0, score), issues
@@ -330,6 +340,15 @@ def _has_finite_domain(data: dict[str, Any]) -> bool:
     return isinstance(domain_range, dict) and "minimum" in domain_range and "maximum" in domain_range
 
 
+def _has_finite_knob_domain(domain: dict[str, Any]) -> bool:
+    if domain.get("candidates") or domain.get("values"):
+        return True
+    domain_range = domain.get("range")
+    if isinstance(domain_range, dict):
+        return "minimum" in domain_range and "maximum" in domain_range
+    return "minimum" in domain and "maximum" in domain
+
+
 def _check_agent_readiness(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
     scores = {
         "ir_layer_mapping": 20,
@@ -473,7 +492,14 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
 
     total = sum(scores.values())
     hard_failures = [i for i in all_issues if i["severity"] == "error"]
-    status = "pass" if total >= 85 and not hard_failures and agent_readiness["status"] != "fail" else "warn" if total >= 70 and not agent_readiness["hard_failures"] else "fail"
+    if hard_failures or agent_readiness["hard_failures"]:
+        status = "fail"
+    elif total >= 85 and agent_readiness["status"] != "fail":
+        status = "pass"
+    elif total >= 70:
+        status = "warn"
+    else:
+        status = "fail"
 
     result = {
         "overall_status": status,
