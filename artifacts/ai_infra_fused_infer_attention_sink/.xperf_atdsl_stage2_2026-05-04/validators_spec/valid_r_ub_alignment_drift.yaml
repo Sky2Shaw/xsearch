@@ -1,0 +1,16 @@
+name: valid_r_ub_alignment_drift
+module: derived
+severity: hard
+inputs:
+- C-VEC-UB-ALIGNMENT
+expr: all_satisfied(constraints=['C-VEC-UB-ALIGNMENT']) and not exhibits_failure_pattern('R-UB-ALIGNMENT-DRIFT')
+error_message: 'valid_r_ub_alignment_drift failed: Removing Vec1 and Vec2 32B-safe
+  rounding or mishandling headDimAlign can misalign UB accesses and leak padded garbage
+  into outputs.'
+related_risks:
+- R-UB-ALIGNMENT-DRIFT
+source_cards: []
+source_evidence:
+- SE-KNOB-HEADDIM-ALIGN
+- SE-VEC1-UB-ALIGNMENT
+- SE-VEC2-UB-ALIGNMENT

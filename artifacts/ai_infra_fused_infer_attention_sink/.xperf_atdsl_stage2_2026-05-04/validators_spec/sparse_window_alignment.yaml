@@ -1,0 +1,17 @@
+name: sparse_window_alignment
+module: sparse_window
+severity: hard
+inputs:
+- sparse_window.s2_start
+- sparse_window.s2_end
+- shape.s2
+- features.s2_align
+- features.tile_s2
+expr: 0 <= sparse_window.s2_start <= sparse_window.s2_end <= shape.s2 and sparse_window.s2_start
+  mod features.s2_align == 0 and (sparse_window.s2_end mod features.s2_align == 0
+  or sparse_window.s2_end == shape.s2)
+error_message: Sparse window S2 range out of bounds or misaligned to features.s2_align
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

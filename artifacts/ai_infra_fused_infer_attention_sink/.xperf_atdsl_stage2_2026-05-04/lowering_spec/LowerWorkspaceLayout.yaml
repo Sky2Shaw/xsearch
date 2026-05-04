@@ -1,0 +1,24 @@
+name: LowerWorkspaceLayout
+consumes:
+- workspace
+- decode.split_kv
+- shape
+emits:
+- offset_functions
+- partial_layout
+patch_points:
+- CalcWorkspaceOffset
+- CalcAccumOffset
+pre_validators:
+- ub_capacity
+- l1_capacity
+- workspace_no_alias
+- sparse_window_alignment
+- split_kv_lse_merge_valid
+- event_dependency_valid
+- l1_residency_loop_order
+post_validators:
+- compile_success
+- golden_correctness
+editable_policy: template_or_patch_point
+source_cards: []

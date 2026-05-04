@@ -1,0 +1,1006 @@
+- id: OC-RUNINFO-THREE-STAGE-RING
+  aliases:
+  - runinfo_ring
+  - mm1_vec1_mm2_vec2_overlap
+  intent:
+  - Overlap AIC/AIV stages across loops while keeping stage ordering and ring-slot
+    ownership explicit.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - FIA_PRELOAD_TASK_CACHE_SIZE remains at least three slots.
+  - preLoadNum and workspace ring depth are compatible with the scheduler overlap
+    pattern.
+  risks:
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  - R-SPLITKV-PARTIAL-COLLISION
+  required_dsl_modules:
+  - pipeline
+  suggested_fields:
+  - pipeline.scheduler.runinfo_ring
+  - pipeline.scheduler.invalid_after_vec2
+  searchable_knobs:
+  - preLoadNum
+  - s2BaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+  - SE-RUNINFO-THREE-STAGE-RING-MLA
+- id: OC-COMMON-SPLIT-CORE-BALANCING
+  aliases:
+  - common_split_core_cost
+  - fa_fd_tolerance_balancing
+  intent:
+  - Expose split-core balancing as structured DSL cost/search policy instead of opaque
+    host output arrays.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  - flash_decode
+  preconditions:
+  - Host CreateSplitInput has populated BaseInfo and SplitParam.
+  - supportFD, sparseMode, sinkNumber, and keySinkNumber are carried through from
+    tiling metadata.
+  risks:
+  - R-COMMON-SPLIT-CORE-MODEL-OMITTED
+  required_dsl_modules:
+  - core_mapping
+  suggested_fields:
+  - split_core.cost_model.block_cost_formula
+  - split_core.assignment_phases
+  searchable_knobs:
+  - mBaseSize
+  - s2BaseSize
+  - gS1BaseSizeOfFd
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-SPLIT-CORE-CPP
+  - SE-COMMON-SPLIT-CORE-H
+- id: OC-COMMON-SPARSE-SINK-S2-RANGE
+  aliases:
+  - common_sparse_s2_range
+  - key_sink_split_core
+  intent:
+  - Keep sparse/sink range shaping explicit so Stage-2 planners do not rebalance against
+    impossible S2 blocks.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  - flash_decode
+  preconditions:
+  - sparseMode and mask/sink metadata are valid for the selected tiling path.
+  - keySinkNumber is considered when supportFD is true.
+  risks:
+  - R-COMMON-SPLIT-CORE-MODEL-OMITTED
+  - R-SPARSE-POLICY-DESYNC
+  required_dsl_modules:
+  - core_mapping
+  suggested_fields:
+  - split_core.sparse_s2_range
+  - split_core.sink_selection
+  searchable_knobs:
+  - s2BaseSize
+  - splitKVFlag
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-SPLIT-CORE-CPP
+- id: OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  aliases:
+  - common_fd_metadata
+  - splitfd_vector_balancing
+  intent:
+  - Keep FD merge partitioning aligned with host split-core metadata and vector merge
+    boundaries.
+  applies_to:
+  - flash_decode
+  preconditions:
+  - supportFD is true.
+  - curKvSplitPart exceeds one for rows requiring FD metadata.
+  risks:
+  - R-COMMON-FD-METADATA-MISMATCH
+  - R-FD-METADATA-DESYNC
+  required_dsl_modules:
+  - decode
+  suggested_fields:
+  - flash_decode.fd_metadata.record_conditions
+  - flash_decode.fd_metadata.vector_boundaries
+  searchable_knobs:
+  - gS1BaseSizeOfFd
+  - splitKVFlag
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-SPLIT-CORE-CPP
+  - SE-COMMON-SPLIT-CORE-H
+- id: OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  aliases:
+  - gqa_q_l1_reuse
+  - qL1Snapshot_reuse
+  intent:
+  - Reduce Q reload traffic across the S2-inner loop by keeping Q L1 resident while
+    K is streamed.
+  applies_to:
+  - gqa
+  preconditions:
+  - GQA MM1 is active and the current M slice set can fully load into L1_Q_BUFCNT
+    (canFullLoadQ).
+  - Q reuse key (qCoord) matches the current batch/head/gS1 coordinate.
+  - Q_EVENT lifetime is managed so cached Q buffers are not overwritten by concurrent
+    MM1 or Vec1 stages.
+  risks:
+  - R-GQA-V-L1-LIFETIME
+  required_dsl_modules:
+  - memory
+  suggested_fields:
+  - memory.l1.gqa.q_snapshot_signature
+  - memory.l1.gqa.q_snapshot_bufcnt
+  searchable_knobs:
+  - s2BaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-GQA-Q-L1-SNAPSHOT
+- id: OC-GQA-MM1-KP-L1-DOUBLE-BUFFER-PINGPONG
+  aliases:
+  - gqa_kp_l1_pingpong
+  - k_tile_l1_double_buffer
+  intent:
+  - Overlap K GM-to-L1 copy with MMAD compute while preserving event ordering correctness
+    on sparse skip paths.
+  applies_to:
+  - gqa
+  - nonquant
+  preconditions:
+  - MM1 is active and K-tile size (N_SPLIT_SIZE=128) fits in L1_KP_BUFCNT buffers.
+  - KP_EVENT0 event IDs are not shared with Q_EVENT0 or other stages in the same loop.
+  - Sparse skip logic must preserve SetFlag to prevent deadlock.
+  risks:
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  required_dsl_modules:
+  - memory
+  suggested_fields:
+  - memory.l1.kp_buffer_count
+  - memory.l1.kp_event_id_base
+  searchable_knobs:
+  - s2BaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-GQA-KP-L1-PINGPONG
+  - SE-GQA-KP-L1-EVENT-CYCLE
+- id: OC-COMMON-GM-COPY-LOWERING
+  aliases:
+  - common_gm_copy_lowering
+  - nd_to_nz_copy_contract
+  intent:
+  - Make address generation and ND/NZ lowering reusable while preventing ad hoc layout-specific
+    offset formulas.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - FIA layout and page-attention mode are known before copy lowering.
+  - D extent, source stride, and destination NZ C0 stride are available.
+  risks:
+  - R-COMMON-GM-OFFSET-COPY-MISLOWERED
+  required_dsl_modules:
+  - memory
+  suggested_fields:
+  - memory_copy.gm_format
+  - memory_copy.offset_category
+  - memory_copy.nd_to_nz_params
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-MEMORY-COPY-H
+- id: OC-MM1-VEC1-SOFTMAX-PIPELINE-BRIDGE
+  aliases:
+  - mm1_vec1_bridge
+  - dealbmm1res_pipeline
+  intent:
+  - Keep the MM1->Vec1 dataflow as a single contiguous pipeline so lowering does not
+    fragment the UB-to-UB stages or lose the sink-skip fast path.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - MM1 has completed for the current preload slot and mm1ResGm contains valid QxK
+    scores.
+  - ElewiseCompute parameters (scale, bias, mask) are consistent with the tiling path.
+  - Sink skip detection (IsSkipCal) agrees with host maskParams.
+  risks:
+  - R-UB-ALIGNMENT-DRIFT
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  required_dsl_modules:
+  - pipeline
+  suggested_fields:
+  - pipeline.mm1_vec1_bridge.elewise_params
+  - pipeline.mm1_vec1_bridge.sink_skip_path
+  searchable_knobs:
+  - s2BaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-MM1-VEC1-BRIDGE-PIPELINE
+  - SE-MM1-VEC1-SINK-SKIP
+- id: OC-MM1-SPARSE-SKIP-L1-EVENT-DEADLOCK-GUARD
+  aliases:
+  - mm1_sparse_skip_guard
+  - isSkipCal_event_preserve
+  intent:
+  - Preserve correctness on sparse attention paths without sacrificing the K-tile
+    double-buffer overlap.
+  applies_to:
+  - gqa
+  - nonquant
+  preconditions:
+  - keySinkNumber > 0 and sparse mode is active for the current batch.
+  - IsSkipCal agrees with host maskParams on token-window bounds.
+  - KP_EVENT0 counter must advance monotonically across skipped and non-skipped iterations.
+  risks:
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - mm1.sparse_skip.levels
+  - mm1.sparse_skip.event_preserve
+  searchable_knobs:
+  - s2BaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-MM1-SPARSE-SKIP-SETFLAG
+  - SE-MM1-SPARSE-SKIP-ISCAL
+- id: OC-MM1-OUTPUT-FIXPIPE-ATOMIC-ADD-ACCUMULATION
+  aliases:
+  - mm1_atomic_add
+  - k_split_accumulation
+  intent:
+  - Reduce GM write bandwidth by accumulating partial MM1 results in-place rather
+    than materializing full intermediate buffers.
+  applies_to:
+  - nonquant
+  - gqa
+  preconditions:
+  - K dimension is larger than K_SPLIT_SIZE and requires splitting.
+  - mm1ResGm has been initialized and the atomic-add destination stride matches the
+    tiling alignment.
+  - Data type width and alignment permit atomic-add on the target GM region.
+  risks:
+  - R-SPLITKV-PARTIAL-COLLISION
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - mm1.output.atomic_add_condition
+  - mm1.output.dst_stride
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-MM1-OUTPUT-ATOMIC-ADD
+  - SE-MM1-K-SPLIT-FIXPIPE
+- id: OC-VEC1-ONLINE-SOFTMAX-FLASHV2
+  aliases:
+  - online_softmax
+  - softmax_flashv2
+  - vec1_softmax_pipeline
+  intent:
+  - Preserve numerical stability of online softmax across S2 splits while minimizing
+    GM round-trips for intermediate max/sum state.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - MM1 output is available in UB for the current loop and tile.
+  - preLoadNum ring depth is sufficient to hold softmax state across overlapping loop
+    iterations.
+  - SOFTMAX_TMP_BUFFER_SIZE and baseOffset computation remain consistent between writer
+    and reader.
+  risks:
+  - R-UB-ALIGNMENT-DRIFT
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - vec1.softmax.online_state.max_ub
+  - vec1.softmax.online_state.sum_ub
+  - vec1.softmax.online_state.exp_ub
+  - vec1.softmax.first_loop_default
+  searchable_knobs:
+  - preLoadNum
+  - s2BaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-VEC1-SOFTMAX-FLASHV2
+  - SE-VEC1-SOFTMAX-FIRST-LOOP
+- id: OC-SOFTMAX-TILING-BRC
+  aliases:
+  - softmax_tiling
+  - softmax_brc_config
+  intent:
+  - Expose tiling and BRC selection as DSL parameters so Stage-2 can validate buffer
+    capacity and choose the correct vector instruction sequence.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - MM1 output UB dimensions (dealRowCount, columnCount, actualColumnCount) are known.
+  - SOFTMAX_TMP_BUFFER_SIZE / SOFTMAX_TMP_BUFFER_OFFSET is sufficient for the selected
+    tiling.
+  - COMPUTE_T width matches the tiling function expectations.
+  risks:
+  - R-UB-ALIGNMENT-DRIFT
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - vec1.softmax.tiling_func
+  - vec1.softmax.brc_config
+  searchable_knobs:
+  - s2BaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-SOFTMAX-TILING-FUNC
+  - SE-SOFTMAX-BRC-CONFIG
+- id: OC-MLA-NUPDATE-SIDECHANNEL
+  aliases:
+  - mla_nupdate
+  - mla_softmax_row_correction
+  intent:
+  - Preserve MLA-specific numeric correction without materializing a separate GM reduction
+    pass.
+  applies_to:
+  - mla
+  preconditions:
+  - MLA Vec1 path is active.
+  - ProcessAmlaNupdate runs only after the first S-inner loop and only when vecDealM
+    is non-zero.
+  - headDim is consumed in 128-lane groups for the int32 broadcast/add path.
+  risks:
+  - R-MLA-NUPDATE-NUMERIC
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - mla.nupdate.compute_formula
+  - mla.nupdate.broadcast_group
+  - mla.nupdate.atomic_target
+  searchable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-MLA-NUPDATE-ATOMIC-TARGET
+  - SE-MLA-SOFTMAX-SUM-GEN
+  - SE-MLA-AMLASUM-UB-ONLY
+- id: OC-MLA-MM2-NUPDATE-BARRIER
+  aliases:
+  - mla_mm2_nupdate_barrier
+  - syncV1NupdateC2_guard
+  intent:
+  - Preserve correctness of MLA online-softmax correction while keeping MM2 and Vec1
+    overlapped.
+  applies_to:
+  - mla
+  preconditions:
+  - MLA path is active and the current tile reaches the first complete K-slice for
+    the first nL1 and mL1 block.
+  - ProcessAmlaNupdate has a non-empty M partition and the current S-inner loop is
+    not the first one.
+  risks:
+  - R-MLA-NUPDATE-NUMERIC
+  - R-MLA-MM2-ATOMIC
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - mla.nupdate.mm2_sync
+  - mla.nupdate.atomic_target
+  searchable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-MLA-NUPDATE-BARRIER
+  - SE-MLA-NUPDATE-ATOMIC-TARGET
+- id: OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  aliases:
+  - vector_invalid_rows
+  - safe_active_token_clamp
+  intent:
+  - Preserve sparse/mask correctness while exposing repeat-vector versus split-reduction
+    lowering choices.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - actual Q/KV sequence lengths are available.
+  - sparseMode, preToken, nextToken, attenMaskFlag, and isRowInvalid are carried into
+    vector lowering.
+  risks:
+  - R-COMMON-INVALID-ROW-HANDLING-LOST
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - vector.safe_active_token
+  - vector.invalid_rows.mode
+  searchable_knobs:
+  - s2BaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-VECTOR-COMMON-H
+- id: OC-VEC1-SINK-SKIP-AND-INVALID-ROW
+  aliases:
+  - sink_skip_state_forward
+  - invalid_row_sink_handling
+  intent:
+  - Preserve online-softmax state across sink-skipped blocks while keeping invalid-row
+    zeroing semantics correct.
+  applies_to:
+  - nonquant
+  - gqa
+  preconditions:
+  - keySinkNumber > 0 and sink tensor is resident in GM.
+  - The previous loop's softmax state is valid and available in the preload-slot ring.
+  - Invalid-row mask agrees with host maskParams.
+  risks:
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - vec1.sink_skip.state_forward
+  - vec1.sink_skip.zero_fill
+  - vec1.invalid_row.sink_value
+  searchable_knobs:
+  - s2BaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-VEC1-SINK-SKIP-STATE
+  - SE-VEC1-SINK-VALUE-MIN
+  - SE-VEC1-INVALID-ROW-ZERO
+- id: OC-VEC1-M-PARTITION-SPLIT
+  aliases:
+  - vec1_m_partition
+  - nbuffer_vec_deal_split
+  intent:
+  - Balance vector work across units while keeping tile sizes aligned to hardware
+    vector-width boundaries.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - nBufferMBaseSize has been computed by host tiling.
+  - subBlockNum (vector unit count) is known at compile time or runtime.
+  - blockIdx parity determines head/tail assignment.
+  risks:
+  - R-UB-ALIGNMENT-DRIFT
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - vec1.partition.formula
+  - vec1.partition.cv1_1_cap
+  - vec1.partition.tail_assignment
+  searchable_knobs:
+  - nBufferMBaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-VEC1-M-PARTITION-FORMULA
+  - SE-VEC1-NBUFFER-VEC-DEAL
+- id: OC-LSE-GENERATE-AND-EXPORT
+  aliases:
+  - lse_pipeline
+  - softmax_lse_compute_export
+  intent:
+  - Preserve LSE numerical correctness across all paths (GQA/MLA/FD) while keeping
+    invalid-row semantics consistent with host validation.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  - flash_decode
+  preconditions:
+  - Vec1 has completed all S-inner loops and final softmax state is in UB.
+  - Invalid-row mask is available for the current tile.
+  - Layout family matches host infer-shape output.
+  risks:
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  - R-SHAPE-LAYOUT-CONTRACT-DRIFT
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - lse.generate.compute_formula
+  - lse.generate.invalid_row_adjust
+  - lse.generate.fd_merge_path
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-LSE-COMPUTE-SOFTMAX
+  - SE-LSE-ADJUST-INVALID
+  - SE-LSE-EXPORT-LAYOUT
+- id: OC-GQA-MM2-L1-V-REUSE
+  aliases:
+  - gqa_v_l1_reuse
+  - vL1Snapshot_reuse
+  intent:
+  - Reduce V reload traffic without violating the V_EVENT lifetime contract.
+  applies_to:
+  - gqa
+  preconditions:
+  - GQA cube MM2 is consuming Vec1-generated P tiles.
+  - V reuse is keyed by batch/head/S2 coordinate and canFullLoadV remains true for
+    the current KL1 slice set.
+  risks:
+  - R-GQA-V-L1-LIFETIME
+  required_dsl_modules:
+  - memory
+  - pipeline
+  suggested_fields:
+  - memory.l1.gqa.v_snapshot_signature
+  - pipeline.stage_graph.edges[].sync_signal
+  searchable_knobs:
+  - s2BaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-GQA-V-L1-RELEASE
+- id: OC-COMMON-BUFFER-POLICY-SELECTION
+  aliases:
+  - common_buffer_policy
+  - hard_event_policy
+  intent:
+  - Expose buffer count and event policy as DSL scheduling choices with legality constraints.
+  applies_to:
+  - gqa
+  - mla
+  preconditions:
+  - Buffer space and sync type are known at allocation.
+  - Cross-core sync mode is selected consistently for AIC/AIV producer-consumer roles.
+  risks:
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  required_dsl_modules:
+  - pipeline
+  suggested_fields:
+  - pipeline.buffer_policy.kind
+  - pipeline.events.hard_event_pair
+  searchable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-BUFFER-H
+  - SE-COMMON-BUFFERS-POLICY-H
+  - SE-COMMON-MATMUL-H
+- id: OC-LSE-EXPORT-LAYOUT-CONTRACT
+  aliases:
+  - lse_layout_export
+  - softmax_lse_copy_out
+  intent:
+  - Preserve LSE layout correctness across all supported output families without ad
+    hoc offset formulas per layout.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - Host infer-shape has determined the LSE output shape for the selected layout family.
+  - actualSeqLengthsGmQ is available for prefix-sum lookup in TND mode.
+  - Vec2 has completed normalization and the LSE data is in local UB.
+  risks:
+  - R-SHAPE-LAYOUT-CONTRACT-DRIFT
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - lse.export.layout_paths
+  - lse.export.tnd_prefix_offset
+  - lse.export.bsnd_flat_offset
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-LSE-EXPORT-TND
+  - SE-LSE-EXPORT-BSND
+  - SE-LSE-EXPORT-BNSD
+- id: OC-FD-STABLE-MERGE
+  aliases:
+  - fd_stable_merge
+  - split_kv_lse_reduce
+  intent:
+  - Keep split-KV final output numerically stable while preserving the partial-output
+    workspace contract.
+  applies_to:
+  - flash_decode
+  preconditions:
+  - FLASH_DECODE path is active and split-KV partial outputs plus LSE scratch have
+    been materialized.
+  - Metadata arrays describing per-core FD ranges are available through fdParams.
+  risks:
+  - R-FD-LSE-MERGE
+  - R-SPLITKV-PARTIAL-COLLISION
+  required_dsl_modules:
+  - decode
+  suggested_fields:
+  - flash_decode.merge.weight_formula
+  - flash_decode.fdparams.metadata_arrays
+  - flash_decode.merge.output_layouts
+  searchable_knobs:
+  - splitKVFlag
+  - headDimAlign
+  - mBaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-FD-MERGE-WEIGHT-FORMULA
+  - SE-FD-METADATA-PARTITION
+- id: OC-FD-METADATA-BRIDGE
+  aliases:
+  - fd_metadata_bridge
+  - split_core_fd_bridge
+  intent:
+  - Preserve the producer/consumer bridge contract even when the split-core planner
+    implementation stays outside the extraction boundary.
+  applies_to:
+  - flash_decode
+  preconditions:
+  - splitKVFlag routes the operator into FlashDecode workspace sizing and metadata
+    generation.
+  - usedVecNumOfFd and fdRes array ordering remain consistent across host and kernel.
+  risks:
+  - R-FD-METADATA-DESYNC
+  - R-WORKSPACE-ABI-DRIFT
+  required_dsl_modules:
+  - core_mapping
+  - decode
+  suggested_fields:
+  - flash_decode.fdparams.used_vec_num
+  - flash_decode.fdparams.metadata_arrays
+  - split_core.range_assignments.bridge_status
+  searchable_knobs:
+  - mBaseSize
+  - gS1BaseSizeOfFd
+  - splitKVFlag
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-SPLIT-CORE-INPUT-PARAMS
+  - SE-SPLIT-CORE-OUTPUT-BRIDGE
+  - SE-FD-METADATA-PARTITION
+  - SE-FD-METADATA-PARTITION-MLA
+- id: OC-WORKSPACE-NORMAL-RING
+  aliases:
+  - normal_workspace_ring
+  - mm1_vec1_mm2_vec2_contiguous_abi
+  intent:
+  - Make workspace offsets stable so stage-local GM rings can overlap across preload
+    slots without aliasing.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - Workspace has been initialized for the current kernel variant.
+  - preLoadNum and element-width choices remain consistent between host tiling and
+    kernel bindings.
+  risks:
+  - R-WORKSPACE-ABI-DRIFT
+  required_dsl_modules:
+  - workspace
+  suggested_fields:
+  - workspace.normal.regions[].base_offset_rule
+  - workspace.normal.regions[].slot_stride
+  searchable_knobs:
+  - preLoadNum
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-WORKSPACE-NORMAL-SIZE
+  - SE-WORKSPACE-NORMAL-ABI
+- id: OC-WORKSPACE-FD-REGIONS
+  aliases:
+  - fd_workspace_regions
+  - accumOut_lseSum_lseMax_abi
+  intent:
+  - Preserve stable split-KV partial export and merge offsets across host sizing and
+    kernel readers.
+  applies_to:
+  - flash_decode
+  preconditions:
+  - FLASH_DECODE path is active and splitKVFlag routes the operator into FD workspace
+    sizing.
+  - headDimAlign and per-task FD parameter counts remain consistent between host and
+    kernel.
+  risks:
+  - R-FD-LSE-MERGE
+  - R-WORKSPACE-ABI-DRIFT
+  required_dsl_modules:
+  - workspace
+  suggested_fields:
+  - workspace.flash_decode.accum_out
+  - workspace.flash_decode.lse_sum_max
+  searchable_knobs:
+  - splitKVFlag
+  - headDimAlign
+  - mBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-WORKSPACE-FD-SIZE-NONQUANT
+  - SE-WORKSPACE-FD-SIZE-MLA
+  - SE-FD-WORKSPACE-OFFSETS
+- id: OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  aliases:
+  - mla_nupdate_tail
+  - mla_nupdate_budget_only_stub
+  intent:
+  - Preserve the nUpdate budget as an ABI-visible stub while lowering the actual correction
+    path through the observed normal.mm2 alias.
+  applies_to:
+  - mla
+  preconditions:
+  - MLA host sizing path is active.
+  - Validation tooling distinguishes host-budget stubs from explicit kernel SetGlobalBuffer
+    regions and alias-based runtime consumers.
+  risks:
+  - R-MLA-TAIL-BUDGET-MISMODELED
+  - R-MLA-NUPDATE-TAIL-MISLOWERED
+  - R-WORKSPACE-ABI-DRIFT
+  required_dsl_modules:
+  - workspace
+  suggested_fields:
+  - workspace.mla.tail_regions[region_id=mla.nupdate].binding_status
+  - workspace.normal.regions[region_id=normal.mm2].aliases[].name
+  searchable_knobs:
+  - mBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-WORKSPACE-MLA-ABI
+  - SE-WORKSPACE-MLA-INIT-ORDER
+  - SE-MLA-MM2-INT32-ALIAS
+- id: OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  aliases:
+  - mla_softmax_sum_tail
+  - mla_amlasum_budget_only_stub
+  intent:
+  - Preserve the softmaxSum budget as an ABI-visible stub while modeling the observed
+    Vec1-to-Vec2 normalization bridge through local UB state.
+  applies_to:
+  - mla
+  preconditions:
+  - MLA host sizing path is active.
+  - Vec1 reaches the last S2 loop where aMlaSumUb is generated before Vec2 normalization
+    consumes it.
+  risks:
+  - R-MLA-TAIL-BUDGET-MISMODELED
+  - R-MLA-SOFTMAX-SUM-GM-INVENTED
+  - R-WORKSPACE-ABI-DRIFT
+  required_dsl_modules:
+  - workspace
+  suggested_fields:
+  - workspace.mla.tail_regions[region_id=mla.softmax_sum].binding_status
+  - workspace.mla.tail_regions[region_id=mla.softmax_sum].local_buffer_bridge
+  searchable_knobs:
+  - mBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-WORKSPACE-MLA-ABI
+  - SE-WORKSPACE-MLA-INIT-ORDER
+  - SE-MLA-AMLASUM-UB-ONLY
+  - SE-MLA-SOFTMAX-SUM-GEN
+  - SE-MLA-SOFTMAX-SUM-CONSUME
+- id: OC-SCALAR-RING-OFFSET-HOIST
+  aliases:
+  - fd_task_offset
+  - mla_ring_offsets
+  intent:
+  - Make address-generation structure explicit so Stage-2 can preserve correctness
+    while exposing hoist/div-mod opportunities.
+  applies_to:
+  - flash_decode
+  - mla
+  preconditions:
+  - preLoadNum ring depth remains stable.
+  - headDimAlign padded stride matches the GM ring ABI.
+  - split-core metadata arrays preserve task ordering.
+  risks:
+  - R-WORKSPACE-ABI-DRIFT
+  - R-FD-LSE-MERGE
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - scalar.offset_rules.fd_task_offset
+  - scalar.offset_rules.mla_mm2_reload_slot
+  - scalar.offset_rules.mla_nupdate_atomic_base
+  searchable_knobs:
+  - mBaseSize
+  - preLoadNum
+  - headDimAlign
+  - gS1BaseSizeOfFd
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-FD-TASK-OFFSET-SCALARS
+  - SE-MLA-NUPDATE-ATOMIC-TARGET
+  - SE-MLA-VEC2-NORMALIZE-COPY
+  - SE-KNOB-HEADDIM-ALIGN
+- id: OC-COMMON-MATMUL-UNITFLAG-K-LOOP
+  aliases:
+  - matmul_unitflag
+  - mmad_unitflag
+  intent:
+  - Preserve correct accumulation semantics across K-split iterations while exposing
+    the hardware unitFlag optimization to Stage-2 lowering.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - CFG::ENABLE_UNIFLAG is true at compile time.
+  - K dimension is split into multiple iterations.
+  - The matmul stage uses common buffer policy and MMAD interface.
+  risks:
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - matmul.unitflag.mode
+  - matmul.unitflag.final_k_loop
+  searchable_knobs:
+  - nBufferMBaseSize
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-MATMUL-UNITFLAG
+  - SE-COMMON-MATMUL-K-LOOP
+- id: OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD
+  aliases:
+  - vector_repeat_stride
+  - repeat_stride_2048
+  intent:
+  - Maximize vector instruction efficiency for narrow columns while keeping correctness
+    fences for wide-column split reductions.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - Column count is known before vector lowering.
+  - FP32_BLOCK_ELEMENT_NUM is a compile-time constant.
+  - PIPE_V barrier placement matches the reduction tree structure.
+  risks:
+  - R-COMMON-INVALID-ROW-HANDLING-LOST
+  required_dsl_modules:
+  - compute
+  suggested_fields:
+  - vector.repeat_stride.threshold
+  - vector.repeat_stride.dst_rep_stride
+  - vector.pipe_v.barrier_placement
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-VECTOR-REPEAT-STRIDE
+  - SE-COMMON-VECTOR-PIPE-V-BARRIER
+- id: OC-COMMON-BUFFER-MATRIX-2X2-POLICY
+  aliases:
+  - matrix_2x2_buffer
+  - mxk_double_buffer
+  intent:
+  - Reduce L1 footprint by aliasing Q/P and K/V buffers across MM1 and MM2 while preserving
+    2D cursor correctness.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - Buffer space is sufficient for 2x2 matrix layout.
+  - Cross-core sync mode is selected consistently for AIC/AIV roles.
+  - mExtent matches the actual M-tile split count.
+  risks:
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  required_dsl_modules:
+  - pipeline
+  suggested_fields:
+  - pipeline.buffer_policy.matrix_2x2
+  - pipeline.buffer_policy.m_extent
+  searchable_knobs:
+  - nBufferMBaseSize
+  - preLoadNum
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-BUFFER-MATRIX-2X2
+  - SE-COMMON-BUFFER-PEEK-NEXT-K
+- id: OC-COMMON-ND2NZ-INT4-STRIDE-LIMIT-FALLBACK
+  aliases:
+  - nd2nz_int4_fallback
+  - stride_limit_65536
+  intent:
+  - Preserve correct ND-to-NZ lowering for int4 and large-stride matrices without
+    silently producing invalid copy operations.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  preconditions:
+  - Data type width is known before copy lowering.
+  - srcNdMatrixStride is computed correctly from source shape and stride.
+  - ND_MATRIX_STRIDE_LIMIT is a compile-time hardware constant.
+  risks:
+  - R-COMMON-GM-OFFSET-COPY-MISLOWERED
+  required_dsl_modules:
+  - memory
+  suggested_fields:
+  - memory_copy.int4_divisor
+  - memory_copy.stride_limit
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-ND2NZ-INT4-DIVISOR
+  - SE-COMMON-ND2NZ-STRIDE-LIMIT
+- id: OC-COMMON-FIA-TILING-SHAPE-NZ-PACKING
+  aliases:
+  - fia_tiling_shape
+  - nz_packing_axis_map
+  intent:
+  - Expose layout axis maps and D-dimension fallback rules as structured DSL fields
+    instead of scattered helper knowledge.
+  applies_to:
+  - nonquant
+  - gqa
+  - mla
+  - flash_decode
+  preconditions:
+  - Host infer-shape has run and produced canonical shape descriptors.
+  - Layout family is one of the supported 20+ variants.
+  - D dimension is derivable via one of the three fallback paths.
+  risks:
+  - R-COMMON-SHAPE-LAYOUT-VALIDATION-OMITTED
+  required_dsl_modules:
+  - shape
+  suggested_fields:
+  - shape_layout.axis_map
+  - shape_layout.d_fallback
+  - shape_layout.nz_packing
+  searchable_knobs:
+  - headDimAlign
+  validators: []
+  lowering_passes: []
+  source_evidence:
+  - SE-COMMON-FIA-TILING-AXIS-MAP
+  - SE-COMMON-FIA-TILING-D-FALLBACK

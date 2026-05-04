@@ -1,0 +1,23 @@
+name: LowerCoreMapping
+consumes:
+- core_mapping
+- shape
+- tiling
+emits:
+- logical_axis_mapping
+patch_points:
+- ComputeAxisIdx
+- Process_loop_header
+pre_validators:
+- ub_capacity
+- l1_capacity
+- workspace_no_alias
+- sparse_window_alignment
+- split_kv_lse_merge_valid
+- event_dependency_valid
+- l1_residency_loop_order
+post_validators:
+- compile_success
+- golden_correctness
+editable_policy: template_or_patch_point
+source_cards: []

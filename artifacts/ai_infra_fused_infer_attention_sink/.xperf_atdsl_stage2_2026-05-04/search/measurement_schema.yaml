@@ -1,0 +1,19 @@
+version: '0.4'
+kind: ascend.attention.measurement_schema
+metrics:
+- id: metric:latency_us
+  name: latency_us
+- id: metric:throughput_ops
+  name: throughput_ops
+- id: metric:bytes_global
+  name: bytes_global
+- id: metric:bytes_shared
+  name: bytes_shared
+- id: metric:occupancy_estimate
+  name: occupancy_estimate
+- id: metric:compile_time_ms
+  name: compile_time_ms
+- id: metric:correctness
+  name: correctness
+- id: metric:failure_code
+  name: failure_code

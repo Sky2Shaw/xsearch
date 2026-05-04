@@ -1,0 +1,26 @@
+name: valid_r_common_fd_metadata_mismatch
+module: derived
+severity: hard
+inputs:
+- C-FD-METADATA
+- C-FD-USED-VEC-BOUNDS
+- C-SPLIT-CORE-FD-BRIDGE
+- C-SPLIT-CORE-RANGE-ORDER
+- C-COMMON-SPLIT-CORE-COST-RANGE
+expr: all_satisfied(constraints=['C-FD-METADATA', 'C-FD-USED-VEC-BOUNDS', 'C-SPLIT-CORE-FD-BRIDGE',
+  'C-SPLIT-CORE-RANGE-ORDER', 'C-COMMON-SPLIT-CORE-COST-RANGE']) and not exhibits_failure_pattern('R-COMMON-FD-METADATA-MISMATCH')
+error_message: 'valid_r_common_fd_metadata_mismatch failed: Omitting common FD RecordFDInfo
+  and SplitFD balancing semantics can make generated fdParams structurally valid but
+  inconsistent with split-KV vector merge bound'
+related_risks:
+- R-COMMON-FD-METADATA-MISMATCH
+source_cards: []
+source_evidence:
+- SE-COMMON-SPLIT-CORE-CPP
+- SE-COMMON-SPLIT-CORE-H
+- SE-FD-METADATA-PARTITION
+- SE-FD-METADATA-PARTITION-MLA
+- SE-SPLIT-CORE-INPUT-PARAMS
+- SE-SPLIT-CORE-INPUT-PARAMS-MLA
+- SE-SPLIT-CORE-OUTPUT-BRIDGE
+- SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA

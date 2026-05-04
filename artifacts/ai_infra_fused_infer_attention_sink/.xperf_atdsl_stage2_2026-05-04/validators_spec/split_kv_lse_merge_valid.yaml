@@ -1,0 +1,19 @@
+name: split_kv_lse_merge_valid
+module: decode
+severity: hard
+inputs:
+- decode.split_kv.split_id_count
+- workspace.regions[partial_out]
+- workspace.regions[partial_max]
+- workspace.regions[partial_sum]
+- compute.lse.merge_strategy
+expr: 'decode.split_kv.split_id_count >= 1 and exists(workspace.regions[partial_out,
+  partial_max, partial_sum]) and compute.lse.merge_strategy in {online_softmax_v2,
+  stable_log_sum_exp} and forall(split in 0..split_id_count: bind(partial_out[split],
+  partial_max[split], partial_sum[split]))'
+error_message: Split-KV partial outputs/max/sum missing or LSE merge strategy not
+  numerically stable
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

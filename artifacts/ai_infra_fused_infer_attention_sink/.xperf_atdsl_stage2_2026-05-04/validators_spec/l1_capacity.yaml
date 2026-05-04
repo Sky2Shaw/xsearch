@@ -1,0 +1,16 @@
+name: l1_capacity
+module: l1_partition
+severity: hard
+inputs:
+- l1_partition.regions
+- l1_partition.kv_double_buffer
+- target.l1_size_bytes
+- shape.format_expansion
+expr: sum(l1_partition.regions[*].bytes * l1_partition.regions[*].buffer_count) +
+  l1_partition.scratch_bytes <= target.l1_size_bytes
+error_message: L1 partition (regions + ping-pong + scratch + format expansion) exceeds
+  target.l1_size_bytes
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

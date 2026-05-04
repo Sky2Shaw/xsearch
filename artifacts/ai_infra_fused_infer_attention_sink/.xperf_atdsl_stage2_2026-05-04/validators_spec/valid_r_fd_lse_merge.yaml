@@ -1,0 +1,13 @@
+name: valid_r_fd_lse_merge
+module: derived
+severity: hard
+inputs:
+- C-FD-METADATA
+expr: all_satisfied(constraints=['C-FD-METADATA']) and not exhibits_failure_pattern('R-FD-LSE-MERGE')
+error_message: 'valid_r_fd_lse_merge failed: Wrong LSE max/sum offsets or merge weights
+  corrupt split-KV final output.'
+related_risks:
+- R-FD-LSE-MERGE
+source_cards: []
+source_evidence:
+- SE-FD-METADATA-PARTITION

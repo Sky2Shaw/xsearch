@@ -1,0 +1,299 @@
+workspace:
+  base_offset_rule:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: workspace.normal.regions[].base_offset_rule
+    source_cards:
+    - OC-WORKSPACE-NORMAL-RING
+    source_evidence:
+    - SE-WORKSPACE-NORMAL-ABI
+    - SE-WORKSPACE-NORMAL-SIZE
+    meaning: Contiguous region order for mm1, vec1, mm2, and vec2.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  slot_stride:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: workspace.normal.regions[].slot_stride
+    source_cards:
+    - OC-WORKSPACE-NORMAL-RING
+    source_evidence:
+    - SE-WORKSPACE-NORMAL-ABI
+    - SE-WORKSPACE-NORMAL-SIZE
+    meaning: Per-preload-slot stride for each ring region.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  accum_out:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: workspace.flash_decode.accum_out
+    source_cards:
+    - OC-WORKSPACE-FD-REGIONS
+    source_evidence:
+    - SE-FD-WORKSPACE-OFFSETS
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    meaning: Partial-output workspace region sized by FD task count and headDimAlign.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  lse_sum_max:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: workspace.flash_decode.lse_sum_max
+    source_cards:
+    - OC-WORKSPACE-FD-REGIONS
+    source_evidence:
+    - SE-FD-WORKSPACE-OFFSETS
+    - SE-WORKSPACE-FD-SIZE-MLA
+    - SE-WORKSPACE-FD-SIZE-NONQUANT
+    meaning: Half-and-half LSE sum/max super-region and offset split rule.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  binding_status:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: workspace.mla.tail_regions[region_id=mla.softmax_sum].binding_status
+    source_cards:
+    - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+    source_evidence:
+    - SE-MLA-AMLASUM-UB-ONLY
+    - SE-MLA-SOFTMAX-SUM-CONSUME
+    - SE-MLA-SOFTMAX-SUM-GEN
+    - SE-WORKSPACE-MLA-ABI
+    - SE-WORKSPACE-MLA-INIT-ORDER
+    meaning: The softmaxSum tail is host-budget-only and must not be emitted as a
+      standalone GM region.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  name:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: workspace.normal.regions[region_id=normal.mm2].aliases[].name
+    source_cards:
+    - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+    source_evidence:
+    - SE-MLA-MM2-INT32-ALIAS
+    - SE-WORKSPACE-MLA-ABI
+    - SE-WORKSPACE-MLA-INIT-ORDER
+    meaning: mm2ResInt32Gm is the runtime target for MLA nUpdate atomic correction.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  local_buffer_bridge:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: workspace.mla.tail_regions[region_id=mla.softmax_sum].local_buffer_bridge
+    source_cards:
+    - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+    source_evidence:
+    - SE-MLA-AMLASUM-UB-ONLY
+    - SE-MLA-SOFTMAX-SUM-CONSUME
+    - SE-MLA-SOFTMAX-SUM-GEN
+    - SE-WORKSPACE-MLA-ABI
+    - SE-WORKSPACE-MLA-INIT-ORDER
+    meaning: AmlaVecCompute produces aMlaSumUb and DealBmm2ResBaseBlock consumes it
+      from local UB state.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

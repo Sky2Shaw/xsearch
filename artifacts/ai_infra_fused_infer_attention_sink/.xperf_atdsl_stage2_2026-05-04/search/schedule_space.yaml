@@ -1,0 +1,330 @@
+version: '0.4'
+kind: ascend.attention.schedule_space
+schedule_points:
+- id: schedule:pipeline.scheduler.runinfo_ring
+  field: pipeline.scheduler.runinfo_ring
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  - R-SPLITKV-PARTIAL-COLLISION
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Mapping from loop-relative cache slot to stage responsibility.
+- id: schedule:pipeline.scheduler.invalid_after_vec2
+  field: pipeline.scheduler.invalid_after_vec2
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  - R-SPLITKV-PARTIAL-COLLISION
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Slot invalidation happens after Vec2 finishes, not after MM2.
+- id: schedule:flash_decode.fd_metadata.record_conditions
+  field: flash_decode.fd_metadata.record_conditions
+  action: flash_decode
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  - C-FD-METADATA
+  - R-COMMON-FD-METADATA-MISMATCH
+  - R-FD-METADATA-DESYNC
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Common conditions that decide whether a split row emits FD metadata.
+- id: schedule:flash_decode.fd_metadata.vector_boundaries
+  field: flash_decode.fd_metadata.vector_boundaries
+  action: flash_decode
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  - C-FD-METADATA
+  - R-COMMON-FD-METADATA-MISMATCH
+  - R-FD-METADATA-DESYNC
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: SplitFD vector boundary selection using FD_TOLERANCE_RATIO.
+- id: schedule:memory.l1.gqa.q_snapshot_signature
+  field: memory.l1.gqa.q_snapshot_signature
+  action: memory
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Coordinate key (batch/head/gS1) and reuse scope for Q L1 caching across
+    K slices.
+- id: schedule:memory.l1.gqa.q_snapshot_bufcnt
+  field: memory.l1.gqa.q_snapshot_bufcnt
+  action: memory
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Number of Q L1 buffers cached in the snapshot and first buffer ID for ring
+    addressing.
+- id: schedule:memory.l1.kp_buffer_count
+  field: memory.l1.kp_buffer_count
+  action: memory
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Number of K-tile L1 buffers for double/triple-buffer ping-pong.
+- id: schedule:memory.l1.kp_event_id_base
+  field: memory.l1.kp_event_id_base
+  action: memory
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Base event ID for K-tile producer-consumer synchronization.
+- id: schedule:pipeline.mm1_vec1_bridge.elewise_params
+  field: pipeline.mm1_vec1_bridge.elewise_params
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-INVALID-ROW-LSE-CORRECTION
+  - C-VEC-UB-ALIGNMENT
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  - R-UB-ALIGNMENT-DRIFT
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Scale, bias, and mask parameters applied between MM1 output and softmax
+    input.
+- id: schedule:pipeline.mm1_vec1_bridge.sink_skip_path
+  field: pipeline.mm1_vec1_bridge.sink_skip_path
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-INVALID-ROW-LSE-CORRECTION
+  - C-VEC-UB-ALIGNMENT
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  - R-UB-ALIGNMENT-DRIFT
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Fast path that bypasses ElewiseCompute and SoftmaxFlashV2Compute for sink-skipped
+    rows.
+- id: schedule:memory.l1.gqa.v_snapshot_signature
+  field: memory.l1.gqa.v_snapshot_signature
+  action: memory
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Coordinate key and reuse scope for V L1 caching across M slices.
+- id: schedule:pipeline.stage_graph.edges[].sync_signal
+  field: pipeline.stage_graph.edges[].sync_signal
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: syncV1C2 and syncC2V2 ordering around the GQA MM2 producer/consumer boundary.
+- id: schedule:pipeline.buffer_policy.kind
+  field: pipeline.buffer_policy.kind
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Single/DB/3-buffer/4-buffer/matrix-2x2 policy selected for a stage.
+- id: schedule:pipeline.events.hard_event_pair
+  field: pipeline.events.hard_event_pair
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Producer-to-consumer and consumer-to-producer event pair implied by buffer
+    type.
+- id: schedule:flash_decode.merge.weight_formula
+  field: flash_decode.merge.weight_formula
+  action: flash_decode
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - R-FD-LSE-MERGE
+  - R-SPLITKV-PARTIAL-COLLISION
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Ordered max/sub/exp/mul/sum/div merge sequence.
+- id: schedule:flash_decode.fdparams.metadata_arrays
+  field: flash_decode.fdparams.metadata_arrays
+  action: flash_decode
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - C-SPLIT-CORE-FD-BRIDGE
+  - R-FD-LSE-MERGE
+  - R-FD-METADATA-DESYNC
+  - R-SPLITKV-PARTIAL-COLLISION
+  - R-WORKSPACE-ABI-DRIFT
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Per-core metadata arrays that map split-KV partials into FD tasks.
+- id: schedule:flash_decode.merge.output_layouts
+  field: flash_decode.merge.output_layouts
+  action: flash_decode
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - R-FD-LSE-MERGE
+  - R-SPLITKV-PARTIAL-COLLISION
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Final output copy-out choices for BSH/BNSD/NBSD/TND/NTD layouts.
+- id: schedule:flash_decode.fdparams.used_vec_num
+  field: flash_decode.fdparams.used_vec_num
+  action: flash_decode
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - C-SPLIT-CORE-FD-BRIDGE
+  - R-FD-METADATA-DESYNC
+  - R-WORKSPACE-ABI-DRIFT
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Bound on active AIV cores that may enter the FD merge path.
+- id: schedule:pipeline.buffer_policy.matrix_2x2
+  field: pipeline.buffer_policy.matrix_2x2
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: 4-buffer 2D ping-pong with row-first allocation and column-first usage.
+- id: schedule:pipeline.buffer_policy.m_extent
+  field: pipeline.buffer_policy.m_extent
+  action: pipeline
+  searchable: false
+  source_knob: null
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+  forbidden_moves:
+  - event_wait_reorder
+  - online_softmax_formula_edit
+  - lse_formula_edit
+  enum:
+  - fixed_from_evidence
+  meaning: Dynamic mSize (1 or 2) controlling matrix row count.

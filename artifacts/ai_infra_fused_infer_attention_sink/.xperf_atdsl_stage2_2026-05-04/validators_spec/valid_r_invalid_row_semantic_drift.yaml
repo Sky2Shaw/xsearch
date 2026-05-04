@@ -1,0 +1,22 @@
+name: valid_r_invalid_row_semantic_drift
+module: derived
+severity: hard
+inputs:
+- C-INVALID-ROW-LSE-CORRECTION
+- C-SPARSE-POLICY-CONTRACT
+- C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS
+expr: all_satisfied(constraints=['C-INVALID-ROW-LSE-CORRECTION', 'C-SPARSE-POLICY-CONTRACT',
+  'C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS']) and not exhibits_failure_pattern('R-INVALID-ROW-SEMANTIC-DRIFT')
+error_message: 'valid_r_invalid_row_semantic_drift failed: Skipping invalid-row correction
+  changes the semantic meaning of softmaxLse output and masked rows.'
+related_risks:
+- R-INVALID-ROW-SEMANTIC-DRIFT
+source_cards: []
+source_evidence:
+- SE-COMMON-VECTOR-COMMON-H
+- SE-FD-SPARSE-POLICY
+- SE-SPARSE-LEFTUP-INVALID-ROW
+- SE-SPARSE-MASK-PARAMS
+- SE-TEST-ST-EAGER-REFERENCE
+- SE-TEST-TILING-SINK-CONSTRAINTS
+- SE-VEC1-SINK-SOFTMAX

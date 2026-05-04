@@ -1,0 +1,172 @@
+- name: compute
+  responsibility: Generated from Stage 1 evidence for compute
+  profile_scope:
+  - all
+  source_cards:
+  - OC-COMMON-MATMUL-UNITFLAG-K-LOOP
+  - OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+  - OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD
+  - OC-LSE-EXPORT-LAYOUT-CONTRACT
+  - OC-LSE-GENERATE-AND-EXPORT
+  - OC-MLA-MM2-NUPDATE-BARRIER
+  - OC-MLA-NUPDATE-SIDECHANNEL
+  - OC-MM1-OUTPUT-FIXPIPE-ATOMIC-ADD-ACCUMULATION
+  - OC-MM1-SPARSE-SKIP-L1-EVENT-DEADLOCK-GUARD
+  - OC-SCALAR-RING-OFFSET-HOIST
+  - OC-SOFTMAX-TILING-BRC
+  - OC-VEC1-M-PARTITION-SPLIT
+  - OC-VEC1-ONLINE-SOFTMAX-FLASHV2
+  - OC-VEC1-SINK-SKIP-AND-INVALID-ROW
+  core_fields:
+  - atomic_add_condition
+  - atomic_target
+  - barrier_placement
+  - brc_config
+  - broadcast_group
+  - bsnd_flat_offset
+  - compute_formula
+  - cv1_1_cap
+  - dst_rep_stride
+  - dst_stride
+  - event_preserve
+  - exp_ub
+  - fd_merge_path
+  - fd_task_offset
+  - final_k_loop
+  - first_loop_default
+  - formula
+  - invalid_row_adjust
+  - layout_paths
+  - levels
+  - max_ub
+  - mla_mm2_reload_slot
+  - mla_nupdate_atomic_base
+  - mm2_sync
+  - mode
+  - safe_active_token
+  - sink_value
+  - state_forward
+  - sum_ub
+  - tail_assignment
+  - threshold
+  - tiling_func
+  - tnd_prefix_offset
+  - zero_fill
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []
+- name: core_mapping
+  responsibility: Generated from Stage 1 evidence for core_mapping
+  profile_scope:
+  - all
+  source_cards:
+  - OC-COMMON-SPARSE-SINK-S2-RANGE
+  - OC-COMMON-SPLIT-CORE-BALANCING
+  - OC-FD-METADATA-BRIDGE
+  core_fields:
+  - assignment_phases
+  - block_cost_formula
+  - bridge_status
+  - sink_selection
+  - sparse_s2_range
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []
+- name: decode
+  responsibility: Generated from Stage 1 evidence for decode
+  profile_scope:
+  - all
+  source_cards:
+  - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+  - OC-FD-METADATA-BRIDGE
+  - OC-FD-STABLE-MERGE
+  core_fields:
+  - metadata_arrays
+  - output_layouts
+  - record_conditions
+  - used_vec_num
+  - vector_boundaries
+  - weight_formula
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []
+- name: memory
+  responsibility: Generated from Stage 1 evidence for memory
+  profile_scope:
+  - all
+  source_cards:
+  - OC-COMMON-GM-COPY-LOWERING
+  - OC-COMMON-ND2NZ-INT4-STRIDE-LIMIT-FALLBACK
+  - OC-GQA-MM1-KP-L1-DOUBLE-BUFFER-PINGPONG
+  - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+  - OC-GQA-MM2-L1-V-REUSE
+  core_fields:
+  - gm_format
+  - int4_divisor
+  - kp_buffer_count
+  - kp_event_id_base
+  - nd_to_nz_params
+  - offset_category
+  - q_snapshot_bufcnt
+  - q_snapshot_signature
+  - stride_limit
+  - v_snapshot_signature
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []
+- name: pipeline
+  responsibility: Generated from Stage 1 evidence for pipeline
+  profile_scope:
+  - all
+  source_cards:
+  - OC-COMMON-BUFFER-MATRIX-2X2-POLICY
+  - OC-COMMON-BUFFER-POLICY-SELECTION
+  - OC-GQA-MM2-L1-V-REUSE
+  - OC-MM1-VEC1-SOFTMAX-PIPELINE-BRIDGE
+  - OC-RUNINFO-THREE-STAGE-RING
+  core_fields:
+  - elewise_params
+  - hard_event_pair
+  - invalid_after_vec2
+  - kind
+  - m_extent
+  - matrix_2x2
+  - runinfo_ring
+  - sink_skip_path
+  - sync_signal
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []
+- name: shape
+  responsibility: Generated from Stage 1 evidence for shape
+  profile_scope:
+  - all
+  source_cards:
+  - OC-COMMON-FIA-TILING-SHAPE-NZ-PACKING
+  core_fields:
+  - axis_map
+  - d_fallback
+  - nz_packing
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []
+- name: workspace
+  responsibility: Generated from Stage 1 evidence for workspace
+  profile_scope:
+  - all
+  source_cards:
+  - OC-WORKSPACE-FD-REGIONS
+  - OC-WORKSPACE-MLA-NUPDATE-BUDGET-STUB
+  - OC-WORKSPACE-MLA-SOFTMAX-SUM-BUDGET-STUB
+  - OC-WORKSPACE-NORMAL-RING
+  core_fields:
+  - accum_out
+  - base_offset_rule
+  - binding_status
+  - local_buffer_bridge
+  - lse_sum_max
+  - name
+  - slot_stride
+  searchable_fields: []
+  hard_validators: []
+  lowering_passes: []

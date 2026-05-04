@@ -1,0 +1,26 @@
+name: valid_r_common_split_core_model_omitted
+module: derived
+severity: hard
+inputs:
+- C-FD-METADATA
+- C-FD-USED-VEC-BOUNDS
+- C-SPLIT-CORE-FD-BRIDGE
+- C-SPLIT-CORE-RANGE-ORDER
+- C-COMMON-SPLIT-CORE-COST-RANGE
+expr: all_satisfied(constraints=['C-FD-METADATA', 'C-FD-USED-VEC-BOUNDS', 'C-SPLIT-CORE-FD-BRIDGE',
+  'C-SPLIT-CORE-RANGE-ORDER', 'C-COMMON-SPLIT-CORE-COST-RANGE']) and not exhibits_failure_pattern('R-COMMON-SPLIT-CORE-MODEL-OMITTED')
+error_message: 'valid_r_common_split_core_model_omitted failed: Omitting common split-core
+  cost, tolerance, core-search, sparse/sink/key-sink, or assignment semantics can
+  produce a Stage-2 planner that preserves array names '
+related_risks:
+- R-COMMON-SPLIT-CORE-MODEL-OMITTED
+source_cards: []
+source_evidence:
+- SE-COMMON-SPLIT-CORE-CPP
+- SE-COMMON-SPLIT-CORE-H
+- SE-FD-METADATA-PARTITION
+- SE-FD-METADATA-PARTITION-MLA
+- SE-SPLIT-CORE-INPUT-PARAMS
+- SE-SPLIT-CORE-INPUT-PARAMS-MLA
+- SE-SPLIT-CORE-OUTPUT-BRIDGE
+- SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA

@@ -1,0 +1,124 @@
+shape:
+  axis_map:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: shape_layout.axis_map
+    source_cards:
+    - OC-COMMON-FIA-TILING-SHAPE-NZ-PACKING
+    source_evidence:
+    - SE-COMMON-FIA-TILING-AXIS-MAP
+    - SE-COMMON-FIA-TILING-D-FALLBACK
+    meaning: Canonical axis ordering per layout family.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  d_fallback:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: shape_layout.d_fallback
+    source_cards:
+    - OC-COMMON-FIA-TILING-SHAPE-NZ-PACKING
+    source_evidence:
+    - SE-COMMON-FIA-TILING-AXIS-MAP
+    - SE-COMMON-FIA-TILING-D-FALLBACK
+    meaning: Three-way D derivation (direct, H/N, D1*D0).
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  nz_packing:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: shape_layout.nz_packing
+    source_cards:
+    - OC-COMMON-FIA-TILING-SHAPE-NZ-PACKING
+    source_evidence:
+    - SE-COMMON-FIA-TILING-AXIS-MAP
+    - SE-COMMON-FIA-TILING-D-FALLBACK
+    meaning: NZ {Bn,N,D1,Bs,D0} packing with D0=16.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

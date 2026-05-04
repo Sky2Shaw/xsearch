@@ -1,0 +1,31 @@
+{
+  "overall_status": "pass",
+  "total_score": 100,
+  "scores": {
+    "card_to_module_coverage": 20,
+    "field_design_completeness": 20,
+    "searchable_knob_quality": 15,
+    "validator_completeness": 20,
+    "lowering_spec_clarity": 10,
+    "shadow_dsl_coverage": 15
+  },
+  "hard_failures": [],
+  "semantic_issues": [],
+  "coverage": {
+    "shadow_dsl": {}
+  },
+  "agent_readiness": {
+    "status": "pass",
+    "score": 100,
+    "scores": {
+      "ir_layer_mapping": 20,
+      "schedule_space_quality": 25,
+      "hardware_contract_coverage": 20,
+      "feedback_contract_completeness": 20,
+      "replayability": 15
+    },
+    "hard_failures": [],
+    "issues": []
+  },
+  "next_actions": []
+}

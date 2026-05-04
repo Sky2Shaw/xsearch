@@ -1,0 +1,14 @@
+name: ub_capacity
+module: memory
+severity: hard
+inputs:
+- memory.ub.allocations
+- target.ub_size_bytes
+- tiling.tile_shape
+- compute.scalar.scratch_bytes
+expr: sum(memory.ub.allocations[*].bytes) + compute.scalar.scratch_bytes <= target.ub_size_bytes
+error_message: Estimated UB allocation exceeds target.ub_size_bytes
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

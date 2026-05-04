@@ -1,0 +1,13 @@
+name: valid_r_shape_layout_contract_drift
+module: derived
+severity: hard
+inputs: []
+expr: not exhibits_failure_pattern('R-SHAPE-LAYOUT-CONTRACT-DRIFT')
+error_message: 'valid_r_shape_layout_contract_drift failed: Changing infer-shape or
+  layout-specific exporters independently can mismatch attentionOut and softmaxLse
+  tensor ranks or offsets across BSH, BSND, BNSD, NBSD, T'
+related_risks:
+- R-SHAPE-LAYOUT-CONTRACT-DRIFT
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

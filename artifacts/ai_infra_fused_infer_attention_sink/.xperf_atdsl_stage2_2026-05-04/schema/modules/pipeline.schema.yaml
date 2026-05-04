@@ -1,0 +1,383 @@
+pipeline:
+  runinfo_ring:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.scheduler.runinfo_ring
+    source_cards:
+    - OC-RUNINFO-THREE-STAGE-RING
+    source_evidence:
+    - SE-RUNINFO-THREE-STAGE-RING-MLA
+    - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+    meaning: Mapping from loop-relative cache slot to stage responsibility.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.scheduler.runinfo_ring
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  invalid_after_vec2:
+    type: bool
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.scheduler.invalid_after_vec2
+    source_cards:
+    - OC-RUNINFO-THREE-STAGE-RING
+    source_evidence:
+    - SE-RUNINFO-THREE-STAGE-RING-MLA
+    - SE-RUNINFO-THREE-STAGE-RING-NONQUANT
+    meaning: Slot invalidation happens after Vec2 finishes, not after MM2.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.scheduler.invalid_after_vec2
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  elewise_params:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.mm1_vec1_bridge.elewise_params
+    source_cards:
+    - OC-MM1-VEC1-SOFTMAX-PIPELINE-BRIDGE
+    source_evidence:
+    - SE-MM1-VEC1-BRIDGE-PIPELINE
+    - SE-MM1-VEC1-SINK-SKIP
+    meaning: Scale, bias, and mask parameters applied between MM1 output and softmax
+      input.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.mm1_vec1_bridge.elewise_params
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  sink_skip_path:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.mm1_vec1_bridge.sink_skip_path
+    source_cards:
+    - OC-MM1-VEC1-SOFTMAX-PIPELINE-BRIDGE
+    source_evidence:
+    - SE-MM1-VEC1-BRIDGE-PIPELINE
+    - SE-MM1-VEC1-SINK-SKIP
+    meaning: Fast path that bypasses ElewiseCompute and SoftmaxFlashV2Compute for
+      sink-skipped rows.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.mm1_vec1_bridge.sink_skip_path
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  sync_signal:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: pipeline.stage_graph.edges[].sync_signal
+    source_cards:
+    - OC-GQA-MM2-L1-V-REUSE
+    source_evidence:
+    - SE-GQA-V-L1-RELEASE
+    meaning: syncV1C2 and syncC2V2 ordering around the GQA MM2 producer/consumer boundary.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.stage_graph.edges[].sync_signal
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  kind:
+    type: object
+    searchable: false
+    editable_policy: configurable
+    path: pipeline.buffer_policy.kind
+    source_cards:
+    - OC-COMMON-BUFFER-POLICY-SELECTION
+    source_evidence:
+    - SE-COMMON-BUFFER-H
+    - SE-COMMON-BUFFERS-POLICY-H
+    - SE-COMMON-MATMUL-H
+    meaning: Single/DB/3-buffer/4-buffer/matrix-2x2 policy selected for a stage.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.buffer_policy.kind
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  hard_event_pair:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.events.hard_event_pair
+    source_cards:
+    - OC-COMMON-BUFFER-POLICY-SELECTION
+    source_evidence:
+    - SE-COMMON-BUFFER-H
+    - SE-COMMON-BUFFERS-POLICY-H
+    - SE-COMMON-MATMUL-H
+    meaning: Producer-to-consumer and consumer-to-producer event pair implied by buffer
+      type.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.events.hard_event_pair
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  matrix_2x2:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.buffer_policy.matrix_2x2
+    source_cards:
+    - OC-COMMON-BUFFER-MATRIX-2X2-POLICY
+    source_evidence:
+    - SE-COMMON-BUFFER-MATRIX-2X2
+    - SE-COMMON-BUFFER-PEEK-NEXT-K
+    meaning: 4-buffer 2D ping-pong with row-first allocation and column-first usage.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.buffer_policy.matrix_2x2
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  m_extent:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: pipeline.buffer_policy.m_extent
+    source_cards:
+    - OC-COMMON-BUFFER-MATRIX-2X2-POLICY
+    source_evidence:
+    - SE-COMMON-BUFFER-MATRIX-2X2
+    - SE-COMMON-BUFFER-PEEK-NEXT-K
+    meaning: Dynamic mSize (1 or 2) controlling matrix row count.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:pipeline.buffer_policy.m_extent
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

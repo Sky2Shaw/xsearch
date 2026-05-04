@@ -1,0 +1,23 @@
+name: valid_r_mla_nupdate_tail_mislowered
+module: derived
+severity: hard
+inputs:
+- C-WORKSPACE-MLA-FD
+- C-WORKSPACE-MLA-NUPDATE-STUB
+- C-WORKSPACE-MLA-SOFTMAX-SUM-UB
+expr: all_satisfied(constraints=['C-WORKSPACE-MLA-FD', 'C-WORKSPACE-MLA-NUPDATE-STUB',
+  'C-WORKSPACE-MLA-SOFTMAX-SUM-UB']) and not exhibits_failure_pattern('R-MLA-NUPDATE-TAIL-MISLOWERED')
+error_message: 'valid_r_mla_nupdate_tail_mislowered failed: Lowering MLA nUpdate as
+  a standalone GM tail instead of the observed normal.mm2 int32 alias can move atomic
+  correction away from the MM2 data it adjusts.'
+related_risks:
+- R-MLA-NUPDATE-TAIL-MISLOWERED
+source_cards: []
+source_evidence:
+- SE-MLA-AMLASUM-UB-ONLY
+- SE-MLA-MM2-INT32-ALIAS
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-SOFTMAX-SUM-CONSUME
+- SE-MLA-SOFTMAX-SUM-GEN
+- SE-WORKSPACE-MLA-ABI
+- SE-WORKSPACE-MLA-INIT-ORDER

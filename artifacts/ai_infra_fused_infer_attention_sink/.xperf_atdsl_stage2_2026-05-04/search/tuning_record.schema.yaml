@@ -1,0 +1,27 @@
+version: '0.4'
+kind: ascend.attention.tuning_record_schema
+fields:
+- id: tuning_record:environment_fingerprint
+  name: environment_fingerprint
+  required: true
+- id: tuning_record:shape_signature
+  name: shape_signature
+  required: true
+- id: tuning_record:dsl_version
+  name: dsl_version
+  required: true
+- id: tuning_record:schedule_trace
+  name: schedule_trace
+  required: true
+- id: tuning_record:validator_results
+  name: validator_results
+  required: true
+- id: tuning_record:compile_result
+  name: compile_result
+  required: true
+- id: tuning_record:measurement_result
+  name: measurement_result
+  required: true
+- id: tuning_record:failure_metadata
+  name: failure_metadata
+  required: true

@@ -1,0 +1,23 @@
+name: valid_r_sparse_policy_desync
+module: derived
+severity: hard
+inputs:
+- C-INVALID-ROW-LSE-CORRECTION
+- C-SPARSE-POLICY-CONTRACT
+- C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS
+expr: all_satisfied(constraints=['C-INVALID-ROW-LSE-CORRECTION', 'C-SPARSE-POLICY-CONTRACT',
+  'C-COMMON-VECTOR-REPEAT-AND-INVALID-ROWS']) and not exhibits_failure_pattern('R-SPARSE-POLICY-DESYNC')
+error_message: 'valid_r_sparse_policy_desync failed: Divergence between host maskParams
+  packing and kernel sparse or invalid-row branches can invert sink-window or row-validity
+  semantics.'
+related_risks:
+- R-SPARSE-POLICY-DESYNC
+source_cards: []
+source_evidence:
+- SE-COMMON-VECTOR-COMMON-H
+- SE-FD-SPARSE-POLICY
+- SE-SPARSE-LEFTUP-INVALID-ROW
+- SE-SPARSE-MASK-PARAMS
+- SE-TEST-ST-EAGER-REFERENCE
+- SE-TEST-TILING-SINK-CONSTRAINTS
+- SE-VEC1-SINK-SOFTMAX

@@ -1,0 +1,21 @@
+name: valid_r_splitkv_partial_collision
+module: derived
+severity: hard
+inputs:
+- C-VEC2-PARTIAL-RING-SEPARATION
+- C-SCALAR-OFFSET-CONSISTENCY
+expr: all_satisfied(constraints=['C-VEC2-PARTIAL-RING-SEPARATION', 'C-SCALAR-OFFSET-CONSISTENCY'])
+  and not exhibits_failure_pattern('R-SPLITKV-PARTIAL-COLLISION')
+error_message: 'valid_r_splitkv_partial_collision failed: Collapsing current and previous
+  vec2ResGm slots or merging partial and final-output paths can overwrite split-KV
+  partials before FD merge.'
+related_risks:
+- R-SPLITKV-PARTIAL-COLLISION
+source_cards: []
+source_evidence:
+- SE-FD-TASK-OFFSET-SCALARS
+- SE-KNOB-HEADDIM-ALIGN
+- SE-KNOB-PRELOAD-NUM
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-VEC2-NORMALIZE-COPY
+- SE-SHARED-VEC2-CONTRACT

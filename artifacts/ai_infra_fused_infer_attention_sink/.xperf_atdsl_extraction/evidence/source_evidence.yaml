@@ -832,6 +832,7 @@ source_evidence:
       - common_supplement/shape_layout_extraction.yaml
       - evidence/source_evidence.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.cpp
+    symbol: FiaTilingInfo
     evidence_kind: linked_common_host_source
     relevant_symbols:
       - FiaTilingInfo
@@ -846,6 +847,7 @@ source_evidence:
       - constraints/constraints.yaml
       - risks/risks.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.cpp
+    symbol: FIA_LAYOUT_AXIS_MAP
     evidence_kind: linked_common_host_source
     relevant_symbols:
       - FIA_LAYOUT_AXIS_MAP
@@ -863,6 +865,7 @@ source_evidence:
       - risks/risks.yaml
       - cards/optimization_cards.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.cpp
+    symbol: SplitCore
     evidence_kind: linked_common_host_source
     relevant_symbols:
       - CalcCost
@@ -881,6 +884,7 @@ source_evidence:
       - common_supplement/common_dependency_inventory.yaml
       - evidence/source_evidence.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_base.h
+    symbol: FiaTilingBase
     evidence_kind: direct_common_host_include
     relevant_symbols:
       - common tiling base types
@@ -893,6 +897,7 @@ source_evidence:
       - common_supplement/shape_layout_extraction.yaml
       - dsl/shape_layout_contract.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_info.h
+    symbol: FiaLayout
     evidence_kind: direct_common_host_include
     relevant_symbols:
       - FiaLayout
@@ -907,6 +912,7 @@ source_evidence:
       - dsl/shape_layout_contract.yaml
       - constraints/constraints.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/fia_tiling_shape.h
+    symbol: FiaCompareType
     evidence_kind: direct_common_host_include
     relevant_symbols:
       - FiaCompareType
@@ -922,6 +928,7 @@ source_evidence:
       - constraints/constraints.yaml
       - cards/optimization_cards.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_host/split_core.h
+    symbol: BaseInfo
     evidence_kind: direct_common_host_include
     relevant_symbols:
       - FA_TOLERANCE_RATIO
@@ -937,6 +944,7 @@ source_evidence:
       - common_supplement/common_dependency_inventory.yaml
       - evidence/source_evidence.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/fia_public_define.h
+    symbol: FiaPublicDefine
     evidence_kind: direct_common_kernel_include
     relevant_symbols:
       - shared kernel constants
@@ -951,6 +959,7 @@ source_evidence:
       - risks/risks.yaml
       - cards/optimization_cards.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/vector_common.h
+    symbol: IsExistInvalidRows
     evidence_kind: direct_common_kernel_include
     relevant_symbols:
       - IsExistInvalidRows
@@ -970,6 +979,7 @@ source_evidence:
       - cards/optimization_cards.yaml
       - auxiliary/memory_lifetime.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/memory_copy.h
+    symbol: OffsetCalculator
     evidence_kind: direct_common_kernel_include
     relevant_symbols:
       - GmFormat
@@ -987,6 +997,7 @@ source_evidence:
       - common_supplement/common_dependency_inventory.yaml
       - evidence/source_evidence.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/array.h
+    symbol: Array
     evidence_kind: direct_common_kernel_include
     relevant_symbols:
       - array helper templates
@@ -997,6 +1008,7 @@ source_evidence:
       - common_supplement/common_dependency_inventory.yaml
       - evidence/source_evidence.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/axis.h
+    symbol: Axis
     evidence_kind: direct_common_kernel_include
     relevant_symbols:
       - axis helper templates
@@ -1010,6 +1022,7 @@ source_evidence:
       - auxiliary/memory_lifetime.yaml
       - auxiliary/pipeline_graphs.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer.h
+    symbol: Buffer
     evidence_kind: common_kernel_helper_header
     relevant_symbols:
       - BufferType
@@ -1028,6 +1041,7 @@ source_evidence:
       - constraints/constraints.yaml
       - auxiliary/memory_lifetime.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffer_manager.h
+    symbol: BufferManager
     evidence_kind: common_kernel_helper_header
     relevant_symbols:
       - BufferManager
@@ -1044,6 +1058,7 @@ source_evidence:
       - auxiliary/memory_lifetime.yaml
       - auxiliary/pipeline_graphs.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/buffers_policy.h
+    symbol: BuffersPolicySingleBuffer
     evidence_kind: common_kernel_helper_header
     relevant_symbols:
       - BuffersPolicySingleBuffer
@@ -1061,6 +1076,7 @@ source_evidence:
       - cards/optimization_cards.yaml
       - auxiliary/pipeline_graphs.yaml
     file: inference/ascendc/src/ops-transformer/attention/common/op_kernel/matmul.h
+    symbol: MatmulBase
     evidence_kind: direct_common_kernel_include
     relevant_symbols:
       - MatmulBase

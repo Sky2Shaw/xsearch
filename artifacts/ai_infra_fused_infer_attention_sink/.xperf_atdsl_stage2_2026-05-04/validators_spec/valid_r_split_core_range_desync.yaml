@@ -1,0 +1,26 @@
+name: valid_r_split_core_range_desync
+module: derived
+severity: hard
+inputs:
+- C-FD-METADATA
+- C-FD-USED-VEC-BOUNDS
+- C-SPLIT-CORE-FD-BRIDGE
+- C-SPLIT-CORE-RANGE-ORDER
+- C-COMMON-SPLIT-CORE-COST-RANGE
+expr: all_satisfied(constraints=['C-FD-METADATA', 'C-FD-USED-VEC-BOUNDS', 'C-SPLIT-CORE-FD-BRIDGE',
+  'C-SPLIT-CORE-RANGE-ORDER', 'C-COMMON-SPLIT-CORE-COST-RANGE']) and not exhibits_failure_pattern('R-SPLIT-CORE-RANGE-DESYNC')
+error_message: 'valid_r_split_core_range_desync failed: Divergence in split_core range
+  packing silently reassigns BN2, GS1, or S2 work across FD tasks and makes host fdParams
+  disagree with kernel FlashDecode consumer'
+related_risks:
+- R-SPLIT-CORE-RANGE-DESYNC
+source_cards: []
+source_evidence:
+- SE-COMMON-SPLIT-CORE-CPP
+- SE-COMMON-SPLIT-CORE-H
+- SE-FD-METADATA-PARTITION
+- SE-FD-METADATA-PARTITION-MLA
+- SE-SPLIT-CORE-INPUT-PARAMS
+- SE-SPLIT-CORE-INPUT-PARAMS-MLA
+- SE-SPLIT-CORE-OUTPUT-BRIDGE
+- SE-SPLIT-CORE-OUTPUT-BRIDGE-MLA

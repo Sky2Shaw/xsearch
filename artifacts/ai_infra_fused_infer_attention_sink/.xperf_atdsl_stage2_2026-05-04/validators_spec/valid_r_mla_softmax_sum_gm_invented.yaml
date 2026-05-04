@@ -1,0 +1,23 @@
+name: valid_r_mla_softmax_sum_gm_invented
+module: derived
+severity: hard
+inputs:
+- C-WORKSPACE-MLA-FD
+- C-WORKSPACE-MLA-NUPDATE-STUB
+- C-WORKSPACE-MLA-SOFTMAX-SUM-UB
+expr: all_satisfied(constraints=['C-WORKSPACE-MLA-FD', 'C-WORKSPACE-MLA-NUPDATE-STUB',
+  'C-WORKSPACE-MLA-SOFTMAX-SUM-UB']) and not exhibits_failure_pattern('R-MLA-SOFTMAX-SUM-GM-INVENTED')
+error_message: 'valid_r_mla_softmax_sum_gm_invented failed: Inventing a GM producer
+  or consumer for MLA softmaxSum hides the observed aMlaSumUb local-buffer bridge
+  and can mis-specify Vec2 normalization ordering.'
+related_risks:
+- R-MLA-SOFTMAX-SUM-GM-INVENTED
+source_cards: []
+source_evidence:
+- SE-MLA-AMLASUM-UB-ONLY
+- SE-MLA-MM2-INT32-ALIAS
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-SOFTMAX-SUM-CONSUME
+- SE-MLA-SOFTMAX-SUM-GEN
+- SE-WORKSPACE-MLA-ABI
+- SE-WORKSPACE-MLA-INIT-ORDER

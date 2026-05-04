@@ -1,0 +1,208 @@
+core_mapping:
+  block_cost_formula:
+    type: object
+    searchable: false
+    editable_policy: fixed
+    path: split_core.cost_model.block_cost_formula
+    source_cards:
+    - OC-COMMON-SPLIT-CORE-BALANCING
+    source_evidence:
+    - SE-COMMON-SPLIT-CORE-CPP
+    - SE-COMMON-SPLIT-CORE-H
+    meaning: Discrete aligned M/S2 formula used for block and tail scoring.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  assignment_phases:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: split_core.assignment_phases
+    source_cards:
+    - OC-COMMON-SPLIT-CORE-BALANCING
+    source_evidence:
+    - SE-COMMON-SPLIT-CORE-CPP
+    - SE-COMMON-SPLIT-CORE-H
+    meaning: Ordered batch, row, block, and force assignment phases with supportFD
+      gates.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  sparse_s2_range:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: split_core.sparse_s2_range
+    source_cards:
+    - OC-COMMON-SPARSE-SINK-S2-RANGE
+    source_evidence:
+    - SE-COMMON-SPLIT-CORE-CPP
+    meaning: Right-open S2 block range produced after token-window clipping and sink
+      gap handling.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  sink_selection:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: split_core.sink_selection
+    source_cards:
+    - OC-COMMON-SPARSE-SINK-S2-RANGE
+    source_evidence:
+    - SE-COMMON-SPLIT-CORE-CPP
+    meaning: supportFD-aware choice between sinkNumber and keySinkNumber.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  bridge_status:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: split_core.range_assignments.bridge_status
+    source_cards:
+    - OC-FD-METADATA-BRIDGE
+    source_evidence:
+    - SE-FD-METADATA-PARTITION
+    - SE-FD-METADATA-PARTITION-MLA
+    - SE-SPLIT-CORE-INPUT-PARAMS
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE
+    meaning: External planner implementation with verified host input/output surfaces.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

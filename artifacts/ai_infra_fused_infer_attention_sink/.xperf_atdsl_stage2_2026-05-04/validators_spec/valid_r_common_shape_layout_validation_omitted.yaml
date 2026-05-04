@@ -1,0 +1,13 @@
+name: valid_r_common_shape_layout_validation_omitted
+module: derived
+severity: hard
+inputs: []
+expr: not exhibits_failure_pattern('R-COMMON-SHAPE-LAYOUT-VALIDATION-OMITTED')
+error_message: 'valid_r_common_shape_layout_validation_omitted failed: Omitting common
+  axis maps, derived dimensions, NZ packing, or compare modes can make Stage-2 accept
+  layouts that host validation rejects or reject valid TND/NZ/'
+related_risks:
+- R-COMMON-SHAPE-LAYOUT-VALIDATION-OMITTED
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

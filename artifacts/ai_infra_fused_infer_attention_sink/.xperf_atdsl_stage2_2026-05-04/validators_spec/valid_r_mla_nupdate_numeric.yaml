@@ -1,0 +1,16 @@
+name: valid_r_mla_nupdate_numeric
+module: derived
+severity: hard
+inputs:
+- C-MLA-MM2-NUPDATE
+- C-MLA-NUPDATE-FIRST-LOOP
+expr: all_satisfied(constraints=['C-MLA-MM2-NUPDATE', 'C-MLA-NUPDATE-FIRST-LOOP'])
+  and not exhibits_failure_pattern('R-MLA-NUPDATE-NUMERIC')
+error_message: 'valid_r_mla_nupdate_numeric failed: Changing AmlaVecCompute order
+  can alter nUpdate correction numerics.'
+related_risks:
+- R-MLA-NUPDATE-NUMERIC
+source_cards: []
+source_evidence:
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-NUPDATE-BARRIER

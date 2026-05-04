@@ -1,0 +1,259 @@
+decode:
+  record_conditions:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: flash_decode.fd_metadata.record_conditions
+    source_cards:
+    - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+    source_evidence:
+    - SE-COMMON-SPLIT-CORE-CPP
+    - SE-COMMON-SPLIT-CORE-H
+    meaning: Common conditions that decide whether a split row emits FD metadata.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:flash_decode.fd_metadata.record_conditions
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  vector_boundaries:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: flash_decode.fd_metadata.vector_boundaries
+    source_cards:
+    - OC-COMMON-FD-METADATA-MERGE-BEHAVIOR
+    source_evidence:
+    - SE-COMMON-SPLIT-CORE-CPP
+    - SE-COMMON-SPLIT-CORE-H
+    meaning: SplitFD vector boundary selection using FD_TOLERANCE_RATIO.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:flash_decode.fd_metadata.vector_boundaries
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  weight_formula:
+    type: object
+    searchable: false
+    editable_policy: configurable
+    path: flash_decode.merge.weight_formula
+    source_cards:
+    - OC-FD-STABLE-MERGE
+    source_evidence:
+    - SE-FD-MERGE-WEIGHT-FORMULA
+    - SE-FD-METADATA-PARTITION
+    meaning: Ordered max/sub/exp/mul/sum/div merge sequence.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:flash_decode.merge.weight_formula
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  metadata_arrays:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: flash_decode.fdparams.metadata_arrays
+    source_cards:
+    - OC-FD-METADATA-BRIDGE
+    - OC-FD-STABLE-MERGE
+    source_evidence:
+    - SE-FD-MERGE-WEIGHT-FORMULA
+    - SE-FD-METADATA-PARTITION
+    - SE-FD-METADATA-PARTITION-MLA
+    - SE-SPLIT-CORE-INPUT-PARAMS
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE
+    meaning: Per-core metadata arrays that map split-KV partials into FD tasks.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:flash_decode.fdparams.metadata_arrays
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  output_layouts:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: flash_decode.merge.output_layouts
+    source_cards:
+    - OC-FD-STABLE-MERGE
+    source_evidence:
+    - SE-FD-MERGE-WEIGHT-FORMULA
+    - SE-FD-METADATA-PARTITION
+    meaning: Final output copy-out choices for BSH/BNSD/NBSD/TND/NTD layouts.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:flash_decode.merge.output_layouts
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  used_vec_num:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: flash_decode.fdparams.used_vec_num
+    source_cards:
+    - OC-FD-METADATA-BRIDGE
+    source_evidence:
+    - SE-FD-METADATA-PARTITION
+    - SE-FD-METADATA-PARTITION-MLA
+    - SE-SPLIT-CORE-INPUT-PARAMS
+    - SE-SPLIT-CORE-OUTPUT-BRIDGE
+    meaning: Bound on active AIV cores that may enter the FD merge path.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:flash_decode.fdparams.used_vec_num
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

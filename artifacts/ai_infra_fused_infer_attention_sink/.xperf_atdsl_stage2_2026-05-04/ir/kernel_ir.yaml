@@ -1,0 +1,165 @@
+version: '0.4'
+kind: ascend.attention.kernel_ir
+schedule_points:
+- id: schedule:pipeline.scheduler.runinfo_ring
+  field: pipeline.scheduler.runinfo_ring
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  - R-SPLITKV-PARTIAL-COLLISION
+- id: schedule:pipeline.scheduler.invalid_after_vec2
+  field: pipeline.scheduler.invalid_after_vec2
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+  - R-SPLITKV-PARTIAL-COLLISION
+- id: schedule:flash_decode.fd_metadata.record_conditions
+  field: flash_decode.fd_metadata.record_conditions
+  action: flash_decode
+  searchable: false
+  guard_validators:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  - C-FD-METADATA
+  - R-COMMON-FD-METADATA-MISMATCH
+  - R-FD-METADATA-DESYNC
+- id: schedule:flash_decode.fd_metadata.vector_boundaries
+  field: flash_decode.fd_metadata.vector_boundaries
+  action: flash_decode
+  searchable: false
+  guard_validators:
+  - C-COMMON-SPLIT-CORE-COST-RANGE
+  - C-FD-METADATA
+  - R-COMMON-FD-METADATA-MISMATCH
+  - R-FD-METADATA-DESYNC
+- id: schedule:memory.l1.gqa.q_snapshot_signature
+  field: memory.l1.gqa.q_snapshot_signature
+  action: memory
+  searchable: false
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+- id: schedule:memory.l1.gqa.q_snapshot_bufcnt
+  field: memory.l1.gqa.q_snapshot_bufcnt
+  action: memory
+  searchable: false
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+- id: schedule:memory.l1.kp_buffer_count
+  field: memory.l1.kp_buffer_count
+  action: memory
+  searchable: false
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+- id: schedule:memory.l1.kp_event_id_base
+  field: memory.l1.kp_event_id_base
+  action: memory
+  searchable: false
+  guard_validators:
+  - C-EVENT-ORDER-RUNINFO
+  - R-RUNINFO-STAGE-REORDER-DEADLOCK
+- id: schedule:pipeline.mm1_vec1_bridge.elewise_params
+  field: pipeline.mm1_vec1_bridge.elewise_params
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-INVALID-ROW-LSE-CORRECTION
+  - C-VEC-UB-ALIGNMENT
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  - R-UB-ALIGNMENT-DRIFT
+- id: schedule:pipeline.mm1_vec1_bridge.sink_skip_path
+  field: pipeline.mm1_vec1_bridge.sink_skip_path
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-INVALID-ROW-LSE-CORRECTION
+  - C-VEC-UB-ALIGNMENT
+  - R-INVALID-ROW-SEMANTIC-DRIFT
+  - R-UB-ALIGNMENT-DRIFT
+- id: schedule:memory.l1.gqa.v_snapshot_signature
+  field: memory.l1.gqa.v_snapshot_signature
+  action: memory
+  searchable: false
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+- id: schedule:pipeline.stage_graph.edges[].sync_signal
+  field: pipeline.stage_graph.edges[].sync_signal
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-GQA-MM2-SYNC
+  - R-GQA-V-L1-LIFETIME
+- id: schedule:pipeline.buffer_policy.kind
+  field: pipeline.buffer_policy.kind
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+- id: schedule:pipeline.events.hard_event_pair
+  field: pipeline.events.hard_event_pair
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+- id: schedule:flash_decode.merge.weight_formula
+  field: flash_decode.merge.weight_formula
+  action: flash_decode
+  searchable: false
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - R-FD-LSE-MERGE
+  - R-SPLITKV-PARTIAL-COLLISION
+- id: schedule:flash_decode.fdparams.metadata_arrays
+  field: flash_decode.fdparams.metadata_arrays
+  action: flash_decode
+  searchable: false
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - C-SPLIT-CORE-FD-BRIDGE
+  - R-FD-LSE-MERGE
+  - R-FD-METADATA-DESYNC
+  - R-SPLITKV-PARTIAL-COLLISION
+  - R-WORKSPACE-ABI-DRIFT
+- id: schedule:flash_decode.merge.output_layouts
+  field: flash_decode.merge.output_layouts
+  action: flash_decode
+  searchable: false
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - R-FD-LSE-MERGE
+  - R-SPLITKV-PARTIAL-COLLISION
+- id: schedule:flash_decode.fdparams.used_vec_num
+  field: flash_decode.fdparams.used_vec_num
+  action: flash_decode
+  searchable: false
+  guard_validators:
+  - C-FD-METADATA
+  - C-FD-USED-VEC-BOUNDS
+  - C-SPLIT-CORE-FD-BRIDGE
+  - R-FD-METADATA-DESYNC
+  - R-WORKSPACE-ABI-DRIFT
+- id: schedule:pipeline.buffer_policy.matrix_2x2
+  field: pipeline.buffer_policy.matrix_2x2
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+- id: schedule:pipeline.buffer_policy.m_extent
+  field: pipeline.buffer_policy.m_extent
+  action: pipeline
+  searchable: false
+  guard_validators:
+  - C-COMMON-BUFFER-EVENT-LEGALITY
+  - R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL

@@ -1,0 +1,15 @@
+name: valid_r_mm2_owner_collapse
+module: derived
+severity: hard
+inputs:
+- C-TEMPLATE-IDENTITY
+- C-GQA-MM2-SYNC
+expr: all_satisfied(constraints=['C-TEMPLATE-IDENTITY', 'C-GQA-MM2-SYNC']) and not
+  exhibits_failure_pattern('R-MM2-OWNER-COLLAPSE')
+error_message: 'valid_r_mm2_owner_collapse failed: Collapsing ComputeMm2 or alias-aware
+  Vec stages across owners hides distinct GQA, MLA, and generic nonquant semantics.'
+related_risks:
+- R-MM2-OWNER-COLLAPSE
+source_cards: []
+source_evidence:
+- SE-GQA-V-L1-RELEASE

@@ -1,0 +1,24 @@
+name: LowerL1Residency
+consumes:
+- l1_residency
+- l1_partition
+- decode.loop_order
+emits:
+- DataCopy_placement
+- eviction_points
+patch_points:
+- Process
+- LoadKvTile
+pre_validators:
+- ub_capacity
+- l1_capacity
+- workspace_no_alias
+- sparse_window_alignment
+- split_kv_lse_merge_valid
+- event_dependency_valid
+- l1_residency_loop_order
+post_validators:
+- compile_success
+- golden_correctness
+editable_policy: template_or_patch_point
+source_cards: []

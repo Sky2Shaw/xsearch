@@ -1,0 +1,19 @@
+version: '0.4'
+kind: ascend.attention.feature_schema
+features:
+- id: feature:structural.loop_extents
+  name: structural.loop_extents
+- id: feature:structural.reduction_depth
+  name: structural.reduction_depth
+- id: feature:memory.working_set
+  name: memory.working_set
+- id: feature:memory.scope_reuse
+  name: memory.scope_reuse
+- id: feature:mapping.core_thread_mapping
+  name: mapping.core_thread_mapping
+- id: feature:mapping.intrinsic_match
+  name: mapping.intrinsic_match
+- id: feature:history.similar_shape_key
+  name: history.similar_shape_key
+- id: feature:history.failure_category
+  name: history.failure_category

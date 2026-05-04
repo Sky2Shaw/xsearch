@@ -1,0 +1,18 @@
+name: workspace_no_alias
+module: workspace
+severity: hard
+inputs:
+- workspace.regions
+- shape.batch
+- shape.head_num
+- decode.split_kv.split_id_count
+- tiling.s1_segments
+expr: 'for_all(r1 != r2 in workspace.regions: interval(r1.offset, r1.offset + r1.size_per_index
+  * r1.index_count) ∩ interval(r2.offset, r2.offset + r2.size_per_index * r2.index_count)
+  == ∅) and unique(workspace.regions[*].keyed_by(batch, head, group, s1_segment, split_id))'
+error_message: Workspace regions overlap or alias across (batch, head, group, s1_segment,
+  split_id)
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

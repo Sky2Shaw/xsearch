@@ -1,0 +1,413 @@
+memory:
+  q_snapshot_signature:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: memory.l1.gqa.q_snapshot_signature
+    source_cards:
+    - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+    source_evidence:
+    - SE-GQA-Q-L1-SNAPSHOT
+    meaning: Coordinate key (batch/head/gS1) and reuse scope for Q L1 caching across
+      K slices.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:memory.l1.gqa.q_snapshot_signature
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  q_snapshot_bufcnt:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: memory.l1.gqa.q_snapshot_bufcnt
+    source_cards:
+    - OC-GQA-MM1-Q-L1-SNAPSHOT-REUSE
+    source_evidence:
+    - SE-GQA-Q-L1-SNAPSHOT
+    meaning: Number of Q L1 buffers cached in the snapshot and first buffer ID for
+      ring addressing.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:memory.l1.gqa.q_snapshot_bufcnt
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  kp_buffer_count:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: memory.l1.kp_buffer_count
+    source_cards:
+    - OC-GQA-MM1-KP-L1-DOUBLE-BUFFER-PINGPONG
+    source_evidence:
+    - SE-GQA-KP-L1-EVENT-CYCLE
+    - SE-GQA-KP-L1-PINGPONG
+    meaning: Number of K-tile L1 buffers for double/triple-buffer ping-pong.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:memory.l1.kp_buffer_count
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  kp_event_id_base:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: memory.l1.kp_event_id_base
+    source_cards:
+    - OC-GQA-MM1-KP-L1-DOUBLE-BUFFER-PINGPONG
+    source_evidence:
+    - SE-GQA-KP-L1-EVENT-CYCLE
+    - SE-GQA-KP-L1-PINGPONG
+    meaning: Base event ID for K-tile producer-consumer synchronization.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:memory.l1.kp_event_id_base
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  gm_format:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: memory_copy.gm_format
+    source_cards:
+    - OC-COMMON-GM-COPY-LOWERING
+    source_evidence:
+    - SE-COMMON-MEMORY-COPY-H
+    meaning: Common enum selected from layout and page-attention state.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  offset_category:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: memory_copy.offset_category
+    source_cards:
+    - OC-COMMON-GM-COPY-LOWERING
+    source_evidence:
+    - SE-COMMON-MEMORY-COPY-H
+    meaning: Stable FormatCategory dispatch key for offset calculation.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  nd_to_nz_params:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: memory_copy.nd_to_nz_params
+    source_cards:
+    - OC-COMMON-GM-COPY-LOWERING
+    source_evidence:
+    - SE-COMMON-MEMORY-COPY-H
+    meaning: Row count, column count, source stride, and NZ destination stride for
+      lowering.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  v_snapshot_signature:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: memory.l1.gqa.v_snapshot_signature
+    source_cards:
+    - OC-GQA-MM2-L1-V-REUSE
+    source_evidence:
+    - SE-GQA-V-L1-RELEASE
+    meaning: Coordinate key and reuse scope for V L1 caching across M slices.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points:
+    - schedule:memory.l1.gqa.v_snapshot_signature
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  int4_divisor:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: memory_copy.int4_divisor
+    source_cards:
+    - OC-COMMON-ND2NZ-INT4-STRIDE-LIMIT-FALLBACK
+    source_evidence:
+    - SE-COMMON-ND2NZ-INT4-DIVISOR
+    - SE-COMMON-ND2NZ-STRIDE-LIMIT
+    meaning: HALF_SIZE_DIVISOR = 2 adjustment for int4b_t dValue.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  stride_limit:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: memory_copy.stride_limit
+    source_cards:
+    - OC-COMMON-ND2NZ-INT4-STRIDE-LIMIT-FALLBACK
+    source_evidence:
+    - SE-COMMON-ND2NZ-INT4-DIVISOR
+    - SE-COMMON-ND2NZ-STRIDE-LIMIT
+    meaning: ND_MATRIX_STRIDE_LIMIT = 65536 decomposition threshold.
+    confidence: medium
+    ir_layer: kernel
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

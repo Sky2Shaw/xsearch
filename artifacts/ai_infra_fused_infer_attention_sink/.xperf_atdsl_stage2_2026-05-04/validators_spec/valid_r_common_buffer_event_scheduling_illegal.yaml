@@ -1,0 +1,21 @@
+name: valid_r_common_buffer_event_scheduling_illegal
+module: derived
+severity: hard
+inputs:
+- C-EVENT-ORDER-RUNINFO
+- C-COMMON-BUFFER-EVENT-LEGALITY
+expr: all_satisfied(constraints=['C-EVENT-ORDER-RUNINFO', 'C-COMMON-BUFFER-EVENT-LEGALITY'])
+  and not exhibits_failure_pattern('R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL')
+error_message: 'valid_r_common_buffer_event_scheduling_illegal failed: Omitting common
+  buffer hard-event pairs, cross-core event ID rules, or policy lifetimes can introduce
+  deadlocks, double-use live buffers, or illegal AIC/AIV pro'
+related_risks:
+- R-COMMON-BUFFER-EVENT-SCHEDULING-ILLEGAL
+source_cards: []
+source_evidence:
+- SE-COMMON-BUFFER-H
+- SE-COMMON-BUFFER-MANAGER-H
+- SE-COMMON-BUFFERS-POLICY-H
+- SE-COMMON-MATMUL-H
+- SE-RUNINFO-THREE-STAGE-RING-MLA
+- SE-RUNINFO-THREE-STAGE-RING-NONQUANT

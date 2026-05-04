@@ -1,0 +1,16 @@
+name: valid_r_mla_mm2_atomic
+module: derived
+severity: hard
+inputs:
+- C-MLA-MM2-NUPDATE
+- C-MLA-NUPDATE-FIRST-LOOP
+expr: all_satisfied(constraints=['C-MLA-MM2-NUPDATE', 'C-MLA-NUPDATE-FIRST-LOOP'])
+  and not exhibits_failure_pattern('R-MLA-MM2-ATOMIC')
+error_message: 'valid_r_mla_mm2_atomic failed: Missing SetAtomicNone or wrong broadcast
+  stride can corrupt MLA MM2 accumulation.'
+related_risks:
+- R-MLA-MM2-ATOMIC
+source_cards: []
+source_evidence:
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-NUPDATE-BARRIER

@@ -1,0 +1,15 @@
+name: l1_residency_loop_order
+module: l1_residency
+severity: hard
+inputs:
+- l1_residency.scope
+- decode.loop_order
+- l1_partition.regions
+expr: (l1_residency.scope == 'across_g' implies decode.loop_order in {'kv_outer_g_inner',
+  'kv_outer_split_inner_g_inner'}) and (l1_residency.scope == 'across_split' implies
+  decode.loop_order startswith 'kv_outer_split_inner')
+error_message: l1_residency.scope is incompatible with the chosen decode.loop_order
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

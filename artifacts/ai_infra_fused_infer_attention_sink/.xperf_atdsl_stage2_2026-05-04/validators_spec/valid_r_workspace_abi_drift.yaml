@@ -1,0 +1,25 @@
+name: valid_r_workspace_abi_drift
+module: derived
+severity: hard
+inputs:
+- C-WORKSPACE-CONTIGUOUS-ABI
+- C-SCALAR-OFFSET-CONSISTENCY
+- C-COMMON-GM-FORMAT-OFFSET-COPY
+expr: all_satisfied(constraints=['C-WORKSPACE-CONTIGUOUS-ABI', 'C-SCALAR-OFFSET-CONSISTENCY',
+  'C-COMMON-GM-FORMAT-OFFSET-COPY']) and not exhibits_failure_pattern('R-WORKSPACE-ABI-DRIFT')
+error_message: 'valid_r_workspace_abi_drift failed: Reordering or resizing workspace
+  regions without synchronized host and kernel ABI updates can redirect ring slots
+  or FD scratch to the wrong bytes.'
+related_risks:
+- R-WORKSPACE-ABI-DRIFT
+source_cards: []
+source_evidence:
+- SE-COMMON-MEMORY-COPY-H
+- SE-FD-TASK-OFFSET-SCALARS
+- SE-KNOB-HEADDIM-ALIGN
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-VEC2-NORMALIZE-COPY
+- SE-WORKSPACE-FD-SIZE-MLA
+- SE-WORKSPACE-FD-SIZE-NONQUANT
+- SE-WORKSPACE-NORMAL-ABI
+- SE-WORKSPACE-NORMAL-SIZE

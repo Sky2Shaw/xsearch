@@ -1,0 +1,47 @@
+version: '0.4'
+kind: ascend.attention.hardware_contract
+capabilities:
+- id: capability:l1_capacity
+  name: l1_capacity
+  source_fields:
+  - memory.l1.gqa.q_snapshot_bufcnt
+  - memory.l1.gqa.q_snapshot_signature
+  - memory.l1.gqa.v_snapshot_signature
+  - memory.l1.kp_buffer_count
+  - memory.l1.kp_event_id_base
+- id: capability:memory_space
+  name: memory_space
+  source_fields:
+  - memory.l1.gqa.q_snapshot_bufcnt
+  - memory.l1.gqa.q_snapshot_signature
+  - memory.l1.gqa.v_snapshot_signature
+  - memory.l1.kp_buffer_count
+  - memory.l1.kp_event_id_base
+- id: capability:ub_capacity
+  name: ub_capacity
+  source_fields:
+  - vec1.softmax.online_state.exp_ub
+  - vec1.softmax.online_state.max_ub
+  - vec1.softmax.online_state.sum_ub
+- id: capability:workspace_aliasing
+  name: workspace_aliasing
+  source_fields:
+  - workspace.flash_decode.accum_out
+  - workspace.flash_decode.lse_sum_max
+  - workspace.mla.tail_regions[region_id=mla.nupdate].binding_status
+  - workspace.mla.tail_regions[region_id=mla.softmax_sum].binding_status
+  - workspace.mla.tail_regions[region_id=mla.softmax_sum].local_buffer_bridge
+  - workspace.normal.regions[].base_offset_rule
+  - workspace.normal.regions[].slot_stride
+  - workspace.normal.regions[region_id=normal.mm2].aliases[].name
+- id: capability:workspace_capacity
+  name: workspace_capacity
+  source_fields:
+  - workspace.flash_decode.accum_out
+  - workspace.flash_decode.lse_sum_max
+  - workspace.mla.tail_regions[region_id=mla.nupdate].binding_status
+  - workspace.mla.tail_regions[region_id=mla.softmax_sum].binding_status
+  - workspace.mla.tail_regions[region_id=mla.softmax_sum].local_buffer_bridge
+  - workspace.normal.regions[].base_offset_rule
+  - workspace.normal.regions[].slot_stride
+  - workspace.normal.regions[region_id=normal.mm2].aliases[].name

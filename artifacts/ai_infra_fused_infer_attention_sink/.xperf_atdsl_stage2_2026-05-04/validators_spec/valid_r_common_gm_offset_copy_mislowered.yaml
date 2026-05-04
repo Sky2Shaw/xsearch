@@ -1,0 +1,25 @@
+name: valid_r_common_gm_offset_copy_mislowered
+module: derived
+severity: hard
+inputs:
+- C-WORKSPACE-CONTIGUOUS-ABI
+- C-SCALAR-OFFSET-CONSISTENCY
+- C-COMMON-GM-FORMAT-OFFSET-COPY
+expr: all_satisfied(constraints=['C-WORKSPACE-CONTIGUOUS-ABI', 'C-SCALAR-OFFSET-CONSISTENCY',
+  'C-COMMON-GM-FORMAT-OFFSET-COPY']) and not exhibits_failure_pattern('R-COMMON-GM-OFFSET-COPY-MISLOWERED')
+error_message: 'valid_r_common_gm_offset_copy_mislowered failed: Omitting common GmFormat,
+  FormatCategory, OffsetCalculator, and ND-to-NZ lowering semantics can address the
+  wrong GM rows or copy invalid packed tiles into L1/U'
+related_risks:
+- R-COMMON-GM-OFFSET-COPY-MISLOWERED
+source_cards: []
+source_evidence:
+- SE-COMMON-MEMORY-COPY-H
+- SE-FD-TASK-OFFSET-SCALARS
+- SE-KNOB-HEADDIM-ALIGN
+- SE-MLA-NUPDATE-ATOMIC-TARGET
+- SE-MLA-VEC2-NORMALIZE-COPY
+- SE-WORKSPACE-FD-SIZE-MLA
+- SE-WORKSPACE-FD-SIZE-NONQUANT
+- SE-WORKSPACE-NORMAL-ABI
+- SE-WORKSPACE-NORMAL-SIZE

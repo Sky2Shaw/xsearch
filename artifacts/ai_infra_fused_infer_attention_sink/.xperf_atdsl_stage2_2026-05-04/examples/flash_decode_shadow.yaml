@@ -1,0 +1,4 @@
+version: '0.3'
+kind: ascend.attention.shadow
+variant: flash_decode
+fields: []

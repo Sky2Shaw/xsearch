@@ -1,0 +1,1414 @@
+compute:
+  levels:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: mm1.sparse_skip.levels
+    source_cards:
+    - OC-MM1-SPARSE-SKIP-L1-EVENT-DEADLOCK-GUARD
+    source_evidence:
+    - SE-MM1-SPARSE-SKIP-ISCAL
+    - SE-MM1-SPARSE-SKIP-SETFLAG
+    meaning: Two-level skip (whole-mSize vs per-mL1) with preserved event advance.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  event_preserve:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: mm1.sparse_skip.event_preserve
+    source_cards:
+    - OC-MM1-SPARSE-SKIP-L1-EVENT-DEADLOCK-GUARD
+    source_evidence:
+    - SE-MM1-SPARSE-SKIP-ISCAL
+    - SE-MM1-SPARSE-SKIP-SETFLAG
+    meaning: SetFlag must be issued even on skip paths to prevent deadlock.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  atomic_add_condition:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: mm1.output.atomic_add_condition
+    source_cards:
+    - OC-MM1-OUTPUT-FIXPIPE-ATOMIC-ADD-ACCUMULATION
+    source_evidence:
+    - SE-MM1-K-SPLIT-FIXPIPE
+    - SE-MM1-OUTPUT-ATOMIC-ADD
+    meaning: kStart != 0 triggers atomic-add accumulation instead of overwrite.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  dst_stride:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: mm1.output.dst_stride
+    source_cards:
+    - OC-MM1-OUTPUT-FIXPIPE-ATOMIC-ADD-ACCUMULATION
+    source_evidence:
+    - SE-MM1-K-SPLIT-FIXPIPE
+    - SE-MM1-OUTPUT-ATOMIC-ADD
+    meaning: actualSingleProcessSInnerSizeAlign determines inter-row stride in mm1ResGm.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  max_ub:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.softmax.online_state.max_ub
+    source_cards:
+    - OC-VEC1-ONLINE-SOFTMAX-FLASHV2
+    source_evidence:
+    - SE-VEC1-SOFTMAX-FIRST-LOOP
+    - SE-VEC1-SOFTMAX-FLASHV2
+    meaning: Row-wise max tensor ring indexed by preload slot.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  sum_ub:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.softmax.online_state.sum_ub
+    source_cards:
+    - OC-VEC1-ONLINE-SOFTMAX-FLASHV2
+    source_evidence:
+    - SE-VEC1-SOFTMAX-FIRST-LOOP
+    - SE-VEC1-SOFTMAX-FLASHV2
+    meaning: Row-wise sum tensor ring indexed by preload slot.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  exp_ub:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.softmax.online_state.exp_ub
+    source_cards:
+    - OC-VEC1-ONLINE-SOFTMAX-FLASHV2
+    source_evidence:
+    - SE-VEC1-SOFTMAX-FIRST-LOOP
+    - SE-VEC1-SOFTMAX-FLASHV2
+    meaning: Row-wise exp tensor ring for P-tile generation.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  first_loop_default:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.softmax.first_loop_default
+    source_cards:
+    - OC-VEC1-ONLINE-SOFTMAX-FLASHV2
+    source_evidence:
+    - SE-VEC1-SOFTMAX-FIRST-LOOP
+    - SE-VEC1-SOFTMAX-FLASHV2
+    meaning: First S-inner loop uses default max/sum instead of previous slot state.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  tiling_func:
+    type: bool
+    searchable: false
+    editable_policy: fixed
+    path: vec1.softmax.tiling_func
+    source_cards:
+    - OC-SOFTMAX-TILING-BRC
+    source_evidence:
+    - SE-SOFTMAX-BRC-CONFIG
+    - SE-SOFTMAX-TILING-FUNC
+    meaning: Per-block tiling computation with buffer-capacity validation.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  brc_config:
+    type: bool
+    searchable: false
+    editable_policy: fixed
+    path: vec1.softmax.brc_config
+    source_cards:
+    - OC-SOFTMAX-TILING-BRC
+    source_evidence:
+    - SE-SOFTMAX-BRC-CONFIG
+    - SE-SOFTMAX-TILING-FUNC
+    meaning: Compile-time flag selecting BRC or non-BRC SoftmaxFlashV2 template.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  compute_formula:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: lse.generate.compute_formula
+    source_cards:
+    - OC-LSE-GENERATE-AND-EXPORT
+    source_evidence:
+    - SE-LSE-ADJUST-INVALID
+    - SE-LSE-COMPUTE-SOFTMAX
+    - SE-LSE-EXPORT-LAYOUT
+    meaning: log(sum) + max computation from final softmax state.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  broadcast_group:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: mla.nupdate.broadcast_group
+    source_cards:
+    - OC-MLA-NUPDATE-SIDECHANNEL
+    source_evidence:
+    - SE-MLA-AMLASUM-UB-ONLY
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-SOFTMAX-SUM-GEN
+    meaning: 128-lane int32 broadcast granularity for the atomic apply path.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  atomic_target:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: mla.nupdate.atomic_target
+    source_cards:
+    - OC-MLA-MM2-NUPDATE-BARRIER
+    - OC-MLA-NUPDATE-SIDECHANNEL
+    source_evidence:
+    - SE-MLA-AMLASUM-UB-ONLY
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-NUPDATE-BARRIER
+    - SE-MLA-SOFTMAX-SUM-GEN
+    meaning: The correction is applied through mm2ResInt32Gm, not through a dedicated
+      MLA-only GM tail buffer.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  mm2_sync:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: mla.nupdate.mm2_sync
+    source_cards:
+    - OC-MLA-MM2-NUPDATE-BARRIER
+    source_evidence:
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-NUPDATE-BARRIER
+    meaning: Explicit wait edge from Vec1-side nUpdate apply to the first MM2 fixpipe.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  safe_active_token:
+    type: object
+    searchable: false
+    editable_policy: fixed
+    path: vector.safe_active_token
+    source_cards:
+    - OC-COMMON-VECTOR-INVALID-ROW-HANDLING
+    source_evidence:
+    - SE-COMMON-VECTOR-COMMON-H
+    meaning: Clamped pre/next token bounds derived from actual sequence lengths.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  mode:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: matmul.unitflag.mode
+    source_cards:
+    - OC-COMMON-MATMUL-UNITFLAG-K-LOOP
+    source_evidence:
+    - SE-COMMON-MATMUL-K-LOOP
+    - SE-COMMON-MATMUL-UNITFLAG
+    meaning: DISABLE/ENABLE/EN_OUTER_LAST selection for K-split accumulation.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  state_forward:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.sink_skip.state_forward
+    source_cards:
+    - OC-VEC1-SINK-SKIP-AND-INVALID-ROW
+    source_evidence:
+    - SE-VEC1-INVALID-ROW-ZERO
+    - SE-VEC1-SINK-SKIP-STATE
+    - SE-VEC1-SINK-VALUE-MIN
+    meaning: Copy previous loop softmaxMaxUb/sumUb and set expUb to 1 on skip.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  zero_fill:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.sink_skip.zero_fill
+    source_cards:
+    - OC-VEC1-SINK-SKIP-AND-INVALID-ROW
+    source_evidence:
+    - SE-VEC1-INVALID-ROW-ZERO
+    - SE-VEC1-SINK-SKIP-STATE
+    - SE-VEC1-SINK-VALUE-MIN
+    meaning: Zero-fill vec1ResUb without invoking ElewiseCompute+Softmax.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  sink_value:
+    type: bool
+    searchable: false
+    editable_policy: fixed
+    path: vec1.invalid_row.sink_value
+    source_cards:
+    - OC-VEC1-SINK-SKIP-AND-INVALID-ROW
+    source_evidence:
+    - SE-VEC1-INVALID-ROW-ZERO
+    - SE-VEC1-SINK-SKIP-STATE
+    - SE-VEC1-SINK-VALUE-MIN
+    meaning: minValue injection into softmax denominator for sink invalid rows.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  formula:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.partition.formula
+    source_cards:
+    - OC-VEC1-M-PARTITION-SPLIT
+    source_evidence:
+    - SE-VEC1-M-PARTITION-FORMULA
+    - SE-VEC1-NBUFFER-VEC-DEAL
+    meaning: vecDealM = min(nBufferDealM, ceil(ceil(nBufferDealM/16)/2)*16).
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  cv1_1_cap:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.partition.cv1_1_cap
+    source_cards:
+    - OC-VEC1-M-PARTITION-SPLIT
+    source_evidence:
+    - SE-VEC1-M-PARTITION-FORMULA
+    - SE-VEC1-NBUFFER-VEC-DEAL
+    meaning: MLA caps vecDealM to 128 when subBlockNum==1.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  tail_assignment:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vec1.partition.tail_assignment
+    source_cards:
+    - OC-VEC1-M-PARTITION-SPLIT
+    source_evidence:
+    - SE-VEC1-M-PARTITION-FORMULA
+    - SE-VEC1-NBUFFER-VEC-DEAL
+    meaning: Odd blockIdx receives the tail remainder.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  invalid_row_adjust:
+    type: bool
+    searchable: false
+    editable_policy: fixed
+    path: lse.generate.invalid_row_adjust
+    source_cards:
+    - OC-LSE-GENERATE-AND-EXPORT
+    source_evidence:
+    - SE-LSE-ADJUST-INVALID
+    - SE-LSE-COMPUTE-SOFTMAX
+    - SE-LSE-EXPORT-LAYOUT
+    meaning: Replace invalid-row LSE with sentinel value before export.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  fd_merge_path:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: lse.generate.fd_merge_path
+    source_cards:
+    - OC-LSE-GENERATE-AND-EXPORT
+    source_evidence:
+    - SE-LSE-ADJUST-INVALID
+    - SE-LSE-COMPUTE-SOFTMAX
+    - SE-LSE-EXPORT-LAYOUT
+    meaning: FlashDecode merged state feeds into the same LSE compute path.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  layout_paths:
+    type: enum
+    searchable: false
+    editable_policy: configurable
+    path: lse.export.layout_paths
+    source_cards:
+    - OC-LSE-EXPORT-LAYOUT-CONTRACT
+    source_evidence:
+    - SE-LSE-EXPORT-BNSD
+    - SE-LSE-EXPORT-BSND
+    - SE-LSE-EXPORT-TND
+    meaning: Supported layout families for LSE export (TND, BSND, BSH, BNSD).
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  tnd_prefix_offset:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: lse.export.tnd_prefix_offset
+    source_cards:
+    - OC-LSE-EXPORT-LAYOUT-CONTRACT
+    source_evidence:
+    - SE-LSE-EXPORT-BNSD
+    - SE-LSE-EXPORT-BSND
+    - SE-LSE-EXPORT-TND
+    meaning: Prefix-sum rule for TND batch offset using actualSeqLengthsGmQ.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  bsnd_flat_offset:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: lse.export.bsnd_flat_offset
+    source_cards:
+    - OC-LSE-EXPORT-LAYOUT-CONTRACT
+    source_evidence:
+    - SE-LSE-EXPORT-BNSD
+    - SE-LSE-EXPORT-BSND
+    - SE-LSE-EXPORT-TND
+    meaning: Flat batch*headNum*seqSize + head*seqSize offset for BSND/BSH families.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  fd_task_offset:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: scalar.offset_rules.fd_task_offset
+    source_cards:
+    - OC-SCALAR-RING-OFFSET-HOIST
+    source_evidence:
+    - SE-FD-TASK-OFFSET-SCALARS
+    - SE-KNOB-HEADDIM-ALIGN
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-VEC2-NORMALIZE-COPY
+    meaning: Prefix-summed split-KV task base used by FlashDecode scratch reloads.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  mla_mm2_reload_slot:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: scalar.offset_rules.mla_mm2_reload_slot
+    source_cards:
+    - OC-SCALAR-RING-OFFSET-HOIST
+    source_evidence:
+    - SE-FD-TASK-OFFSET-SCALARS
+    - SE-KNOB-HEADDIM-ALIGN
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-VEC2-NORMALIZE-COPY
+    meaning: Preload-slot ring offset for MLA Vec2 mm2Res reloads.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  mla_nupdate_atomic_base:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: scalar.offset_rules.mla_nupdate_atomic_base
+    source_cards:
+    - OC-SCALAR-RING-OFFSET-HOIST
+    source_evidence:
+    - SE-FD-TASK-OFFSET-SCALARS
+    - SE-KNOB-HEADDIM-ALIGN
+    - SE-MLA-NUPDATE-ATOMIC-TARGET
+    - SE-MLA-VEC2-NORMALIZE-COPY
+    meaning: Atomic target base for MLA nUpdate apply.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  final_k_loop:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: matmul.unitflag.final_k_loop
+    source_cards:
+    - OC-COMMON-MATMUL-UNITFLAG-K-LOOP
+    source_evidence:
+    - SE-COMMON-MATMUL-K-LOOP
+    - SE-COMMON-MATMUL-UNITFLAG
+    meaning: Final K-loop uses EN_OUTER_LAST (3) instead of ENABLE (2).
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  threshold:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vector.repeat_stride.threshold
+    source_cards:
+    - OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD
+    source_evidence:
+    - SE-COMMON-VECTOR-PIPE-V-BARRIER
+    - SE-COMMON-VECTOR-REPEAT-STRIDE
+    meaning: 2048-element boundary between repeat-based and scalar-loop lowering.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  dst_rep_stride:
+    type: int
+    searchable: false
+    editable_policy: fixed
+    path: vector.repeat_stride.dst_rep_stride
+    source_cards:
+    - OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD
+    source_evidence:
+    - SE-COMMON-VECTOR-PIPE-V-BARRIER
+    - SE-COMMON-VECTOR-REPEAT-STRIDE
+    meaning: columnCount / blockNum for repeat-based vector ops.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata
+  barrier_placement:
+    type: string
+    searchable: false
+    editable_policy: fixed
+    path: vector.pipe_v.barrier_placement
+    source_cards:
+    - OC-COMMON-VECTOR-REPEAT-STRIDE-THRESHOLD
+    source_evidence:
+    - SE-COMMON-VECTOR-PIPE-V-BARRIER
+    - SE-COMMON-VECTOR-REPEAT-STRIDE
+    meaning: Barrier positions relative to reduction tree steps.
+    confidence: medium
+    ir_layer: semantic
+    schedule_points: []
+    feature_sources:
+    - feature:history.failure_category
+    - feature:history.similar_shape_key
+    - feature:mapping.core_thread_mapping
+    - feature:mapping.intrinsic_match
+    - feature:memory.scope_reuse
+    - feature:memory.working_set
+    - feature:structural.loop_extents
+    - feature:structural.reduction_depth
+    measurement_metrics:
+    - bytes_global
+    - bytes_shared
+    - compile_time_ms
+    - correctness
+    - failure_code
+    - latency_us
+    - occupancy_estimate
+    - throughput_ops
+    replay_requirements:
+    - environment_fingerprint
+    - shape_signature
+    - dsl_version
+    - schedule_trace
+    - validator_results
+    - compile_result
+    - measurement_result
+    - failure_metadata

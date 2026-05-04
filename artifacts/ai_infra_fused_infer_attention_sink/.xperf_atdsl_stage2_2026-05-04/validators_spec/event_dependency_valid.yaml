@@ -1,0 +1,15 @@
+name: event_dependency_valid
+module: pipeline
+severity: hard
+inputs:
+- pipeline.events
+- pipeline.event_pairs
+- pipeline.stages
+expr: 'forall(p in pipeline.event_pairs: p.set_stage precedes p.wait_stage in pipeline.dag)
+  and unique(pipeline.events[*].id) and pipeline.event_pairs in target.fixed_event_variants'
+error_message: Event/wait pair forms a deadlock cycle, duplicates an event id, or
+  selects a variant outside the fixed-variant whitelist
+related_risks: []
+source_cards: []
+source_evidence:
+- 'needs_evidence: true'

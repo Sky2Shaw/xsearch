@@ -1,0 +1,13 @@
+name: valid_r_gqa_v_l1_lifetime
+module: derived
+severity: hard
+inputs:
+- C-GQA-MM2-SYNC
+expr: all_satisfied(constraints=['C-GQA-MM2-SYNC']) and not exhibits_failure_pattern('R-GQA-V-L1-LIFETIME')
+error_message: 'valid_r_gqa_v_l1_lifetime failed: Incorrect V_EVENT release can overwrite
+  reusable V L1 tiles or deadlock the reuse path.'
+related_risks:
+- R-GQA-V-L1-LIFETIME
+source_cards: []
+source_evidence:
+- SE-GQA-V-L1-RELEASE

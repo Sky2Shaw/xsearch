@@ -1,0 +1,160 @@
+version: '0.4'
+kind: ascend.attention.semantic_ir
+entities:
+- field_path: mm1.sparse_skip.levels
+  ir_layer: semantic
+  meaning: Two-level skip (whole-mSize vs per-mL1) with preserved event advance.
+  confidence: medium
+- field_path: mm1.sparse_skip.event_preserve
+  ir_layer: semantic
+  meaning: SetFlag must be issued even on skip paths to prevent deadlock.
+  confidence: medium
+- field_path: mm1.output.atomic_add_condition
+  ir_layer: semantic
+  meaning: kStart != 0 triggers atomic-add accumulation instead of overwrite.
+  confidence: medium
+- field_path: mm1.output.dst_stride
+  ir_layer: semantic
+  meaning: actualSingleProcessSInnerSizeAlign determines inter-row stride in mm1ResGm.
+  confidence: medium
+- field_path: vec1.softmax.online_state.max_ub
+  ir_layer: semantic
+  meaning: Row-wise max tensor ring indexed by preload slot.
+  confidence: medium
+- field_path: vec1.softmax.online_state.sum_ub
+  ir_layer: semantic
+  meaning: Row-wise sum tensor ring indexed by preload slot.
+  confidence: medium
+- field_path: vec1.softmax.online_state.exp_ub
+  ir_layer: semantic
+  meaning: Row-wise exp tensor ring for P-tile generation.
+  confidence: medium
+- field_path: vec1.softmax.first_loop_default
+  ir_layer: semantic
+  meaning: First S-inner loop uses default max/sum instead of previous slot state.
+  confidence: medium
+- field_path: vec1.softmax.tiling_func
+  ir_layer: semantic
+  meaning: Per-block tiling computation with buffer-capacity validation.
+  confidence: medium
+- field_path: vec1.softmax.brc_config
+  ir_layer: semantic
+  meaning: Compile-time flag selecting BRC or non-BRC SoftmaxFlashV2 template.
+  confidence: medium
+- field_path: mla.nupdate.compute_formula
+  ir_layer: semantic
+  meaning: Ordered n/cof/eps/clamp/scale sequence used to derive the correction term.
+  confidence: medium
+- field_path: mla.nupdate.broadcast_group
+  ir_layer: semantic
+  meaning: 128-lane int32 broadcast granularity for the atomic apply path.
+  confidence: medium
+- field_path: mla.nupdate.atomic_target
+  ir_layer: semantic
+  meaning: The correction is applied through mm2ResInt32Gm, not through a dedicated
+    MLA-only GM tail buffer.
+  confidence: medium
+- field_path: mla.nupdate.mm2_sync
+  ir_layer: semantic
+  meaning: Explicit wait edge from Vec1-side nUpdate apply to the first MM2 fixpipe.
+  confidence: medium
+- field_path: vector.safe_active_token
+  ir_layer: semantic
+  meaning: Clamped pre/next token bounds derived from actual sequence lengths.
+  confidence: medium
+- field_path: vector.invalid_rows.mode
+  ir_layer: semantic
+  meaning: Sparse-mode-specific invalid-row rule and zeroing path.
+  confidence: medium
+- field_path: vec1.sink_skip.state_forward
+  ir_layer: semantic
+  meaning: Copy previous loop softmaxMaxUb/sumUb and set expUb to 1 on skip.
+  confidence: medium
+- field_path: vec1.sink_skip.zero_fill
+  ir_layer: semantic
+  meaning: Zero-fill vec1ResUb without invoking ElewiseCompute+Softmax.
+  confidence: medium
+- field_path: vec1.invalid_row.sink_value
+  ir_layer: semantic
+  meaning: minValue injection into softmax denominator for sink invalid rows.
+  confidence: medium
+- field_path: vec1.partition.formula
+  ir_layer: semantic
+  meaning: vecDealM = min(nBufferDealM, ceil(ceil(nBufferDealM/16)/2)*16).
+  confidence: medium
+- field_path: vec1.partition.cv1_1_cap
+  ir_layer: semantic
+  meaning: MLA caps vecDealM to 128 when subBlockNum==1.
+  confidence: medium
+- field_path: vec1.partition.tail_assignment
+  ir_layer: semantic
+  meaning: Odd blockIdx receives the tail remainder.
+  confidence: medium
+- field_path: lse.generate.compute_formula
+  ir_layer: semantic
+  meaning: log(sum) + max computation from final softmax state.
+  confidence: medium
+- field_path: lse.generate.invalid_row_adjust
+  ir_layer: semantic
+  meaning: Replace invalid-row LSE with sentinel value before export.
+  confidence: medium
+- field_path: lse.generate.fd_merge_path
+  ir_layer: semantic
+  meaning: FlashDecode merged state feeds into the same LSE compute path.
+  confidence: medium
+- field_path: lse.export.layout_paths
+  ir_layer: semantic
+  meaning: Supported layout families for LSE export (TND, BSND, BSH, BNSD).
+  confidence: medium
+- field_path: lse.export.tnd_prefix_offset
+  ir_layer: semantic
+  meaning: Prefix-sum rule for TND batch offset using actualSeqLengthsGmQ.
+  confidence: medium
+- field_path: lse.export.bsnd_flat_offset
+  ir_layer: semantic
+  meaning: Flat batch*headNum*seqSize + head*seqSize offset for BSND/BSH families.
+  confidence: medium
+- field_path: scalar.offset_rules.fd_task_offset
+  ir_layer: semantic
+  meaning: Prefix-summed split-KV task base used by FlashDecode scratch reloads.
+  confidence: medium
+- field_path: scalar.offset_rules.mla_mm2_reload_slot
+  ir_layer: semantic
+  meaning: Preload-slot ring offset for MLA Vec2 mm2Res reloads.
+  confidence: medium
+- field_path: scalar.offset_rules.mla_nupdate_atomic_base
+  ir_layer: semantic
+  meaning: Atomic target base for MLA nUpdate apply.
+  confidence: medium
+- field_path: matmul.unitflag.mode
+  ir_layer: semantic
+  meaning: DISABLE/ENABLE/EN_OUTER_LAST selection for K-split accumulation.
+  confidence: medium
+- field_path: matmul.unitflag.final_k_loop
+  ir_layer: semantic
+  meaning: Final K-loop uses EN_OUTER_LAST (3) instead of ENABLE (2).
+  confidence: medium
+- field_path: vector.repeat_stride.threshold
+  ir_layer: semantic
+  meaning: 2048-element boundary between repeat-based and scalar-loop lowering.
+  confidence: medium
+- field_path: vector.repeat_stride.dst_rep_stride
+  ir_layer: semantic
+  meaning: columnCount / blockNum for repeat-based vector ops.
+  confidence: medium
+- field_path: vector.pipe_v.barrier_placement
+  ir_layer: semantic
+  meaning: Barrier positions relative to reduction tree steps.
+  confidence: medium
+- field_path: shape_layout.axis_map
+  ir_layer: semantic
+  meaning: Canonical axis ordering per layout family.
+  confidence: medium
+- field_path: shape_layout.d_fallback
+  ir_layer: semantic
+  meaning: Three-way D derivation (direct, H/N, D1*D0).
+  confidence: medium
+- field_path: shape_layout.nz_packing
+  ir_layer: semantic
+  meaning: NZ {Bn,N,D1,Bs,D0} packing with D0=16.
+  confidence: medium
