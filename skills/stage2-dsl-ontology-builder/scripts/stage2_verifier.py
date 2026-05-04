@@ -163,7 +163,7 @@ def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, li
             continue
 
         domain = knob_node.data["domain"]
-        if not _has_finite_knob_domain(domain):
+        if not _knob_domain_can_seed_finite_search(domain):
             score -= 2
             issues.append({
                 "severity": "error",
@@ -357,7 +357,8 @@ def _has_finite_domain(data: dict[str, Any]) -> bool:
     return isinstance(domain_range, dict) and "minimum" in domain_range and "maximum" in domain_range
 
 
-def _has_finite_knob_domain(domain: dict[str, Any]) -> bool:
+def _knob_domain_can_seed_finite_search(domain: dict[str, Any]) -> bool:
+    """Return whether a Stage 1 knob domain can produce a finite Stage 2 search set."""
     if domain.get("candidates") or domain.get("values"):
         return True
     domain_range = domain.get("range")
