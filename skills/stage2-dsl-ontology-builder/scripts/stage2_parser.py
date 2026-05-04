@@ -201,6 +201,232 @@ def _resolve_file(input_dir: Path, *paths: str) -> Path:
     return nested  # return nested anyway so _load_yaml returns None gracefully
 
 
+SEMANTIC_TOKENS = {"interface", "shape", "shape_layout", "layout", "compute", "features"}
+KERNEL_TOKENS = {
+    "tiling",
+    "core_mapping",
+    "memory",
+    "l1_partition",
+    "l1_residency",
+    "workspace",
+    "pipeline",
+    "decode",
+    "flash_decode",
+    "sparse_window",
+    "tail_policy",
+}
+HARDWARE_TOKENS = {"target"}
+EXECUTION_TOKENS = {"search", "lowering"}
+
+SCHEDULE_TOKENS = {
+    "tiling",
+    "core_mapping",
+    "memory",
+    "l1_partition",
+    "l1_residency",
+    "pipeline",
+    "decode",
+    "flash_decode",
+    "sparse_window",
+    "tail_policy",
+}
+
+CAPABILITY_BY_TOKEN = {
+    "target": ["target_capability"],
+    "memory": ["memory_space"],
+    "l1_partition": ["l1_capacity"],
+    "l1_residency": ["l1_capacity"],
+    "workspace": ["workspace_capacity", "workspace_aliasing"],
+    "sparse_window": ["alignment"],
+}
+
+DEFAULT_METRICS = [
+    "latency_us",
+    "throughput_ops",
+    "bytes_global",
+    "bytes_shared",
+    "occupancy_estimate",
+    "compile_time_ms",
+    "correctness",
+    "failure_code",
+]
+
+FEATURE_SOURCES = [
+    "structural.loop_extents",
+    "structural.reduction_depth",
+    "memory.working_set",
+    "memory.scope_reuse",
+    "mapping.core_thread_mapping",
+    "mapping.intrinsic_match",
+    "history.similar_shape_key",
+    "history.failure_category",
+]
+
+TUNING_RECORD_FIELDS = [
+    "environment_fingerprint",
+    "shape_signature",
+    "dsl_version",
+    "schedule_trace",
+    "validator_results",
+    "compile_result",
+    "measurement_result",
+    "failure_metadata",
+]
+
+
+def _add_node_once(graph: EvidenceGraph, node_id: str, kind: str, data: dict[str, Any]) -> None:
+    existing = graph.get_node(node_id)
+    if existing is None:
+        graph.add_node(EvidenceNode(id=node_id, kind=kind, data=data))
+        return
+    if "source_fields" in data:
+        existing_fields = existing.data.setdefault("source_fields", [])
+        for source_field in data["source_fields"]:
+            if source_field not in existing_fields:
+                existing_fields.append(source_field)
+        existing_fields.sort()
+
+
+def _add_edge_once(graph: EvidenceGraph, from_id: str, to_id: str, label: str) -> None:
+    if not any(e.from_id == from_id and e.to_id == to_id and e.label == label for e in graph.edges):
+        graph.add_edge(EvidenceEdge(from_id=from_id, to_id=to_id, label=label))
+
+
+def _first_path_token(field_path: str) -> str:
+    return field_path.split(".")[0] if "." in field_path else field_path
+
+
+def _infer_ir_layer(field_path: str, meaning: str) -> str:
+    token = _first_path_token(field_path)
+    lowered = meaning.lower()
+    if token in SEMANTIC_TOKENS:
+        return "semantic"
+    if token in KERNEL_TOKENS:
+        return "kernel"
+    if token in HARDWARE_TOKENS:
+        return "hardware"
+    if token in EXECUTION_TOKENS:
+        return "execution_feedback"
+    if any(word in lowered for word in ("formula", "identity", "tensor", "dtype", "layout")):
+        return "semantic"
+    if any(word in lowered for word in ("capacity", "target", "ub", "l1")):
+        return "hardware"
+    if any(word in lowered for word in ("metric", "trace", "record", "measure")):
+        return "execution_feedback"
+    return "needs_review"
+
+
+def _ir_node_kind(layer: str) -> str:
+    if layer == "semantic":
+        return "semantic_entity"
+    if layer == "kernel":
+        return "semantic_entity"
+    if layer == "hardware":
+        return "hardware_capability"
+    if layer == "execution_feedback":
+        return "tuning_record_field"
+    return "semantic_entity"
+
+
+def _schedule_point_for_field(field_path: str, has_knob: bool) -> str | None:
+    token = _first_path_token(field_path)
+    if token in SCHEDULE_TOKENS or has_knob:
+        return f"schedule:{field_path}"
+    return None
+
+
+def _capabilities_for_field(field_path: str) -> list[str]:
+    token = _first_path_token(field_path)
+    capabilities = list(CAPABILITY_BY_TOKEN.get(token, []))
+    lowered = field_path.lower()
+    if "ub" in lowered and "ub_capacity" not in capabilities:
+        capabilities.append("ub_capacity")
+    if "l1" in lowered and "l1_capacity" not in capabilities:
+        capabilities.append("l1_capacity")
+    return sorted(set(capabilities))
+
+
+def _source_cards_for_field(graph: EvidenceGraph, field_id: str) -> list[str]:
+    return sorted({
+        edge.from_id
+        for edge in graph.edges
+        if edge.to_id == field_id and edge.label == "suggests"
+    })
+
+
+def _guard_ids_for_field(graph: EvidenceGraph, field_id: str) -> list[str]:
+    guards: set[str] = set()
+    for card_id in _source_cards_for_field(graph, field_id):
+        for edge in graph.edges:
+            if edge.from_id == card_id and edge.label in {"constrained_by", "risked_by"}:
+                guards.add(edge.to_id)
+    for edge in graph.edges:
+        if edge.from_id == field_id and edge.label == "tuned_by":
+            knob_node = graph.get_node(edge.to_id)
+            if knob_node:
+                guards.update(knob_node.data.get("coupled_constraints", []))
+    return sorted(guards)
+
+
+def _add_agent_ready_nodes(graph: EvidenceGraph) -> None:
+    field_nodes = [node for node in graph.nodes if node.kind == "dsl_field"]
+
+    for field_node in field_nodes:
+        field_path = field_node.data.get("path", "")
+        meaning = field_node.data.get("meaning", "")
+        has_knob = any(
+            edge.from_id == field_node.id and edge.label == "tuned_by"
+            for edge in graph.edges
+        )
+        layer = _infer_ir_layer(field_path, meaning)
+        ir_node_id = f"ir:{layer}:{field_path}"
+        _add_node_once(graph, ir_node_id, _ir_node_kind(layer), {
+            "field_path": field_path,
+            "ir_layer": layer,
+            "meaning": meaning,
+            "confidence": field_node.data.get("confidence", "medium"),
+        })
+        _add_edge_once(graph, field_node.id, ir_node_id, "field_maps_to_ir")
+
+        schedule_id = _schedule_point_for_field(field_path, has_knob)
+        if schedule_id:
+            _add_node_once(graph, schedule_id, "schedule_point", {
+                "field_path": field_path,
+                "action": _first_path_token(field_path),
+                "searchable": has_knob,
+                "ir_layer": "kernel",
+            })
+            _add_edge_once(graph, field_node.id, schedule_id, "field_maps_to_ir")
+            for guard_id in _guard_ids_for_field(graph, field_node.id):
+                _add_edge_once(graph, schedule_id, guard_id, "schedule_point_guarded_by")
+
+        for capability in _capabilities_for_field(field_path):
+            capability_id = f"capability:{capability}"
+            _add_node_once(graph, capability_id, "hardware_capability", {
+                "name": capability,
+                "source_fields": [field_path],
+            })
+            _add_edge_once(graph, field_node.id, capability_id, "field_requires_capability")
+
+    for metric in DEFAULT_METRICS:
+        metric_id = f"metric:{metric}"
+        _add_node_once(graph, metric_id, "measurement_metric", {"name": metric})
+        for field_node in field_nodes:
+            _add_edge_once(graph, metric_id, field_node.id, "metric_measures_field")
+
+    for feature in FEATURE_SOURCES:
+        feature_id = f"feature:{feature}"
+        _add_node_once(graph, feature_id, "feature_source", {"name": feature})
+        for field_node in field_nodes:
+            _add_edge_once(graph, feature_id, field_node.id, "feature_derived_from")
+
+    for record_field in TUNING_RECORD_FIELDS:
+        _add_node_once(graph, f"tuning_record:{record_field}", "tuning_record_field", {
+            "name": record_field,
+            "required": True,
+        })
+
+
 def parse_stage1(input_dir: Path) -> EvidenceGraph:
     graph = EvidenceGraph()
 
@@ -226,6 +452,7 @@ def parse_stage1(input_dir: Path) -> EvidenceGraph:
     _add_workspace_nodes(graph, data["workspace"] or {})
     _add_suggested_section_nodes(graph, data["sections"] or {})
     _link_fields_to_knobs(graph)
+    _add_agent_ready_nodes(graph)
 
     return graph
 

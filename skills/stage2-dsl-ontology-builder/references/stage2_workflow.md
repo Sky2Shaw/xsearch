@@ -145,3 +145,12 @@ Stage 1 artifacts
   -> examples/*_shadow.yaml
   -> review/*.md + quality_gate.json
 ```
+
+## Stage 2 v0.4 four-layer contract
+
+Stage 2 also emits four agent-facing layers:
+
+- Semantic IR: pure operator meaning, shape, dtype, layout intent, and fixed formulas.
+- Kernel IR: schedulable objects such as loops, tiles, buffers, memory scopes, and pipeline stages.
+- Hardware contract: target-sensitive capacities, memory spaces, alignment, and intrinsic assumptions.
+- Execution feedback: feature schema, metric schema, schedule trace, and tuning record format.

@@ -141,10 +141,10 @@ def _check_field_completeness(stage2_dir: Path, graph: EvidenceGraph) -> tuple[i
                         if not _has_finite_domain(spec):
                             score -= 3
                             issues.append({
-                                "severity": "error",
-                                "category": "schema",
-                                "message": f"Searchable field {mod_name}.{field_name} has no finite domain (candidates, enum, or range with minimum and maximum)",
-                            })
+	                            "severity": "error",
+	                            "category": "schema",
+	                            "message": f"Searchable field {mod_name}.{field_name} has no finite candidates/range/enum",
+	                        })
 
     if placeholder_count > 20:
         score -= min(placeholder_count - 20, 8)
@@ -161,18 +161,23 @@ def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, li
     score = 15
     issues = []
 
-    searchable_fields = _load_searchable_fields(stage2_dir)
-    for field_path in searchable_fields:
-        field_node = next(
-            (n for n in graph.nodes if n.kind == "dsl_field" and n.data.get("path") == field_path),
-            None,
-        )
-        if not field_node:
+    field_nodes = {
+        n.data.get("path", ""): n
+        for n in graph.nodes
+        if n.kind == "dsl_field"
+    }
+    for field in _load_all_schema_fields(stage2_dir):
+        spec = field["spec"]
+        if not spec.get("searchable"):
+            continue
+
+        field_node = field_nodes.get(field["path"])
+        if field_node is None:
             score -= 3
             issues.append({
                 "severity": "error",
                 "category": "knob",
-                "message": f"Searchable field {field_path} has no graph node",
+                "message": f"Searchable field {field['path']} has no source DSL field",
             })
             continue
 
@@ -182,18 +187,36 @@ def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, li
             issues.append({
                 "severity": "error",
                 "category": "knob",
-                "message": f"Searchable field {field_path} has no knob mapping",
+                "message": f"Searchable field {field['path']} has no knob mapping",
             })
             continue
 
         knob_node = graph.get_node(knob_edges[0].to_id)
-        domain = knob_node.data.get("domain") if knob_node else None
-        if not _has_finite_domain(domain if isinstance(domain, dict) else None):
+        if knob_node is None or "domain" not in knob_node.data:
+            score -= 3
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Searchable field {field['path']} has no knob domain",
+            })
+            continue
+
+        domain = knob_node.data["domain"]
+        if not _knob_domain_can_seed_finite_search(domain):
             score -= 2
             issues.append({
                 "severity": "error",
                 "category": "knob",
-                "message": f"Knob {knob_node.data.get('name') if knob_node else field_path} has no finite domain",
+                "message": f"Knob {knob_node.data.get('name')} domain is not finite",
+            })
+            continue
+
+        if not _knob_domain_maps_to_field(domain, spec):
+            score -= 2
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Knob {knob_node.data.get('name')} domain is not mapped to searchable field {field['path']}",
             })
 
     return max(0, score), issues
@@ -326,6 +349,233 @@ def _check_shadow_dsl_coverage(stage2_dir: Path, graph: EvidenceGraph) -> tuple[
     return max(0, round(score)), issues, coverage
 
 
+def _load_all_schema_fields(stage2_dir: Path) -> list[dict[str, Any]]:
+    fields = []
+    schema_dir = stage2_dir / "schema" / "modules"
+    if not schema_dir.exists():
+        return fields
+    for schema_file in schema_dir.glob("*.yaml"):
+        data = _load_yaml_file(schema_file)
+        if not isinstance(data, dict):
+            continue
+        for module_name, module_fields in data.items():
+            if not isinstance(module_fields, dict):
+                continue
+            for field_name, spec in module_fields.items():
+                if isinstance(spec, dict):
+                    fields.append({
+                        "module": module_name,
+                        "name": field_name,
+                        "path": f"{module_name}.{field_name}",
+                        "spec": spec,
+                    })
+    return fields
+
+
+def _agent_issue(severity: str, category: str, message: str, remediation: str) -> dict[str, str]:
+    return {
+        "severity": severity,
+        "category": category,
+        "message": message,
+        "remediation": remediation,
+    }
+
+
+def _required_tuning_record_names(stage2_dir: Path) -> set[str]:
+    path = stage2_dir / "search" / "tuning_record.schema.yaml"
+    data = _load_yaml_file(path)
+    if not isinstance(data, dict):
+        return set()
+    return {item.get("name", "") for item in data.get("fields", []) if isinstance(item, dict)}
+
+
+def _hardware_contract_covers_field(
+    graph: EvidenceGraph,
+    field_path: str,
+    capability_items: list[dict[str, Any]],
+) -> bool:
+    field_id = f"field:{field_path}"
+    required_capability_ids = {
+        edge.to_id
+        for edge in graph.edges
+        if edge.from_id == field_id and edge.label == "field_requires_capability"
+    }
+
+    for item in capability_items:
+        if item.get("field_path") == field_path:
+            return True
+        source_fields = item.get("source_fields", [])
+        if isinstance(source_fields, list) and field_path in source_fields:
+            return True
+        if item.get("id") in required_capability_ids:
+            return True
+
+    return False
+
+
+def _knob_domain_can_seed_finite_search(domain: dict[str, Any]) -> bool:
+    """Return whether a Stage 1 knob domain can produce a finite Stage 2 search set."""
+    if domain.get("candidates") or domain.get("values"):
+        return True
+    domain_range = domain.get("range")
+    if isinstance(domain_range, dict):
+        return "minimum" in domain_range and "maximum" in domain_range
+    return "minimum" in domain
+
+
+def _knob_domain_maps_to_field(domain: dict[str, Any], field_spec: dict[str, Any]) -> bool:
+    if "candidates" in domain:
+        expected = domain["candidates"]
+        return field_spec.get("candidates") == expected or field_spec.get("enum") == expected
+    if "values" in domain:
+        expected = domain["values"]
+        return field_spec.get("enum") == expected or field_spec.get("candidates") == expected
+
+    domain_range = domain.get("range")
+    if isinstance(domain_range, dict):
+        field_range = field_spec.get("range")
+        return (
+            isinstance(field_range, dict)
+            and field_range.get("minimum") == domain_range.get("minimum")
+            and field_range.get("maximum") == domain_range.get("maximum")
+        )
+
+    if "minimum" in domain and "maximum" in domain:
+        field_range = field_spec.get("range")
+        return (
+            isinstance(field_range, dict)
+            and field_range.get("minimum") == domain.get("minimum")
+            and field_range.get("maximum") == domain.get("maximum")
+        )
+
+    if "minimum" in domain:
+        candidates = field_spec.get("candidates")
+        return isinstance(candidates, list) and domain["minimum"] in candidates
+
+    return False
+
+
+def _check_agent_readiness(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
+    scores = {
+        "ir_layer_mapping": 20,
+        "schedule_space_quality": 25,
+        "hardware_contract_coverage": 20,
+        "feedback_contract_completeness": 20,
+        "replayability": 15,
+    }
+    issues: list[dict[str, str]] = []
+    hard_failures: list[str] = []
+
+    fields = _load_all_schema_fields(stage2_dir)
+    schedule_data = _load_yaml_file(stage2_dir / "search" / "schedule_space.yaml") or {}
+    hardware_data = _load_yaml_file(stage2_dir / "ir" / "hardware_contract.yaml") or {}
+    feedback_data = _load_yaml_file(stage2_dir / "ir" / "execution_feedback.yaml") or {}
+
+    schedule_points = schedule_data.get("schedule_points", []) if isinstance(schedule_data, dict) else []
+    schedule_fields = {item.get("field") for item in schedule_points if isinstance(item, dict)}
+    capability_items = [
+        item
+        for item in hardware_data.get("capabilities", [])
+        if isinstance(item, dict)
+    ] if isinstance(hardware_data, dict) else []
+    capability_names = {
+        item.get("name")
+        for item in capability_items
+    }
+    metrics = {
+        item.get("name")
+        for item in feedback_data.get("metrics", [])
+        if isinstance(item, dict)
+    } if isinstance(feedback_data, dict) else set()
+
+    for field in fields:
+        spec = field["spec"]
+        if "ir_layer" not in spec or spec.get("ir_layer") == "needs_review":
+            scores["ir_layer_mapping"] -= 3
+            issues.append(_agent_issue(
+                "warning", "ir",
+                f"Field {field['path']} has no resolved IR layer",
+                "Add an ir_layer mapping rule or mark the source field for review",
+            ))
+
+        if spec.get("searchable") and field["path"] not in schedule_fields:
+            scores["schedule_space_quality"] -= 5
+            message = f"Searchable field {field['path']} is missing from schedule_space"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Add the field to search/schedule_space.yaml"))
+
+        if spec.get("searchable") and not _has_finite_domain(spec):
+            scores["schedule_space_quality"] -= 5
+            message = f"Searchable field {field['path']} has no range, candidates, or enum"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Map the source knob domain into the schema field"))
+
+        if spec.get("ir_layer") == "hardware" and not _hardware_contract_covers_field(graph, field["path"], capability_items):
+            scores["hardware_contract_coverage"] -= 5
+            message = f"Hardware field {field['path']} has no linked hardware contract"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "hardware", message, "Add a hardware capability entry linked by source_fields or field_requires_capability"))
+
+        lowered_path = field["path"].lower()
+        if spec.get("searchable") and ("softmax" in lowered_path or "lse" in lowered_path or "formula" in lowered_path):
+            scores["schedule_space_quality"] -= 8
+            message = f"Unsafe formula field {field['path']} is searchable"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Mark formula fields fixed"))
+
+    for item in schedule_points:
+        if not isinstance(item, dict):
+            continue
+        if not item.get("guard_validators"):
+            scores["schedule_space_quality"] -= 5
+            message = f"Schedule point has no validator guard: {item.get('id', item.get('field', 'unknown'))}"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Attach at least one constraint, risk, or mandatory validator"))
+        if item.get("searchable") and not _has_finite_domain(item):
+            scores["schedule_space_quality"] -= 4
+            message = f"Searchable schedule point has no domain: {item.get('id', item.get('field', 'unknown'))}"
+            hard_failures.append(message)
+            issues.append(_agent_issue("error", "schedule", message, "Add range, candidates, or enum"))
+
+    if not capability_names:
+        scores["hardware_contract_coverage"] = 0
+        hard_failures.append("Hardware contract has no capabilities")
+        issues.append(_agent_issue("error", "hardware", "Hardware contract has no capabilities", "Generate ir/hardware_contract.yaml capabilities"))
+
+    if not metrics:
+        scores["feedback_contract_completeness"] = 0
+        hard_failures.append("Execution feedback has no metrics")
+        issues.append(_agent_issue("error", "feedback", "Execution feedback has no metrics", "Generate metrics in ir/execution_feedback.yaml"))
+
+    required_record_fields = {
+        "environment_fingerprint",
+        "shape_signature",
+        "dsl_version",
+        "schedule_trace",
+        "validator_results",
+        "compile_result",
+        "measurement_result",
+        "failure_metadata",
+    }
+    missing_record_fields = required_record_fields - _required_tuning_record_names(stage2_dir)
+    if missing_record_fields:
+        scores["replayability"] -= min(15, len(missing_record_fields) * 3)
+        message = f"Tuning record schema missing fields: {', '.join(sorted(missing_record_fields))}"
+        hard_failures.append(message)
+        issues.append(_agent_issue("error", "replay", message, "Add required replay fields to search/tuning_record.schema.yaml"))
+
+    normalized_scores = {key: max(0, value) for key, value in scores.items()}
+    total = sum(normalized_scores.values())
+    status = "fail" if hard_failures else "pass" if total >= 85 else "warn" if total >= 70 else "fail"
+    return {
+        "status": status,
+        "score": total,
+        "scores": normalized_scores,
+        "hard_failures": hard_failures,
+        "issues": issues,
+    }
+
+
 def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
     scores = {}
     all_issues = []
@@ -348,19 +598,30 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
     scores["shadow_dsl_coverage"], issues, coverage = _check_shadow_dsl_coverage(stage2_dir, graph)
     all_issues.extend(issues)
 
+    agent_readiness = _check_agent_readiness(graph, stage2_dir)
+
     total = sum(scores.values())
     hard_failures = [i for i in all_issues if i["severity"] == "error"]
-    status = "fail" if hard_failures else "pass" if total >= 85 else "warn" if total >= 70 else "fail"
+    if hard_failures or agent_readiness["hard_failures"]:
+        status = "fail"
+    elif total >= 85 and agent_readiness["status"] != "fail":
+        status = "pass"
+    elif total >= 70:
+        status = "warn"
+    else:
+        status = "fail"
 
     result = {
         "overall_status": status,
         "total_score": total,
         "scores": scores,
-        "hard_failures": [i["message"] for i in hard_failures],
+        "hard_failures": [i["message"] for i in hard_failures] + agent_readiness["hard_failures"],
         "semantic_issues": all_issues,
         "coverage": {"shadow_dsl": coverage},
+        "agent_readiness": agent_readiness,
         "next_actions": list(dict.fromkeys(
-            i.get("remediation", f"Fix: {i['message']}") for i in all_issues
+            i.get("remediation", f"Fix: {i['message']}")
+            for i in all_issues + agent_readiness["issues"]
         )),
     }
 
@@ -374,7 +635,22 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
         md.append(f"- {k}: {v}")
     md += ["", "## Issues", ""]
     md += [f"- [{i['severity']}] ({i['category']}) {i['message']}" for i in all_issues] or ["- No issues found."]
+    md += ["", "## Agent Readiness Issues", ""]
+    md += [
+        f"- [{i['severity']}] ({i['category']}) {i['message']}"
+        for i in agent_readiness["issues"]
+    ] or ["- No agent readiness issues found."]
     (stage2_dir / "review" / "quality_gate.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+
+    readiness_md = ["# Stage 2 Agent Readiness", "", f"Status: **{agent_readiness['status']}**", f"Score: **{agent_readiness['score']}/100**", "", "## Scores", ""]
+    for key, value in agent_readiness["scores"].items():
+        readiness_md.append(f"- {key}: {value}")
+    readiness_md += ["", "## Issues", ""]
+    readiness_md += [
+        f"- [{issue['severity']}] ({issue['category']}) {issue['message']}"
+        for issue in agent_readiness["issues"]
+    ] or ["- No issues found."]
+    (stage2_dir / "review" / "agent_readiness.md").write_text("\n".join(readiness_md) + "\n", encoding="utf-8")
 
     return result
 

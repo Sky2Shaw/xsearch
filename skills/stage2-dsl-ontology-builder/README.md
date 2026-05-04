@@ -21,3 +21,18 @@ python scripts/stage2_verifier.py --evidence-graph stage2_outputs/.evidence_grap
 python scripts/bootstrap_stage2.py --input stage1_outputs --output stage2_outputs
 python scripts/check_stage2_quality.py --input stage2_outputs
 ```
+
+## Stage 2 v0.4 agent-ready contracts
+
+The synthesizer now emits additional contracts for later agent search and replay:
+
+- `ir/semantic_ir.yaml`
+- `ir/kernel_ir.yaml`
+- `ir/hardware_contract.yaml`
+- `ir/execution_feedback.yaml`
+- `search/schedule_space.yaml`
+- `search/feature_schema.yaml`
+- `search/measurement_schema.yaml`
+- `search/tuning_record.schema.yaml`
+
+These files describe the DSL action space, hardware assumptions, feature schema, metric schema, and replay record format. They do not compile kernels or report measured performance.

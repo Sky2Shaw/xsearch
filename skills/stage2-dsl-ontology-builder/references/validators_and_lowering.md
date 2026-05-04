@@ -155,3 +155,7 @@ Patch points:
 - pipeline helper functions
 
 In early versions, `LowerPipeline` should only lower fixed templates or limited variants, not arbitrary scheduling.
+
+## v0.4 schedule guards and replay
+
+Every schedule point must declare guard validators before it can be searched. Lowering specs should declare which feature, measurement, or replay fields they need so later stages can reproduce schedule attempts.
