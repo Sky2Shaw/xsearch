@@ -74,6 +74,7 @@ def test_verifier_fails_schedule_point_without_guard():
 
     result = verify(graph, output_dir)
     assert "Schedule point has no validator guard" in " ".join(result["agent_readiness"]["hard_failures"])
+    assert "Schedule point has no validator guard" in " ".join(result["hard_failures"])
     assert result["overall_status"] == "fail"
 
 
@@ -120,3 +121,20 @@ def test_verifier_rejects_open_ended_searchable_schema_domain():
 
     messages = [issue["message"] for issue in result["semantic_issues"]]
     assert "Searchable field tiling.s1_base has no finite candidates/range/enum" in messages
+
+
+def test_verifier_rejects_schema_domain_that_does_not_map_to_source_knob():
+    fixtures = Path(__file__).parent / "fixtures"
+    graph = parse_stage1(fixtures)
+    output_dir = Path("/tmp/test_stage2_verify_v04_bad_knob_mapping")
+    synthesize(graph, output_dir=output_dir)
+
+    schema_path = output_dir / "schema" / "modules" / "tiling.schema.yaml"
+    schema = yaml.safe_load(schema_path.read_text())
+    schema["tiling"]["s1_base"]["candidates"] = [999]
+    schema_path.write_text(yaml.safe_dump(schema, sort_keys=False), encoding="utf-8")
+
+    result = verify(graph, output_dir)
+
+    messages = [issue["message"] for issue in result["semantic_issues"]]
+    assert "Knob s1_base domain is not mapped to searchable field tiling.s1_base" in messages

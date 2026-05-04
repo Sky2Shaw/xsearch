@@ -153,15 +153,32 @@ def _check_knob_quality(graph: EvidenceGraph, stage2_dir: Path) -> tuple[int, li
             continue
 
         knob_node = graph.get_node(knob_edges[0].to_id)
-        if knob_node and "domain" in knob_node.data and not _has_finite_domain(spec):
-            domain = knob_node.data["domain"]
-            if not _has_finite_knob_domain(domain):
-                score -= 2
-                issues.append({
-                    "severity": "error",
-                    "category": "knob",
-                    "message": f"Knob {knob_node.data.get('name')} domain is not finite",
-                })
+        if knob_node is None or "domain" not in knob_node.data:
+            score -= 3
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Searchable field {field['path']} has no knob domain",
+            })
+            continue
+
+        domain = knob_node.data["domain"]
+        if not _has_finite_knob_domain(domain):
+            score -= 2
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Knob {knob_node.data.get('name')} domain is not finite",
+            })
+            continue
+
+        if not _knob_domain_maps_to_field(domain, spec):
+            score -= 2
+            issues.append({
+                "severity": "error",
+                "category": "knob",
+                "message": f"Knob {knob_node.data.get('name')} domain is not mapped to searchable field {field['path']}",
+            })
 
     return max(0, score), issues
 
@@ -346,7 +363,39 @@ def _has_finite_knob_domain(domain: dict[str, Any]) -> bool:
     domain_range = domain.get("range")
     if isinstance(domain_range, dict):
         return "minimum" in domain_range and "maximum" in domain_range
-    return "minimum" in domain and "maximum" in domain
+    return "minimum" in domain
+
+
+def _knob_domain_maps_to_field(domain: dict[str, Any], field_spec: dict[str, Any]) -> bool:
+    if "candidates" in domain:
+        expected = domain["candidates"]
+        return field_spec.get("candidates") == expected or field_spec.get("enum") == expected
+    if "values" in domain:
+        expected = domain["values"]
+        return field_spec.get("enum") == expected or field_spec.get("candidates") == expected
+
+    domain_range = domain.get("range")
+    if isinstance(domain_range, dict):
+        field_range = field_spec.get("range")
+        return (
+            isinstance(field_range, dict)
+            and field_range.get("minimum") == domain_range.get("minimum")
+            and field_range.get("maximum") == domain_range.get("maximum")
+        )
+
+    if "minimum" in domain and "maximum" in domain:
+        field_range = field_spec.get("range")
+        return (
+            isinstance(field_range, dict)
+            and field_range.get("minimum") == domain.get("minimum")
+            and field_range.get("maximum") == domain.get("maximum")
+        )
+
+    if "minimum" in domain:
+        candidates = field_spec.get("candidates")
+        return isinstance(candidates, list) and domain["minimum"] in candidates
+
+    return False
 
 
 def _check_agent_readiness(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
@@ -505,12 +554,13 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
         "overall_status": status,
         "total_score": total,
         "scores": scores,
-        "hard_failures": [i["message"] for i in hard_failures],
+        "hard_failures": [i["message"] for i in hard_failures] + agent_readiness["hard_failures"],
         "semantic_issues": all_issues,
         "coverage": {"shadow_dsl": coverage},
         "agent_readiness": agent_readiness,
         "next_actions": list(dict.fromkeys(
-            i.get("remediation", f"Fix: {i['message']}") for i in all_issues
+            i.get("remediation", f"Fix: {i['message']}")
+            for i in all_issues + agent_readiness["issues"]
         )),
     }
 
@@ -524,6 +574,11 @@ def verify(graph: EvidenceGraph, stage2_dir: Path) -> dict[str, Any]:
         md.append(f"- {k}: {v}")
     md += ["", "## Issues", ""]
     md += [f"- [{i['severity']}] ({i['category']}) {i['message']}" for i in all_issues] or ["- No issues found."]
+    md += ["", "## Agent Readiness Issues", ""]
+    md += [
+        f"- [{i['severity']}] ({i['category']}) {i['message']}"
+        for i in agent_readiness["issues"]
+    ] or ["- No agent readiness issues found."]
     (stage2_dir / "review" / "quality_gate.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
     readiness_md = ["# Stage 2 Agent Readiness", "", f"Status: **{agent_readiness['status']}**", f"Score: **{agent_readiness['score']}/100**", "", "## Scores", ""]
